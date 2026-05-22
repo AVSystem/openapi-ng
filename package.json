@@ -107,15 +107,6 @@
       "optional": true
     }
   },
-  "optionalDependencies": {
-    "@avsystem/openapi-ng-darwin-arm64": "0.0.0",
-    "@avsystem/openapi-ng-darwin-x64": "0.0.0",
-    "@avsystem/openapi-ng-linux-arm64-gnu": "0.0.0",
-    "@avsystem/openapi-ng-linux-x64-gnu": "0.0.0",
-    "@avsystem/openapi-ng-wasm32-wasip1-threads": "0.0.0",
-    "@avsystem/openapi-ng-win32-arm64-msvc": "0.0.0",
-    "@avsystem/openapi-ng-win32-x64-msvc": "0.0.0"
-  },
   "lint-staged": {
     "*.@(js|ts|tsx)": [
       "oxlint --fix"
