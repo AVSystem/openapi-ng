@@ -19,6 +19,8 @@ use crate::{
 // Section 1: Operation grouper
 // ---------------------------------------------------------------------------
 
+pub(crate) type GroupedOperations<'a> = Vec<(String, Vec<(&'a OperationDef, String)>)>;
+
 /// Groups operations by their resolved `group` name. Returns
 /// `(group_name, Vec<(operation, method_name)>)` pairs in
 /// operation-discovery order; downstream sorting is the planner's job
@@ -29,23 +31,21 @@ pub(crate) fn group_operations<'a>(
   operations: &'a [OperationDef],
   resolver: &crate::plan::naming::NamingResolver,
   reporter: &Reporter<'_>,
-) -> Result<Vec<(String, Vec<(&'a OperationDef, String)>)>, Diagnostic> {
-  let mut groups = Vec::<(String, Vec<(&'a OperationDef, String)>)>::new();
+) -> Result<GroupedOperations<'a>, Diagnostic> {
+  let mut groups: GroupedOperations<'a> = Vec::new();
   let mut group_indexes = HashMap::<String, usize>::new();
 
   for operation in operations {
     let group_name = resolver.group(operation, reporter)?;
     let method_name = resolver.method_name(operation, reporter)?;
 
-    let group_index = if let Some(index) = group_indexes.get(&group_name) {
-      *index
-    } else {
+    let group_index = group_indexes.get(&group_name).copied().unwrap_or_else(|| {
       let index = groups.len();
       let key = group_name.clone();
       groups.push((group_name, Vec::new()));
       group_indexes.insert(key, index);
       index
-    };
+    });
 
     groups[group_index].1.push((operation, method_name));
   }
@@ -142,8 +142,7 @@ fn check_body_field_collisions(
     Some(PlannedRequestBody::FlatJson { properties, .. }) => {
       properties.iter().map(|p| p.name.as_ref()).collect()
     }
-    Some(PlannedRequestBody::Multipart { fields })
-    | Some(PlannedRequestBody::UrlEncoded { fields }) => {
+    Some(PlannedRequestBody::Multipart { fields } | PlannedRequestBody::UrlEncoded { fields }) => {
       fields.iter().map(|f| f.name.as_ref()).collect()
     }
     _ => return Ok(()),

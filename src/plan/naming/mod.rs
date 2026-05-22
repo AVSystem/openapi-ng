@@ -36,15 +36,6 @@ use context::OperationContext;
 use defaults::{default_group, default_method_name};
 use engine::{RuleFailure, evaluate_chain};
 
-impl Default for NamingConfig {
-  fn default() -> Self {
-    Self {
-      method_name: None,
-      group: None,
-    }
-  }
-}
-
 /// Resolved-naming entry point used by the planner. Holds the
 /// user-supplied (validated, regex-compiled) config and exposes
 /// per-operation lookups.
@@ -54,7 +45,7 @@ pub(crate) struct NamingResolver {
 }
 
 impl NamingResolver {
-  pub(crate) fn new(config: NamingConfig) -> Self {
+  pub(crate) const fn new(config: NamingConfig) -> Self {
     Self { config }
   }
 
@@ -64,21 +55,25 @@ impl NamingResolver {
     reporter: &Reporter<'_>,
   ) -> Result<String, Diagnostic> {
     let ctx = OperationContext::from_operation(operation);
-    match &self.config.method_name {
-      Some(naming) => evaluate_chain(naming, &ctx).map_err(|failures| {
-        naming_resolution_error(reporter, "methodName", operation, &failures)
-      }),
-      None => default_method_name(&ctx).map_err(|_| {
-        Diagnostic::policy_violation(
-          reporter,
-          "naming-resolution",
-          format!(
-            "Could not derive a default methodName for operation {} {} (no operationId, and path produced no segments).",
-            operation.method, operation.path,
-          ),
-        )
-      }),
-    }
+    self.config.method_name.as_ref().map_or_else(
+      || {
+        default_method_name(&ctx).map_err(|_| {
+          Diagnostic::policy_violation(
+            reporter,
+            "naming-resolution",
+            format!(
+              "Could not derive a default methodName for operation {} {} (no operationId, and path produced no segments).",
+              operation.method, operation.path,
+            ),
+          )
+        })
+      },
+      |naming| {
+        evaluate_chain(naming, &ctx).map_err(|failures| {
+          naming_resolution_error(reporter, "methodName", operation, &failures)
+        })
+      },
+    )
   }
 
   pub(crate) fn group(
@@ -87,11 +82,13 @@ impl NamingResolver {
     reporter: &Reporter<'_>,
   ) -> Result<String, Diagnostic> {
     let ctx = OperationContext::from_operation(operation);
-    match &self.config.group {
-      Some(naming) => evaluate_chain(naming, &ctx)
-        .map_err(|failures| naming_resolution_error(reporter, "group", operation, &failures)),
-      None => Ok(default_group(&ctx)),
-    }
+    self.config.group.as_ref().map_or_else(
+      || Ok(default_group(&ctx)),
+      |naming| {
+        evaluate_chain(naming, &ctx)
+          .map_err(|failures| naming_resolution_error(reporter, "group", operation, &failures))
+      },
+    )
   }
 }
 

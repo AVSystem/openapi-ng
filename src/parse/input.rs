@@ -158,7 +158,7 @@ pub(crate) fn decode_input_contents(
   hint: Option<InputFormat>,
   display_path: &Rc<str>,
 ) -> Result<OpenApiDocument, Diagnostic> {
-  let len_bytes = source.as_bytes().len();
+  let len_bytes = source.len();
   let max_bytes = max_input_bytes();
   if (len_bytes as u64) > max_bytes {
     return Err(Diagnostic::new(
@@ -292,26 +292,26 @@ fn decode_yaml(source: &str, display_path: &Rc<str>) -> Result<OpenApiDocument, 
       // since the guard is structurally unreachable on anchor-free input.
       // This is the T4.1 perf win: anchor-free specs pay only the Value
       // parse, not the re-serialisation.
-      if source.contains('&') {
-        if let Ok(expanded) = serde_yml::to_string(&value) {
-          let source_len = source.len().max(1);
-          let cap = max_expansion_ratio();
-          // Saturating arithmetic on the cap multiplication: source.len() is
-          // already bounded by the input-byte cap upstream, but the product
-          // could overflow on a pathologically small source × huge cap.
-          let threshold = source_len.saturating_mul(cap);
-          if expanded.len() > threshold {
-            let ratio = expanded.len() / source_len;
-            return Err(Diagnostic {
-              code: DiagnosticCode::PolicyViolation,
-              subcode: Some("mapping-expansion-exceeded"),
-              message: format!(
-                "Failed to decode OpenAPI input: YAML anchor expansion produced {expanded_len} bytes from {source_len} bytes of source — {ratio}× ratio exceeds the cap of {cap}×. The spec likely uses anchors with deep fan-out; inline the aliases or set OPENAPI_NG_MAX_EXPANSION_RATIO to override.",
-                expanded_len = expanded.len(),
-              ),
-              path: Rc::clone(display_path),
-            });
-          }
+      if source.contains('&')
+        && let Ok(expanded) = serde_yml::to_string(&value)
+      {
+        let source_len = source.len().max(1);
+        let cap = max_expansion_ratio();
+        // Saturating arithmetic on the cap multiplication: source.len() is
+        // already bounded by the input-byte cap upstream, but the product
+        // could overflow on a pathologically small source × huge cap.
+        let threshold = source_len.saturating_mul(cap);
+        if expanded.len() > threshold {
+          let ratio = expanded.len() / source_len;
+          return Err(Diagnostic {
+            code: DiagnosticCode::PolicyViolation,
+            subcode: Some("mapping-expansion-exceeded"),
+            message: format!(
+              "Failed to decode OpenAPI input: YAML anchor expansion produced {expanded_len} bytes from {source_len} bytes of source — {ratio}× ratio exceeds the cap of {cap}×. The spec likely uses anchors with deep fan-out; inline the aliases or set OPENAPI_NG_MAX_EXPANSION_RATIO to override.",
+              expanded_len = expanded.len(),
+            ),
+            path: Rc::clone(display_path),
+          });
         }
       }
     }

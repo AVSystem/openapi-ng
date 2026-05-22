@@ -47,6 +47,7 @@ pub(crate) fn render_generated_banner(source_path: &str) -> String {
 ///   - the input is not absolute (already relative — caller's call), or
 ///   - `current_dir()` is unavailable (e.g. CWD was deleted), or
 ///   - `strip_prefix` fails (path lives outside CWD).
+///
 /// Uses forward slashes on the result so banner format stays
 /// platform-independent and matches `pipeline::generate`'s display-path
 /// normalization.
@@ -59,10 +60,9 @@ fn relativise_against_cwd(source_path: &str) -> String {
   let Ok(cwd) = std::env::current_dir() else {
     return source_path.to_owned();
   };
-  match input.strip_prefix(&cwd) {
-    Ok(rel) => rel.to_string_lossy().replace('\\', "/"),
-    Err(_) => source_path.to_owned(),
-  }
+  input
+    .strip_prefix(&cwd)
+    .map_or_else(|_| source_path.to_owned(), |rel| rel.to_string_lossy().replace('\\', "/"))
 }
 
 #[cfg(test)]

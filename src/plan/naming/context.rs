@@ -62,7 +62,7 @@ impl<'a> OperationContext<'a> {
   }
 }
 
-fn resolve_index(len: usize, index: i32) -> Option<usize> {
+const fn resolve_index(len: usize, index: i32) -> Option<usize> {
   if index >= 0 {
     let i = index as usize;
     if i < len { Some(i) } else { None }

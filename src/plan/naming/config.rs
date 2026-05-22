@@ -5,7 +5,7 @@
 
 use crate::plan::naming::parse_spec::CompiledParseSpec;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct NamingConfig {
   pub(crate) method_name: Option<Naming>,
   pub(crate) group: Option<Naming>,

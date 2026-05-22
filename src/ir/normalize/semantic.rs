@@ -64,9 +64,7 @@ fn narrow_discriminator_properties(
           let literal_value: Box<str> = discriminator
             .mapping
             .iter()
-            .find(|(_, target)| target.as_ref() == schema_name.as_ref())
-            .map(|(wire_value, _)| wire_value.clone())
-            .unwrap_or_else(|| schema_name.to_ascii_lowercase().into_boxed_str());
+            .find(|(_, target)| target.as_ref() == schema_name.as_ref()).map_or_else(|| schema_name.to_ascii_lowercase().into_boxed_str(), |(wire_value, _)| wire_value.clone());
           narrowings
             .entry(schema_name.clone())
             .or_default()
@@ -166,7 +164,7 @@ fn find_property<'a>(
 /// already be string-shaped — bare `string`, or a `'a' | 'b'` enum.
 /// Anything else (integer, nullable, ref to another schema, …) is
 /// rejected as `discriminator-property-must-be-string`.
-fn is_string_discriminator_shape(ty: &SchemaType) -> bool {
+const fn is_string_discriminator_shape(ty: &SchemaType) -> bool {
   matches!(
     ty,
     SchemaType::Scalar(SchemaScalar::String) | SchemaType::StringLiterals { .. }

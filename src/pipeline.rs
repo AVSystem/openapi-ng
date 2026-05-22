@@ -77,17 +77,21 @@ pub fn execute_generate(config: GenerateConfig) -> Result<GenerateResult, Genera
   // Build display_path: honour an explicitly-supplied value (URL inputs,
   // direct inputContents callers); otherwise derive from input_path with
   // backslash-to-slash normalisation.
-  let display_path: Rc<str> = match config.display_path.as_deref() {
-    Some(supplied) => Rc::from(supplied),
-    None => match config.input_path.as_deref() {
-      Some(path) => Rc::from(
-        std::path::Path::new(path)
-          .to_string_lossy()
-          .replace('\\', "/"),
-      ),
-      None => Rc::from(""),
+  let display_path: Rc<str> = config.display_path.as_deref().map_or_else(
+    || {
+      config.input_path.as_deref().map_or_else(
+        || Rc::from(""),
+        |path| {
+          Rc::from(
+            std::path::Path::new(path)
+              .to_string_lossy()
+              .replace('\\', "/"),
+          )
+        },
+      )
     },
-  };
+    Rc::from,
+  );
 
   let mut warnings: Vec<Diagnostic> = Vec::new();
 

@@ -96,15 +96,12 @@ pub(crate) fn apply(s: &str, case: Case) -> String {
 
 fn title_case(t: &str) -> String {
   let mut chars = t.chars();
-  match chars.next() {
-    None => String::new(),
-    Some(first) => {
-      let mut out = String::new();
-      out.extend(first.to_uppercase());
-      out.push_str(&chars.as_str().to_ascii_lowercase());
-      out
-    }
-  }
+  chars.next().map_or_else(String::new, |first| {
+    let mut out = String::new();
+    out.extend(first.to_uppercase());
+    out.push_str(&chars.as_str().to_ascii_lowercase());
+    out
+  })
 }
 
 #[cfg(test)]

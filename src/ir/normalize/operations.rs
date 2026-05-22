@@ -15,9 +15,9 @@ use crate::parse::openapi_model::{
 use super::schema::normalize_schema;
 use super::unsupported;
 
-pub(super) fn normalize_operations<'a>(
+pub(super) fn normalize_operations(
   paths: &BTreeMap<String, PathItem>,
-  schema_index: &BTreeMap<&str, &'a SchemaType>,
+  schema_index: &BTreeMap<&str, &SchemaType>,
   response_type_mapping: &[ResponseTypeMapping],
   reporter: &mut Reporter<'_>,
 ) -> Result<Vec<OperationDef>, Diagnostic> {
@@ -93,11 +93,11 @@ fn validate_path_template(path: &str, reporter: &mut Reporter<'_>) -> Result<(),
   Ok(())
 }
 
-fn normalize_operation<'a>(
+fn normalize_operation(
   path_name: &str,
   method: &str,
   operation: &Operation,
-  schema_index: &BTreeMap<&str, &'a SchemaType>,
+  schema_index: &BTreeMap<&str, &SchemaType>,
   response_type_mapping: &[ResponseTypeMapping],
   reporter: &mut Reporter<'_>,
 ) -> Result<OperationDef, Diagnostic> {
@@ -157,12 +157,12 @@ fn normalize_operation<'a>(
   })
 }
 
-fn normalize_request<'a>(
+fn normalize_request(
   operation: &Operation,
   operation_id: &str,
   method: &str,
   path: &str,
-  schema_index: &BTreeMap<&str, &'a SchemaType>,
+  schema_index: &BTreeMap<&str, &SchemaType>,
   reporter: &mut Reporter<'_>,
 ) -> Result<RequestDef, Diagnostic> {
   let (inputs, headers) =
@@ -297,11 +297,11 @@ fn normalize_request_inputs(
   Ok((inputs, headers))
 }
 
-fn normalize_request_body<'a>(
+fn normalize_request_body(
   request_body: Option<&RequestBody>,
   method: &str,
   path: &str,
-  schema_index: &BTreeMap<&str, &'a SchemaType>,
+  schema_index: &BTreeMap<&str, &SchemaType>,
   reporter: &mut Reporter<'_>,
 ) -> Result<Option<RequestBodyDef>, Diagnostic> {
   let Some(body) = request_body else {
@@ -413,12 +413,12 @@ enum FormKind {
 /// resolved properties come from the normalized index and format detection
 /// for ref-target bodies is currently a no-op. The Task 7 accept tests do
 /// not exercise format-binary through a `$ref`.
-fn normalize_form_body_fields<'a>(
+fn normalize_form_body_fields(
   media: &MediaType,
   kind: FormKind,
   method: &str,
   path: &str,
-  schema_index: &BTreeMap<&str, &'a SchemaType>,
+  schema_index: &BTreeMap<&str, &SchemaType>,
   reporter: &mut Reporter<'_>,
 ) -> Result<(Option<Box<str>>, Vec<BodyField>), Diagnostic> {
   let raw_schema = media.schema.as_ref().ok_or_else(|| {
@@ -476,18 +476,15 @@ fn normalize_form_body_fields<'a>(
   // (Map, Array, Scalar, Union, ...) cannot be flattened into discrete
   // form fields, so we reject with a kind-aware non-object-body subcode
   // so downstream consumers can route on the precise reason and variant.
-  let properties = match resolved_ty {
-    SchemaType::InlineObject { properties } => properties,
-    _ => {
-      return Err(Diagnostic::policy_violation(
-        reporter,
-        non_object_body_subcode(kind),
-        format!(
-          "requestBody for {method} {path}: {} body schema must resolve to an object.",
-          form_kind_label(kind),
-        ),
-      ));
-    }
+  let SchemaType::InlineObject { properties } = resolved_ty else {
+    return Err(Diagnostic::policy_violation(
+      reporter,
+      non_object_body_subcode(kind),
+      format!(
+        "requestBody for {method} {path}: {} body schema must resolve to an object.",
+        form_kind_label(kind),
+      ),
+    ));
   };
 
   // Raw-peek table for format detection. Populated from the inline
@@ -658,7 +655,7 @@ fn classify_body_field_type(
 
 /// Subcode for a nested-object reject, kind-aware so downstream tooling
 /// can distinguish multipart vs urlencoded paths.
-fn nested_object_subcode(kind: FormKind) -> &'static str {
+const fn nested_object_subcode(kind: FormKind) -> &'static str {
   match kind {
     FormKind::Multipart => "multipart-nested-object",
     FormKind::UrlEncoded => "urlencoded-nested-object",
@@ -667,7 +664,7 @@ fn nested_object_subcode(kind: FormKind) -> &'static str {
 
 /// Subcode for a composed-field reject (oneOf/anyOf/allOf, nullable,
 /// non-string-literal enums, array-of-non-scalar, etc.), kind-aware.
-fn composed_field_subcode(kind: FormKind) -> &'static str {
+const fn composed_field_subcode(kind: FormKind) -> &'static str {
   match kind {
     FormKind::Multipart => "multipart-composed-field",
     FormKind::UrlEncoded => "urlencoded-composed-field",
@@ -677,7 +674,7 @@ fn composed_field_subcode(kind: FormKind) -> &'static str {
 /// Subcode for a non-object top-level body reject (the resolved body
 /// schema is a scalar, array, map, union, ...). Kind-aware so downstream
 /// tooling can distinguish multipart vs urlencoded paths.
-fn non_object_body_subcode(kind: FormKind) -> &'static str {
+const fn non_object_body_subcode(kind: FormKind) -> &'static str {
   match kind {
     FormKind::Multipart => "multipart-non-object-body",
     FormKind::UrlEncoded => "urlencoded-non-object-body",
@@ -687,7 +684,7 @@ fn non_object_body_subcode(kind: FormKind) -> &'static str {
 /// Subcode for an open-schema reject (top-level `additionalProperties`
 /// is `true` or a schema). Kind-aware so consumers can distinguish
 /// multipart vs urlencoded variants.
-fn open_schema_subcode(kind: FormKind) -> &'static str {
+const fn open_schema_subcode(kind: FormKind) -> &'static str {
   match kind {
     FormKind::Multipart => "multipart-open-schema",
     FormKind::UrlEncoded => "urlencoded-open-schema",
@@ -696,7 +693,7 @@ fn open_schema_subcode(kind: FormKind) -> &'static str {
 
 /// Human-readable label used in diagnostic messages so consumers can tell
 /// the kind apart without inspecting the subcode.
-fn form_kind_label(kind: FormKind) -> &'static str {
+const fn form_kind_label(kind: FormKind) -> &'static str {
   match kind {
     FormKind::Multipart => "multipart",
     FormKind::UrlEncoded => "urlencoded",
