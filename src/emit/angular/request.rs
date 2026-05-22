@@ -257,7 +257,10 @@ fn render_body_expression(operation: &PlannedOperation<'_>) -> Option<String> {
 ///   normalize rejects those fields upstream.
 /// - Optional fields wrap in `if (name !== undefined) ...` to preserve the
 ///   "no key present" semantics; required fields emit unguarded.
-fn render_form_body(fields: &[crate::plan::artifact_plan::PlannedFormField<'_>], kind: FormKind) -> String {
+fn render_form_body(
+  fields: &[crate::plan::artifact_plan::PlannedFormField<'_>],
+  kind: FormKind,
+) -> String {
   let (ctor, var, ts_type) = match kind {
     FormKind::Multipart => ("new FormData()", "fd", "FormData"),
     FormKind::UrlEncoded => ("new URLSearchParams()", "params", "URLSearchParams"),
@@ -813,9 +816,7 @@ mod tests {
     let mut buf = Writer::with_capacity(512);
     render_requestful_builder(&mut buf, &op, "OpParams");
     let out = buf.into_string();
-    assert!(
-      out.contains("if (nickname !== undefined) fd.append('nickname', String(nickname));")
-    );
+    assert!(out.contains("if (nickname !== undefined) fd.append('nickname', String(nickname));"));
   }
 
   #[test]
@@ -857,15 +858,14 @@ mod tests {
   fn urlencoded_builder_uses_url_search_params_constructor() {
     let scalar = BodyFieldType::Scalar(SchemaScalar::String);
     let arr = BodyFieldType::ArrayOfScalar(SchemaScalar::Number);
-    let op = op_with_urlencoded_fields(vec![
-      ("status", false, &scalar),
-      ("tagIds", true, &arr),
-    ]);
+    let op = op_with_urlencoded_fields(vec![("status", false, &scalar), ("tagIds", true, &arr)]);
     let mut buf = Writer::with_capacity(512);
     render_requestful_builder(&mut buf, &op, "OpParams");
     let out = buf.into_string();
     assert!(out.contains("const params = new URLSearchParams();"));
     assert!(out.contains("params.append('status', String(status));"));
-    assert!(out.contains("if (tagIds !== undefined) for (const v of tagIds) params.append('tagIds', String(v));"));
+    assert!(out.contains(
+      "if (tagIds !== undefined) for (const v of tagIds) params.append('tagIds', String(v));"
+    ));
   }
 }

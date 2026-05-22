@@ -268,9 +268,7 @@ fn validate_references(document: &ApiModel, reporter: &Reporter<'_>) -> Result<(
 mod tests {
   use super::narrow_discriminator_properties;
   use crate::ir::canonical::ModelSymbol;
-  use crate::ir::schema::{
-    Discriminator, SchemaProperty, SchemaScalar, SchemaType,
-  };
+  use crate::ir::schema::{Discriminator, SchemaProperty, SchemaScalar, SchemaType};
   use crate::test_support::test_ctx;
   use std::collections::BTreeMap;
 
@@ -396,7 +394,10 @@ mod tests {
         SchemaType::Intersection(vec![
           SchemaType::Ref("Animal".into()),
           SchemaType::InlineObject {
-            properties: vec![property("whiskers", SchemaType::Scalar(SchemaScalar::Number))],
+            properties: vec![property(
+              "whiskers",
+              SchemaType::Scalar(SchemaScalar::Number),
+            )],
           },
         ]),
       ),

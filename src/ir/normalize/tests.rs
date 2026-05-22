@@ -410,7 +410,9 @@ fn semantic_finalize_lowers_operations_with_inputs_body_and_response() {
           )))),
         }),
       },
-      response: Some(ResponseContent::Json(Some(SchemaType::Ref("Example".into())))),
+      response: Some(ResponseContent::Json(Some(SchemaType::Ref(
+        "Example".into(),
+      )))),
       errors: Vec::new(),
       description: None,
       deprecated: false,
@@ -437,7 +439,12 @@ fn semantic_finalize_lowers_operations_with_inputs_body_and_response() {
   assert_eq!(operation.request.headers.len(), 1);
   assert_eq!(operation.request.headers[0].name.as_ref(), "xTrace");
   assert!(matches!(
-    operation.request.body.as_ref().expect("body present").content,
+    operation
+      .request
+      .body
+      .as_ref()
+      .expect("body present")
+      .content,
     BodyContent::Json(SchemaType::Array(_))
   ));
   assert!(matches!(

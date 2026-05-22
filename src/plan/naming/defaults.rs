@@ -7,9 +7,7 @@
 //!   Errors if both fail.
 //! * group: pascalCase(tags[0]), else pascalCase(pathSegments[0]), else "Default".
 
-use crate::plan::naming::{
-  case::apply as apply_case, config::Case, context::OperationContext,
-};
+use crate::plan::naming::{case::apply as apply_case, config::Case, context::OperationContext};
 
 #[derive(Debug)]
 pub(crate) enum DefaultMethodNameFailure {
@@ -27,7 +25,10 @@ pub(crate) fn default_method_name(
   }
   if !ctx.path_segments.is_empty() {
     let suffix = ctx.path_segments.join("_");
-    return Ok(apply_case(&format!("{}_{}", ctx.method, suffix), Case::Camel));
+    return Ok(apply_case(
+      &format!("{}_{}", ctx.method, suffix),
+      Case::Camel,
+    ));
   }
   Err(DefaultMethodNameFailure::NoSource)
 }

@@ -134,10 +134,7 @@ pub(crate) enum PlannedRequestBody<'ir> {
   /// bodies whose schema is a top-level `$ref` or any non-object shape
   /// (scalar, array, union) where there is no property structure to
   /// hoist.
-  Nested {
-    ty: &'ir SchemaType,
-    optional: bool,
-  },
+  Nested { ty: &'ir SchemaType, optional: bool },
   /// Body was an inline JSON object; its properties are hoisted as
   /// `RequestFieldKind::Body` entries on this variant. Each property's
   /// `optional` already accounts for the body envelope's `required`
@@ -150,15 +147,11 @@ pub(crate) enum PlannedRequestBody<'ir> {
   /// `multipart/form-data` body. Fields render as top-level entries on
   /// the request interface (typed via `BodyFieldType`); builder
   /// materializes them into a `FormData` at runtime.
-  Multipart {
-    fields: Vec<PlannedFormField<'ir>>,
-  },
+  Multipart { fields: Vec<PlannedFormField<'ir>> },
   /// `application/x-www-form-urlencoded` body. Fields render as
   /// top-level entries on the request interface; builder materializes
   /// them into `URLSearchParams`.
-  UrlEncoded {
-    fields: Vec<PlannedFormField<'ir>>,
-  },
+  UrlEncoded { fields: Vec<PlannedFormField<'ir>> },
 }
 
 /// Verifies that each `mapped_types[].schema` resolves to a top-level
@@ -355,7 +348,9 @@ mod tests {
         method: HttpMethod::Get,
         path: "/pets".to_string(),
         request: RequestDef::default(),
-        response: Some(ResponseContent::Json(Some(SchemaType::Ref("PetList".into())))),
+        response: Some(ResponseContent::Json(Some(SchemaType::Ref(
+          "PetList".into(),
+        )))),
         errors: Vec::new(),
         description: None,
         deprecated: false,
@@ -480,7 +475,12 @@ mod tests {
   fn resolve_service_plans_groups_operations_and_builds_request_contracts() {
     let ir = service_test_ir();
     let mut ctx = test_ctx();
-    let services = resolve_service_plans(&ir, &crate::plan::naming::NamingResolver::default(), &ctx.reporter()).expect("service plan resolves");
+    let services = resolve_service_plans(
+      &ir,
+      &crate::plan::naming::NamingResolver::default(),
+      &ctx.reporter(),
+    )
+    .expect("service plan resolves");
 
     assert_eq!(services.len(), 2);
     // Services are sorted alphabetically by class_name (AdoptionRequestRest
@@ -597,7 +597,10 @@ mod tests {
     )
     .expect("ref body stays nested even when it resolves to an inline object");
     let create_pet = &services[0].operations[0];
-    assert!(matches!(create_pet.request.body, Some(PlannedRequestBody::Nested { .. })));
+    assert!(matches!(
+      create_pet.request.body,
+      Some(PlannedRequestBody::Nested { .. })
+    ));
   }
 
   #[test]
@@ -651,7 +654,12 @@ mod tests {
     let ir = api_model(Vec::new(), operations);
 
     let mut ctx = test_ctx();
-    let services = resolve_service_plans(&ir, &crate::plan::naming::NamingResolver::default(), &ctx.reporter()).expect("plans resolve");
+    let services = resolve_service_plans(
+      &ir,
+      &crate::plan::naming::NamingResolver::default(),
+      &ctx.reporter(),
+    )
+    .expect("plans resolve");
 
     assert_eq!(
       services

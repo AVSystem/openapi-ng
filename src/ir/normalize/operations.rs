@@ -462,9 +462,7 @@ fn normalize_form_body_fields<'a>(
     SchemaType::Ref(name) => {
       let resolved = schema_index.get(name.as_ref()).ok_or_else(|| {
         unsupported(
-          format!(
-            "requestBody for {method} {path} references unknown schema '{name}'.",
-          ),
+          format!("requestBody for {method} {path} references unknown schema '{name}'.",),
           reporter,
           true,
         )
@@ -910,29 +908,47 @@ mod tests {
 
   #[test]
   fn classifies_application_json_as_json() {
-    assert_eq!(classify_response_kind("application/json", &[]), ResponseKind::Json);
+    assert_eq!(
+      classify_response_kind("application/json", &[]),
+      ResponseKind::Json
+    );
   }
 
   #[test]
   fn classifies_problem_json_as_json() {
-    assert_eq!(classify_response_kind("application/problem+json", &[]), ResponseKind::Json);
-    assert_eq!(classify_response_kind("application/vnd.api+json", &[]), ResponseKind::Json);
+    assert_eq!(
+      classify_response_kind("application/problem+json", &[]),
+      ResponseKind::Json
+    );
+    assert_eq!(
+      classify_response_kind("application/vnd.api+json", &[]),
+      ResponseKind::Json
+    );
   }
 
   #[test]
   fn classifies_text_plain_as_text() {
-    assert_eq!(classify_response_kind("text/plain", &[]), ResponseKind::Text);
+    assert_eq!(
+      classify_response_kind("text/plain", &[]),
+      ResponseKind::Text
+    );
     assert_eq!(classify_response_kind("text/csv", &[]), ResponseKind::Text);
   }
 
   #[test]
   fn classifies_application_pdf_as_blob_via_default() {
-    assert_eq!(classify_response_kind("application/pdf", &[]), ResponseKind::Blob);
+    assert_eq!(
+      classify_response_kind("application/pdf", &[]),
+      ResponseKind::Blob
+    );
   }
 
   #[test]
   fn classifies_octet_stream_as_blob_via_default() {
-    assert_eq!(classify_response_kind("application/octet-stream", &[]), ResponseKind::Blob);
+    assert_eq!(
+      classify_response_kind("application/octet-stream", &[]),
+      ResponseKind::Blob
+    );
   }
 
   #[test]
@@ -1011,7 +1027,9 @@ mod tests {
     Response {
       content: Some(BTreeMap::from([(
         "application/json".to_string(),
-        MediaType { schema: Some(schema) },
+        MediaType {
+          schema: Some(schema),
+        },
       )])),
     }
   }
@@ -1072,7 +1090,9 @@ mod tests {
       Response {
         content: Some(BTreeMap::from([(
           "text/plain".to_string(),
-          MediaType { schema: Some(Schema::default_string()) },
+          MediaType {
+            schema: Some(Schema::default_string()),
+          },
         )])),
       },
     );
@@ -1082,13 +1102,19 @@ mod tests {
       normalize_error_responses(Some(&responses), HttpMethod::Get, "/x", &mut ctx.reporter())
         .expect("normalize ok");
 
-    assert_eq!(errors.iter().map(|e| e.status).collect::<Vec<_>>(), vec![400]);
+    assert_eq!(
+      errors.iter().map(|e| e.status).collect::<Vec<_>>(),
+      vec![400]
+    );
   }
 
   #[test]
   fn skips_default_response_key() {
     let mut responses = BTreeMap::new();
-    responses.insert("default".to_string(), json_response(Schema::default_string()));
+    responses.insert(
+      "default".to_string(),
+      json_response(Schema::default_string()),
+    );
     responses.insert("400".to_string(), json_response(Schema::default_string()));
 
     let mut ctx = test_ctx();
@@ -1097,7 +1123,10 @@ mod tests {
         .expect("normalize ok");
 
     // Only 400 survives — `default` is intentionally not surfaced.
-    assert_eq!(errors.iter().map(|e| e.status).collect::<Vec<_>>(), vec![400]);
+    assert_eq!(
+      errors.iter().map(|e| e.status).collect::<Vec<_>>(),
+      vec![400]
+    );
   }
 
   // ── Multipart body field walker (Task 7 — accept path) ────────────────────
@@ -1138,7 +1167,10 @@ content:
         assert_eq!(avatar.ty, BodyFieldType::Binary);
         assert!(avatar.required);
         let status = fields.iter().find(|f| f.name.as_ref() == "status").unwrap();
-        assert!(matches!(status.ty, BodyFieldType::Scalar(SchemaScalar::String)));
+        assert!(matches!(
+          status.ty,
+          BodyFieldType::Scalar(SchemaScalar::String)
+        ));
         assert!(status.required);
         let nickname = fields
           .iter()
@@ -1343,12 +1375,21 @@ content:
     let body = parse_request_body(yaml);
     let mut ctx = test_ctx();
     let result = normalize_request_body(
-      Some(&body), "POST", "/x", &empty_schema_index(), &mut ctx.reporter()
-    ).expect("normalize ok").expect("body present");
+      Some(&body),
+      "POST",
+      "/x",
+      &empty_schema_index(),
+      &mut ctx.reporter(),
+    )
+    .expect("normalize ok")
+    .expect("body present");
 
     match result.content {
       BodyContent::UrlEncoded { fields, .. } => {
-        assert_eq!(fields.iter().map(|f| f.name.as_ref()).collect::<Vec<_>>(), vec!["status", "tagIds"]);
+        assert_eq!(
+          fields.iter().map(|f| f.name.as_ref()).collect::<Vec<_>>(),
+          vec!["status", "tagIds"]
+        );
       }
       other => panic!("expected UrlEncoded, got {other:?}"),
     }
@@ -1367,8 +1408,13 @@ content:
     let body = parse_request_body(yaml);
     let mut ctx = test_ctx();
     let err = normalize_request_body(
-      Some(&body), "POST", "/x", &empty_schema_index(), &mut ctx.reporter()
-    ).expect_err("binary in urlencoded should fail");
+      Some(&body),
+      "POST",
+      "/x",
+      &empty_schema_index(),
+      &mut ctx.reporter(),
+    )
+    .expect_err("binary in urlencoded should fail");
     assert_eq!(err.subcode, Some("urlencoded-binary-field"));
   }
 
@@ -1388,8 +1434,13 @@ content:
     let body = parse_request_body(yaml);
     let mut ctx = test_ctx();
     let err = normalize_request_body(
-      Some(&body), "POST", "/x", &empty_schema_index(), &mut ctx.reporter()
-    ).expect_err("nested object should fail");
+      Some(&body),
+      "POST",
+      "/x",
+      &empty_schema_index(),
+      &mut ctx.reporter(),
+    )
+    .expect_err("nested object should fail");
     assert_eq!(err.subcode, Some("urlencoded-nested-object"));
   }
 
@@ -1409,8 +1460,13 @@ content:
     let body = parse_request_body(yaml);
     let mut ctx = test_ctx();
     let err = normalize_request_body(
-      Some(&body), "POST", "/x", &empty_schema_index(), &mut ctx.reporter()
-    ).expect_err("composed field should fail");
+      Some(&body),
+      "POST",
+      "/x",
+      &empty_schema_index(),
+      &mut ctx.reporter(),
+    )
+    .expect_err("composed field should fail");
     assert_eq!(err.subcode, Some("urlencoded-composed-field"));
   }
 
@@ -1425,8 +1481,13 @@ content:
     let body = parse_request_body(yaml);
     let mut ctx = test_ctx();
     let err = normalize_request_body(
-      Some(&body), "POST", "/x", &empty_schema_index(), &mut ctx.reporter()
-    ).expect_err("non-object urlencoded body should fail");
+      Some(&body),
+      "POST",
+      "/x",
+      &empty_schema_index(),
+      &mut ctx.reporter(),
+    )
+    .expect_err("non-object urlencoded body should fail");
     assert_eq!(err.subcode, Some("urlencoded-non-object-body"));
   }
 
@@ -1444,8 +1505,13 @@ content:
     let body = parse_request_body(yaml);
     let mut ctx = test_ctx();
     let err = normalize_request_body(
-      Some(&body), "POST", "/x", &empty_schema_index(), &mut ctx.reporter()
-    ).expect_err("open urlencoded schema should fail");
+      Some(&body),
+      "POST",
+      "/x",
+      &empty_schema_index(),
+      &mut ctx.reporter(),
+    )
+    .expect_err("open urlencoded schema should fail");
     assert_eq!(err.subcode, Some("urlencoded-open-schema"));
   }
 
@@ -1461,8 +1527,13 @@ content:
     let body = parse_request_body(yaml);
     let mut ctx = test_ctx();
     let err = normalize_request_body(
-      Some(&body), "POST", "/x", &empty_schema_index(), &mut ctx.reporter()
-    ).expect_err("multi-content should fail");
+      Some(&body),
+      "POST",
+      "/x",
+      &empty_schema_index(),
+      &mut ctx.reporter(),
+    )
+    .expect_err("multi-content should fail");
     assert_eq!(err.subcode, Some("multi-content-body"));
   }
 
@@ -1476,8 +1547,13 @@ content:
     let body = parse_request_body(yaml);
     let mut ctx = test_ctx();
     let err = normalize_request_body(
-      Some(&body), "POST", "/x", &empty_schema_index(), &mut ctx.reporter()
-    ).expect_err("xml body should fail");
+      Some(&body),
+      "POST",
+      "/x",
+      &empty_schema_index(),
+      &mut ctx.reporter(),
+    )
+    .expect_err("xml body should fail");
     assert_eq!(err.subcode, Some("unsupported-body-content-type"));
   }
 
@@ -1527,21 +1603,15 @@ content:
     let err = validate_path_template("/pets/{id", &mut ctx.reporter())
       .expect_err("unbalanced { must reject");
     // unsupported() uses code, not subcode; just confirm it's an error.
-    assert_eq!(
-      err.code,
-      crate::error::DiagnosticCode::UnsupportedSemantic
-    );
+    assert_eq!(err.code, crate::error::DiagnosticCode::UnsupportedSemantic);
   }
 
   #[test]
   fn validate_path_template_still_rejects_stray_close_brace() {
     let mut ctx = test_ctx();
-    let err = validate_path_template("/pets/id}", &mut ctx.reporter())
-      .expect_err("stray } must reject");
-    assert_eq!(
-      err.code,
-      crate::error::DiagnosticCode::UnsupportedSemantic
-    );
+    let err =
+      validate_path_template("/pets/id}", &mut ctx.reporter()).expect_err("stray } must reject");
+    assert_eq!(err.code, crate::error::DiagnosticCode::UnsupportedSemantic);
   }
 
   // ── Form-body field name validation (Issue 1a) ────────────────────────────
@@ -1559,8 +1629,13 @@ content:
     let body = parse_request_body(yaml);
     let mut ctx = test_ctx();
     let err = normalize_request_body(
-      Some(&body), "POST", "/x", &empty_schema_index(), &mut ctx.reporter()
-    ).expect_err("kebab-case field name must reject");
+      Some(&body),
+      "POST",
+      "/x",
+      &empty_schema_index(),
+      &mut ctx.reporter(),
+    )
+    .expect_err("kebab-case field name must reject");
     assert_eq!(err.subcode, Some("invalid-form-field-name"));
   }
 
@@ -1577,8 +1652,13 @@ content:
     let body = parse_request_body(yaml);
     let mut ctx = test_ctx();
     let err = normalize_request_body(
-      Some(&body), "POST", "/x", &empty_schema_index(), &mut ctx.reporter()
-    ).expect_err("digits-first field name must reject");
+      Some(&body),
+      "POST",
+      "/x",
+      &empty_schema_index(),
+      &mut ctx.reporter(),
+    )
+    .expect_err("digits-first field name must reject");
     assert_eq!(err.subcode, Some("invalid-form-field-name"));
   }
 }

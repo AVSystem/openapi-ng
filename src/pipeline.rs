@@ -444,16 +444,13 @@ mod tests {
       display_path: Some("https://example.com/spec.yaml".to_string()),
       input_format: Some(crate::bindings::InputFormat::Yaml),
       output_path: None,
-      emit: [crate::bindings::EmitTarget::Models]
-        .into_iter()
-        .collect(),
+      emit: [crate::bindings::EmitTarget::Models].into_iter().collect(),
       mapped_types: Vec::new(),
       response_type_mapping: Vec::new(),
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
     };
-    let result =
-      execute_generate(config).expect("inputContents pipeline must succeed");
+    let result = execute_generate(config).expect("inputContents pipeline must succeed");
     assert_eq!(result.summary.title, "Inline Test");
     // display_path is the supplied URL verbatim — no slash-normalisation,
     // no path resolution.

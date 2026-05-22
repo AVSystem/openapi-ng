@@ -647,7 +647,6 @@ mod tests {
         response_type: ResponseType::Text,
       },
     ]);
-    validate_generate_config(&mut config, &mut ctx.reporter())
-      .expect("well-formed mapping passes");
+    validate_generate_config(&mut config, &mut ctx.reporter()).expect("well-formed mapping passes");
   }
 }

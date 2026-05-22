@@ -228,7 +228,10 @@ mod tests {
       render_body_field_type(&BodyFieldType::ArrayOfScalar(SchemaScalar::Number)),
       "number[]"
     );
-    assert_eq!(render_body_field_type(&BodyFieldType::Binary), "Blob | File");
+    assert_eq!(
+      render_body_field_type(&BodyFieldType::Binary),
+      "Blob | File"
+    );
     assert_eq!(
       render_body_field_type(&BodyFieldType::ArrayOfBinary),
       "(Blob | File)[]"
@@ -331,7 +334,11 @@ mod tests {
     // value renders as its own `| '...'` line and must route through the
     // same escape table.
     let long = "a".repeat(40);
-    let values = vec![format!("{long}-1'a"), format!("{long}-2\\b"), format!("{long}-3")];
+    let values = vec![
+      format!("{long}-1'a"),
+      format!("{long}-2\\b"),
+      format!("{long}-3"),
+    ];
     let mut out = Writer::with_capacity(4096);
     string_union(&mut out, "Long", None, false, &values);
     let rendered = out.into_string();

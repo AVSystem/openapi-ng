@@ -82,8 +82,16 @@ impl Operation {
   /// is present alone. Whitespace-only values are treated as absent.
   pub(crate) fn merged_description(&self) -> Option<String> {
     match (
-      self.summary.as_deref().map(str::trim).filter(|s| !s.is_empty()),
-      self.description.as_deref().map(str::trim).filter(|s| !s.is_empty()),
+      self
+        .summary
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty()),
+      self
+        .description
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty()),
     ) {
       (None, None) => None,
       (Some(s), None) => Some(s.to_string()),

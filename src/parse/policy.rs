@@ -2,7 +2,10 @@ use std::collections::BTreeMap;
 
 use crate::{
   error::{Diagnostic, DiagnosticCode, Reporter},
-  parse::{input::{max_operations, max_schemas}, openapi_model::OpenApiDocument},
+  parse::{
+    input::{max_operations, max_schemas},
+    openapi_model::OpenApiDocument,
+  },
 };
 
 pub(crate) fn validate_openapi_version(
@@ -128,16 +131,18 @@ mod tests {
 
   #[test]
   fn validate_openapi_version_rejects_non_3x_openapi_version() {
-    let document = decode(
-      r#"{"openapi":"2.0.0","info":{"title":"Old","version":"1.0.0"},"paths":{}}"#,
-    );
+    let document =
+      decode(r#"{"openapi":"2.0.0","info":{"title":"Old","version":"1.0.0"},"paths":{}}"#);
 
     let mut ctx = test_ctx();
     let Err(error) = validate_openapi_version(&document, &ctx.reporter()) else {
       panic!("old version should fail")
     };
 
-    assert_eq!(error.code, crate::error::DiagnosticCode::UnsupportedSemantic);
+    assert_eq!(
+      error.code,
+      crate::error::DiagnosticCode::UnsupportedSemantic
+    );
     assert!(error.message.contains("3.x"));
   }
 
@@ -178,8 +183,8 @@ mod tests {
   fn duplicate_operation_id_is_rejected() {
     let yaml = include_str!("../../test/fixtures/duplicate-operation-id.openapi.yaml");
     let display: Rc<str> = Rc::from("fixture.yaml");
-    let document =
-      decode_openapi_input(Path::new("fixture.yaml"), yaml, &display).expect("decode should succeed");
+    let document = decode_openapi_input(Path::new("fixture.yaml"), yaml, &display)
+      .expect("decode should succeed");
     let mut ctx = test_ctx();
     let err = validate_generation_policy(&document, &ctx.reporter())
       .expect_err("should reject duplicate operationId");
@@ -194,7 +199,7 @@ mod cap_tests {
 
   use crate::{
     parse::input::{
-      max_operations_from, max_schemas_from, DEFAULT_MAX_OPERATIONS, DEFAULT_MAX_SCHEMAS,
+      DEFAULT_MAX_OPERATIONS, DEFAULT_MAX_SCHEMAS, max_operations_from, max_schemas_from,
     },
     test_support::test_ctx,
   };
@@ -236,7 +241,10 @@ mod cap_tests {
 
   #[test]
   fn operations_cap_helper_rejects_invalid_env_uses_default() {
-    assert_eq!(max_operations_from(Some("not-a-number")), DEFAULT_MAX_OPERATIONS);
+    assert_eq!(
+      max_operations_from(Some("not-a-number")),
+      DEFAULT_MAX_OPERATIONS
+    );
     assert_eq!(max_operations_from(Some("")), DEFAULT_MAX_OPERATIONS);
     assert_eq!(max_operations_from(Some("-1")), DEFAULT_MAX_OPERATIONS);
   }
@@ -257,10 +265,10 @@ mod cap_tests {
   // Build an OpenAPI YAML document with N total operations distributed
   // across paths (up to 8 operations per path, alphabetical methods).
   fn build_doc_with_operations(n: usize) -> String {
-    let methods = ["delete", "get", "head", "options", "patch", "post", "put", "trace"];
-    let mut s = String::from(
-      "openapi: 3.0.3\ninfo:\n  title: Bulk\n  version: 1.0.0\npaths:\n",
-    );
+    let methods = [
+      "delete", "get", "head", "options", "patch", "post", "put", "trace",
+    ];
+    let mut s = String::from("openapi: 3.0.3\ninfo:\n  title: Bulk\n  version: 1.0.0\npaths:\n");
     let mut remaining = n;
     let mut path_idx = 0usize;
     while remaining > 0 {
@@ -280,12 +288,8 @@ mod cap_tests {
 
   fn decode(yaml: &str) -> crate::parse::openapi_model::OpenApiDocument {
     let display: Rc<str> = Rc::from("fixture.yaml");
-    crate::parse::input::decode_openapi_input(
-      std::path::Path::new("fixture.yaml"),
-      yaml,
-      &display,
-    )
-    .expect("decode should succeed")
+    crate::parse::input::decode_openapi_input(std::path::Path::new("fixture.yaml"), yaml, &display)
+      .expect("decode should succeed")
   }
 
   #[test]

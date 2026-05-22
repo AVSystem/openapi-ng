@@ -34,7 +34,7 @@ use crate::{
 };
 use context::OperationContext;
 use defaults::{default_group, default_method_name};
-use engine::{evaluate_chain, RuleFailure};
+use engine::{RuleFailure, evaluate_chain};
 
 impl Default for NamingConfig {
   fn default() -> Self {
@@ -172,7 +172,10 @@ mod tests {
     let resolver = NamingResolver::default();
     let mut ctx = test_ctx();
     let operation = op("x", &["pet-orders"], "/pets");
-    assert_eq!(resolver.group(&operation, &ctx.reporter()).unwrap(), "PetOrders");
+    assert_eq!(
+      resolver.group(&operation, &ctx.reporter()).unwrap(),
+      "PetOrders"
+    );
   }
 
   #[test]
@@ -204,7 +207,9 @@ mod tests {
     });
     let mut ctx = test_ctx();
     let operation = op("x", &["Pet"], "/pets");
-    let err = resolver.method_name(&operation, &ctx.reporter()).unwrap_err();
+    let err = resolver
+      .method_name(&operation, &ctx.reporter())
+      .unwrap_err();
     assert_eq!(err.code, DiagnosticCode::PolicyViolation);
     assert_eq!(err.subcode, Some("naming-resolution"));
     assert!(err.message.contains("methodName"));

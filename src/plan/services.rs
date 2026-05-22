@@ -72,9 +72,7 @@ pub(crate) fn group_operations<'a>(
 ///   back under the source schema name. Form fields are sorted
 ///   alphabetically by name so the emitted interface stays stable across
 ///   spec re-orderings.
-fn plan_request_body<'ir>(
-  body: Option<&'ir RequestBodyDef>,
-) -> Option<PlannedRequestBody<'ir>> {
+fn plan_request_body<'ir>(body: Option<&'ir RequestBodyDef>) -> Option<PlannedRequestBody<'ir>> {
   let body = body?;
   match &body.content {
     BodyContent::Json(SchemaType::InlineObject { properties }) => {
@@ -144,7 +142,8 @@ fn check_body_field_collisions(
     Some(PlannedRequestBody::FlatJson { properties, .. }) => {
       properties.iter().map(|p| p.name.as_ref()).collect()
     }
-    Some(PlannedRequestBody::Multipart { fields }) | Some(PlannedRequestBody::UrlEncoded { fields }) => {
+    Some(PlannedRequestBody::Multipart { fields })
+    | Some(PlannedRequestBody::UrlEncoded { fields }) => {
       fields.iter().map(|f| f.name.as_ref()).collect()
     }
     _ => return Ok(()),
@@ -285,8 +284,8 @@ mod tests {
       ];
       let mut ctx = test_ctx();
       let resolver = NamingResolver::default();
-      let groups = group_operations(&operations, &resolver, &ctx.reporter())
-        .expect("grouping succeeds");
+      let groups =
+        group_operations(&operations, &resolver, &ctx.reporter()).expect("grouping succeeds");
 
       assert_eq!(
         groups
@@ -314,18 +313,15 @@ mod tests {
       let mut ctx = test_ctx();
       let resolver = NamingResolver::default();
       let ops = [operation("listPets", Vec::new())];
-      let groups = group_operations(
-        &ops,
-        &resolver,
-        &ctx.reporter(),
-      )
-      .expect("default resolver groups by path segment when tags are absent");
+      let groups = group_operations(&ops, &resolver, &ctx.reporter())
+        .expect("default resolver groups by path segment when tags are absent");
       assert_eq!(groups.len(), 1);
       assert_eq!(groups[0].0, "ListPets");
     }
   }
 
   mod body {
+    use super::super::plan_request_body;
     use crate::{
       ir::{
         canonical::{BodyContent, RequestBodyDef},
@@ -333,7 +329,6 @@ mod tests {
       },
       plan::artifact_plan::PlannedRequestBody,
     };
-    use super::super::plan_request_body;
 
     #[test]
     fn returns_none_when_body_is_absent() {
@@ -437,8 +432,8 @@ mod tests {
         description: None,
         deprecated: false,
       };
-      let request = plan_request_contract(&operation, &ctx.reporter())
-        .expect("request contract resolves");
+      let request =
+        plan_request_contract(&operation, &ctx.reporter()).expect("request contract resolves");
 
       let path_fields: Vec<&str> = request
         .fields
@@ -498,18 +493,25 @@ mod tests {
         description: None,
         deprecated: false,
       };
-      let request = plan_request_contract(&operation, &ctx.reporter())
-        .expect("request contract resolves");
+      let request =
+        plan_request_contract(&operation, &ctx.reporter()).expect("request contract resolves");
 
       // Path/query field list stays empty — flattened properties live on
       // the FlatJson variant, not in `fields`.
       assert!(request.fields.is_empty());
-      let Some(PlannedRequestBody::FlatJson { properties, required }) = &request.body else {
+      let Some(PlannedRequestBody::FlatJson {
+        properties,
+        required,
+      }) = &request.body
+      else {
         panic!("expected FlatJson body, got {:?}", request.body);
       };
       assert!(required, "envelope required in fixture");
       assert_eq!(
-        properties.iter().map(|p| p.name.as_ref()).collect::<Vec<_>>(),
+        properties
+          .iter()
+          .map(|p| p.name.as_ref())
+          .collect::<Vec<_>>(),
         vec!["csvImportId", "doImport"]
       );
       assert!(properties.iter().all(|p| !p.optional));
@@ -537,8 +539,8 @@ mod tests {
         description: None,
         deprecated: false,
       };
-      let request = plan_request_contract(&operation, &ctx.reporter())
-        .expect("request contract resolves");
+      let request =
+        plan_request_contract(&operation, &ctx.reporter()).expect("request contract resolves");
 
       assert!(request.fields.is_empty());
       assert_eq!(request.headers.len(), 1);
@@ -626,7 +628,10 @@ mod tests {
       let mut ctx = test_ctx();
       let request = plan_request_contract(&operation, &ctx.reporter())
         .expect("ref body nests under `body`, no top-level collision");
-      assert!(matches!(request.body, Some(PlannedRequestBody::Nested { .. })));
+      assert!(matches!(
+        request.body,
+        Some(PlannedRequestBody::Nested { .. })
+      ));
     }
 
     #[test]
@@ -851,8 +856,7 @@ mod tests {
       let mut ctx = test_ctx();
       let services =
         resolve_service_plans(&ir, &NamingResolver::default(), &ctx.reporter()).expect("ok");
-      let Some(PlannedRequestBody::Multipart { fields }) =
-        &services[0].operations[0].request.body
+      let Some(PlannedRequestBody::Multipart { fields }) = &services[0].operations[0].request.body
       else {
         panic!("expected multipart body");
       };
