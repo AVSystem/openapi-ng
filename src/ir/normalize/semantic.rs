@@ -64,7 +64,11 @@ fn narrow_discriminator_properties(
           let literal_value: Box<str> = discriminator
             .mapping
             .iter()
-            .find(|(_, target)| target.as_ref() == schema_name.as_ref()).map_or_else(|| schema_name.to_ascii_lowercase().into_boxed_str(), |(wire_value, _)| wire_value.clone());
+            .find(|(_, target)| target.as_ref() == schema_name.as_ref())
+            .map_or_else(
+              || schema_name.to_ascii_lowercase().into_boxed_str(),
+              |(wire_value, _)| wire_value.clone(),
+            );
           narrowings
             .entry(schema_name.clone())
             .or_default()

@@ -60,9 +60,10 @@ fn relativise_against_cwd(source_path: &str) -> String {
   let Ok(cwd) = std::env::current_dir() else {
     return source_path.to_owned();
   };
-  input
-    .strip_prefix(&cwd)
-    .map_or_else(|_| source_path.to_owned(), |rel| rel.to_string_lossy().replace('\\', "/"))
+  input.strip_prefix(&cwd).map_or_else(
+    |_| source_path.to_owned(),
+    |rel| rel.to_string_lossy().replace('\\', "/"),
+  )
 }
 
 #[cfg(test)]

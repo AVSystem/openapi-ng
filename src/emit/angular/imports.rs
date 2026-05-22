@@ -56,7 +56,8 @@ pub(super) fn render_service_imports(
           collect_type_references(prop.ty, &mut imports);
         }
       }
-      Some(PlannedRequestBody::Multipart { .. } | PlannedRequestBody::UrlEncoded { .. }) | None => {}
+      Some(PlannedRequestBody::Multipart { .. } | PlannedRequestBody::UrlEncoded { .. }) | None => {
+      }
     }
     if let Some(response) = &operation.response {
       match response {
