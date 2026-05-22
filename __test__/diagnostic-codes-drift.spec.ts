@@ -54,7 +54,9 @@ function extractUnion(source: string, name: string): Set<string> {
   });
   if (!found) throw new Error(`${name} type alias not found`);
   const aliased = (found as ts.TypeAliasDeclaration).type;
-  const members: ts.TypeNode[] = ts.isUnionTypeNode(aliased) ? [...aliased.types] : [aliased];
+  const members: ts.TypeNode[] = ts.isUnionTypeNode(aliased)
+    ? [...aliased.types]
+    : [aliased];
   const values = new Set<string>();
   for (const member of members) {
     if (ts.isLiteralTypeNode(member) && ts.isStringLiteral(member.literal)) {

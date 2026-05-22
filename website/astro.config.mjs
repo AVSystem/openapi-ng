@@ -22,8 +22,7 @@ export default defineConfig({
         },
       ],
       editLink: {
-        baseUrl:
-          'https://github.com/AVSystem/openapi-ng/edit/main/website/',
+        baseUrl: 'https://github.com/AVSystem/openapi-ng/edit/main/website/',
       },
       sidebar: [
         {

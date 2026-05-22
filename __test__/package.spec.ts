@@ -18,21 +18,14 @@ test('browser entry exists and fails with an explicit unsupported-runtime error'
 
   t.is(typeof browserEntry.generate, 'function');
 
-  // The browser entry is now a real async wrapper; generate() rejects
-  // with a GenerateError when the optional
-  // `@avsystem/openapi-ng-wasm32-wasip1-threads` package can't load
-  // (typical on a dev machine without the WASI sub-package installed).
-  // The message names the optional package so the consumer knows what
-  // to install.
-  const generateError = await t.throwsAsync(async () => {
+  // The browser entry is a hard-error stub — browser/edge runtimes are
+  // unsupported, so generate() rejects with E_UNSUPPORTED_RUNTIME at call
+  // time. The module itself must stay importable so bundlers don't choke.
+  const generateError = (await t.throwsAsync(async () => {
     await browserEntry.generate();
-  });
-  const msg = generateError?.message ?? '';
-  t.regex(msg, /browser|runtime/i);
-  t.true(
-    msg.includes('@avsystem/openapi-ng-wasm32-wasip1-threads'),
-    `message must name the optional WASI package: ${msg}`,
-  );
+  })) as GenerateError | undefined;
+  t.is(generateError?.code, 'E_UNSUPPORTED_RUNTIME');
+  t.regex(generateError?.message ?? '', /browser|runtime/i);
 });
 
 test('package.json exports map covers node, browser, default, and types conditions', t => {
@@ -74,93 +67,14 @@ test('package metadata keeps the node-only packaging contract explicit', t => {
   t.notRegex(packageJson.description ?? '', /Template project/i);
 });
 
-/**
- * Pure mapping from a Rust target triple to the npm sub-package name that
- * `napi prepublish -t npm` publishes. Mirrors the canonical napi-rs naming
- * scheme so the optionalDependencies block can be derived from `napi.targets`.
- * `packageName` is the host package's full name (including any `@scope/`),
- * which napi-rs uses as the prefix for every sub-package.
- */
-function napiSubPackageName(packageName: string, triple: string): string {
-  const archMap: Record<string, string> = {
-    x86_64: 'x64',
-    aarch64: 'arm64',
-    i686: 'ia32',
-    armv7: 'arm',
-  };
-
-  // WASI/WASM targets keep their full Rust triple as the sub-package suffix
-  // (napi-rs convention; e.g. `@avsystem/openapi-ng-wasm32-wasip1-threads`).
-  if (triple.startsWith('wasm32-')) {
-    return `${packageName}-${triple}`;
-  }
-
-  const [rawArch, ...rest] = triple.split('-');
-  const arch = archMap[rawArch] ?? rawArch;
-  const remainder = rest.join('-');
-
-  if (remainder === 'apple-darwin') {
-    return `${packageName}-darwin-${arch}`;
-  }
-  if (remainder === 'unknown-linux-gnu') {
-    return `${packageName}-linux-${arch}-gnu`;
-  }
-  if (remainder === 'unknown-linux-musl') {
-    return `${packageName}-linux-${arch}-musl`;
-  }
-  if (remainder === 'pc-windows-msvc') {
-    return `${packageName}-win32-${arch}-msvc`;
-  }
-  if (remainder === 'pc-windows-gnu') {
-    return `${packageName}-win32-${arch}-gnu`;
-  }
-  throw new Error(`Unsupported napi target triple: ${triple}`);
-}
-
-test('optionalDependencies covers every napi target', t => {
+test('napi.targets is non-empty and lists only native triples (no wasm)', t => {
   const packageJson = JSON.parse(
     fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'),
-  ) as {
-    name?: string;
-    napi?: { binaryName?: string; packageName?: string; targets?: string[] };
-    optionalDependencies?: Record<string, string>;
-  };
-
+  ) as { napi?: { targets?: string[] } };
   const targets = packageJson.napi?.targets ?? [];
-  // napi-rs derives sub-package names from `napi.packageName ?? pkg.name`,
-  // NOT from `napi.binaryName` (which only controls the `.node` filename).
-  // Mirror that so a scoped host package (e.g. `@avsystem/openapi-ng`) maps
-  // to scoped sub-packages.
-  const packageName = packageJson.napi?.packageName ?? packageJson.name ?? '';
   t.true(targets.length > 0, 'napi.targets must be non-empty');
-  t.truthy(packageName, 'package.json#name (or napi.packageName) must be set');
-
-  const expected = [
-    ...new Set(targets.map(triple => napiSubPackageName(packageName, triple))),
-  ].sort();
-  const actual = [...new Set(Object.keys(packageJson.optionalDependencies ?? {}))].sort();
-
-  t.deepEqual(
-    actual,
-    expected,
-    'optionalDependencies must list exactly the napi-derived sub-package names',
-  );
-});
-
-test('optionalDependency versions track package.json#version', t => {
-  const packageJson = JSON.parse(
-    fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'),
-  ) as {
-    version: string;
-    optionalDependencies?: Record<string, string>;
-  };
-
-  for (const [name, version] of Object.entries(packageJson.optionalDependencies ?? {})) {
-    t.is(
-      version,
-      packageJson.version,
-      `${name} pinned to a different version than the host`,
-    );
+  for (const triple of targets) {
+    t.false(triple.startsWith('wasm32-'), `unexpected wasm32 target: ${triple}`);
   }
 });
 
@@ -249,25 +163,14 @@ test('patch-types narrows GeneratorDiagnostic and GenerateErrorPayload bodies', 
   t.false(dts.includes('  severity: string'));
 });
 
-test('runtime docs document the current node-only boundary and thin native transport', t => {
+test('runtime docs document the current node-only boundary and browser stub', t => {
   const runtimeDoc = fs.readFileSync(
-    path.join(
-      repoRoot,
-      'website',
-      'src',
-      'content',
-      'docs',
-      'reference',
-      'runtime.md',
-    ),
+    path.join(repoRoot, 'website', 'src', 'content', 'docs', 'reference', 'runtime.md'),
     'utf8',
   );
 
   t.regex(runtimeDoc, /does not support browser runtimes/i);
-  t.regex(
-    runtimeDoc,
-    /thin transport over the same\s+native `generate\(\)` path used by Node/i,
-  );
+  t.regex(runtimeDoc, /E_UNSUPPORTED_RUNTIME/);
 });
 
 test('native.js includes a friendly unsupported-platform error with supported list', t => {

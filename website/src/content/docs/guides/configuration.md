@@ -148,7 +148,7 @@ under-declares the wire format (e.g. a route returns
 responseTypeMapping: [
   { contentType: 'application/pdf', responseType: 'blob' },
   { contentType: 'application/x-ndjson', responseType: 'text' },
-]
+];
 ```
 
 | Field          | Meaning                                                                                                  |
@@ -165,10 +165,10 @@ file or the Node API.
 
 By default, openapi-ng derives names like this:
 
-| Key          | Default chain                                                                  |
-|--------------|--------------------------------------------------------------------------------|
+| Key          | Default chain                                                                     |
+|--------------|-----------------------------------------------------------------------------------|
 | `methodName` | `camelCase(operationId)`, else `camelCase(method + '_' + pathSegments.join('_'))` |
-| `group`      | `pascalCase(tags[0])`, else `pascalCase(pathSegments[0])`, else `'Default'`    |
+| `group`      | `pascalCase(tags[0])`, else `pascalCase(pathSegments[0])`, else `'Default'`       |
 
 These run unless you set the corresponding `naming.methodName` /
 `naming.group` config. **Both keys support fallback chains** — a chain
@@ -200,15 +200,15 @@ If every rule in a chain fails, the generator throws
 
 Both `from` and `format` accept the same tokens:
 
-| Token              | Resolves to                                                                                     |
-|--------------------|-------------------------------------------------------------------------------------------------|
-| `{operationId}`    | The OpenAPI `operationId`. Unbound when missing.                                                |
-| `{method}`         | HTTP method, lowercased (`get`, `post`, …).                                                     |
-| `{path}`           | The full path (e.g. `/users/{id}`).                                                             |
-| `{pathSegments[N]}`| Nth path segment (0-indexed). Brace path params are unwrapped — `/users/{id}` → `users`, `id`. |
-| `{tags[N]}`        | Nth tag.                                                                                        |
-| `{x-<name>}`       | Vendor extension on the operation. *Not yet plumbed through normalize — always unbound today.* |
-| `{capture.<name>}` | Named capture from `parse` (`(?<name>...)`). Only available inside `format`.                    |
+| Token               | Resolves to                                                                                    |
+|---------------------|------------------------------------------------------------------------------------------------|
+| `{operationId}`     | The OpenAPI `operationId`. Unbound when missing.                                               |
+| `{method}`          | HTTP method, lowercased (`get`, `post`, …).                                                    |
+| `{path}`            | The full path (e.g. `/users/{id}`).                                                            |
+| `{pathSegments[N]}` | Nth path segment (0-indexed). Brace path params are unwrapped — `/users/{id}` → `users`, `id`. |
+| `{tags[N]}`         | Nth tag.                                                                                       |
+| `{x-<name>}`        | Vendor extension on the operation. *Not yet plumbed through normalize — always unbound today.* |
+| `{capture.<name>}`  | Named capture from `parse` (`(?<name>...)`). Only available inside `format`.                   |
 
 Array tokens accept **negative indexes** that count from the tail:
 `{tags[-1]}` is the last tag, `{pathSegments[-1]}` the deepest segment.
@@ -219,13 +219,13 @@ Five options. The transformer first splits the input into tokens
 (splitting on case boundaries, separators, and digit/letter
 transitions), then rejoins:
 
-| Case       | Input `get_someThing`  |
-|------------|------------------------|
-| `camel`    | `getSomeThing`         |
-| `pascal`   | `GetSomeThing`         |
-| `snake`    | `get_some_thing`       |
-| `kebab`    | `get-some-thing`       |
-| `constant` | `GET_SOME_THING`       |
+| Case       | Input `get_someThing` |
+|------------|-----------------------|
+| `camel`    | `getSomeThing`        |
+| `pascal`   | `GetSomeThing`        |
+| `snake`    | `get_some_thing`      |
+| `kebab`    | `get-some-thing`      |
+| `constant` | `GET_SOME_THING`      |
 
 Values are lowercase per spec — `'Camel'` does not parse.
 

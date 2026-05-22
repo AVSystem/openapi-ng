@@ -12,14 +12,14 @@ The `openapi-ng` binary exposes two top-level commands: `generate` and
 openapi-ng generate --input <path> [options]
 ```
 
-| Flag                   | Short | Description                                                                                                                |
-|------------------------|-------|----------------------------------------------------------------------------------------------------------------------------|
-| `--input <path>`       | `-i`  | Path to an OpenAPI 3.x JSON or YAML file, or an `https://` URL (required). See [URL inputs](#url-inputs) below.            |
-| `--output <dir>`       | `-o`  | Output directory. Omit to generate in memory without writing files                                                         |
-| `--emit <targets>`     |       | Comma-separated emit list: `models,angular` (repeatable). Default: `models,angular`. `'angular'` auto-includes `'models'`. |
-| `--verbose`            |       | Print warning diagnostics with codes                                                                                       |
+| Flag                   | Short | Description                                                                                                                                                            |
+|------------------------|-------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--input <path>`       | `-i`  | Path to an OpenAPI 3.x JSON or YAML file, or an `https://` URL (required). See [URL inputs](#url-inputs) below.                                                        |
+| `--output <dir>`       | `-o`  | Output directory. Omit to generate in memory without writing files                                                                                                     |
+| `--emit <targets>`     |       | Comma-separated emit list: `models,angular` (repeatable). Default: `models,angular`. `'angular'` auto-includes `'models'`.                                             |
+| `--verbose`            |       | Print warning diagnostics with codes                                                                                                                                   |
 | `--mapped-type <spec>` |       | Replace a schema with an external type import (repeatable). Format: `schema:import:type[:alias]` — see [Mapped types](/guides/configuration/#mapped-type-spec-format). |
-| `--config <path>`      | `-c`  | Path to a config file (overrides auto-discovery — see [Configuration](/guides/configuration/))                             |
+| `--config <path>`      | `-c`  | Path to a config file (overrides auto-discovery — see [Configuration](/guides/configuration/))                                                                         |
 
 ### URL inputs
 

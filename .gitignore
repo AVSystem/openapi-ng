@@ -153,15 +153,6 @@ dist
 .pnp.*
 
 *.node
-*.wasm
-
-# napi-rs auto-generates these WASI loader shims when the build matrix
-# includes a wasm32-* target. They are regenerated per build and should
-# not be tracked.
-openapi-ng.wasi.cjs
-openapi-ng.wasi-browser.js
-wasi-worker.mjs
-wasi-worker-browser.mjs
 
 ### Node Patch ###
 # Serverless Webpack directories

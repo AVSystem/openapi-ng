@@ -17,7 +17,7 @@ Generate TypeScript models and Angular services from OpenAPI 3.x specs — fast,
 pnpm add -D @avsystem/openapi-ng
 ```
 
-Requires Node.js >= 18. Pre-built binaries for macOS, Linux, and Windows (x64 / ARM64); a WASI fallback covers other targets. See [Runtime & platforms](https://docs.openapi-ng.dev/reference/runtime/).
+Requires Node.js >= 18. Pre-built binaries for macOS, Linux, and Windows (x64 / ARM64). See [Runtime & platforms](https://docs.openapi-ng.dev/reference/runtime/).
 
 ## Quickstart
 
@@ -41,7 +41,9 @@ Wire a generated service into a component:
 import { Component, inject } from '@angular/core';
 import { PetRest } from './generated/rest/pet.rest.generated';
 
-@Component({ /* ... */ })
+@Component({
+  /* ... */
+})
 export class PetList {
   readonly #pets = inject(PetRest);
 

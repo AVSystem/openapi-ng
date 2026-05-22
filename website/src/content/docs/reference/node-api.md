@@ -56,17 +56,17 @@ await generate({
 });
 ```
 
-| Field                   | Notes                                                                                                                                                                                                            |
-|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `inputPath`             | Path to the spec on disk. Mutually exclusive with `inputContents`; setting both or neither is rejected.                                                                                                          |
-| `inputContents`         | Raw spec source. When set, `displayPath` is required and `OPENAPI_NG_MAX_INPUT_BYTES` applies to the byte length.                                                                                                |
-| `displayPath`           | Banner / diagnostic display string. Required with `inputContents`; ignored with `inputPath` (the path itself is normalised).                                                                                     |
-| `inputFormat`           | Decoder hint, only honoured with `inputContents`. Combining with `inputPath` is a shape error.                                                                                                                   |
-| `outputPath`            | Omit for in-memory mode. Empty string is rejected.                                                                                                                                                               |
-| `emit`                  | Defaults to `['models', 'angular']`. Selecting `'angular'` alone auto-includes `'models'` with a warning.                                                                                                        |
-| `mappedTypes`           | Per-schema overrides — point a generated schema at an external import. See the [Configuration guide](/guides/configuration/).                                                                                    |
-| `responseTypeMapping`   | Per-content-type override for the response decoding kind (`json` / `blob` / `text` / `arrayBuffer`). Matched case-insensitively against the spec's media types. Wires the right `requestFactory.*` variant.     |
-| `naming`                | Customise emitted method and group names. See the [Configuration guide](/guides/configuration/).                                                                                                                 |
+| Field                 | Notes                                                                                                                                                                                                       |
+|-----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `inputPath`           | Path to the spec on disk. Mutually exclusive with `inputContents`; setting both or neither is rejected.                                                                                                     |
+| `inputContents`       | Raw spec source. When set, `displayPath` is required and `OPENAPI_NG_MAX_INPUT_BYTES` applies to the byte length.                                                                                           |
+| `displayPath`         | Banner / diagnostic display string. Required with `inputContents`; ignored with `inputPath` (the path itself is normalised).                                                                                |
+| `inputFormat`         | Decoder hint, only honoured with `inputContents`. Combining with `inputPath` is a shape error.                                                                                                              |
+| `outputPath`          | Omit for in-memory mode. Empty string is rejected.                                                                                                                                                          |
+| `emit`                | Defaults to `['models', 'angular']`. Selecting `'angular'` alone auto-includes `'models'` with a warning.                                                                                                   |
+| `mappedTypes`         | Per-schema overrides — point a generated schema at an external import. See the [Configuration guide](/guides/configuration/).                                                                               |
+| `responseTypeMapping` | Per-content-type override for the response decoding kind (`json` / `blob` / `text` / `arrayBuffer`). Matched case-insensitively against the spec's media types. Wires the right `requestFactory.*` variant. |
+| `naming`              | Customise emitted method and group names. See the [Configuration guide](/guides/configuration/).                                                                                                            |
 
 ### `MappedType`
 

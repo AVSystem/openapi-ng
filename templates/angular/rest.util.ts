@@ -25,13 +25,9 @@ import type {
 type QueryParamRecord = Record<string, QueryParamValue | undefined>;
 type ResponseType = 'blob' | 'text' | 'arraybuffer';
 
-export const OPENAPI_NG_BASE_PATH = new InjectionToken<string>(
-  'OPENAPI_NG_BASE_PATH',
-);
+export const OPENAPI_NG_BASE_PATH = new InjectionToken<string>('OPENAPI_NG_BASE_PATH');
 
-export function provideOpenapiNg(config: {
-  basePath: string;
-}): EnvironmentProviders {
+export function provideOpenapiNg(config: { basePath: string }): EnvironmentProviders {
   return makeEnvironmentProviders([
     { provide: OPENAPI_NG_BASE_PATH, useValue: config.basePath },
   ]);
@@ -199,13 +195,10 @@ function makeRequestFn<Request, TResult, TRaw>(
       reactiveReq: () => Request | undefined,
       options?: HttpResourceOptionsUnion<TResult, TRaw>,
     ): HttpResourceRef<TResult | undefined> =>
-      resourceImpl(
-        () => {
-          const request = reactiveReq();
-          return request === undefined ? undefined : wrappedReqFn(request);
-        },
-        options,
-      ),
+      resourceImpl(() => {
+        const request = reactiveReq();
+        return request === undefined ? undefined : wrappedReqFn(request);
+      }, options),
   } as RequestFn<Request, TResult>;
 }
 

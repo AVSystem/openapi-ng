@@ -1,15 +1,8 @@
 import type { PetRest, UpdatePetParams } from '../generated/rest/pet.rest.generated';
-import type {
-  HttpEvent,
-  HttpResourceRef,
-  HttpResponse,
-} from '@angular/common/http';
+import type { HttpEvent, HttpResourceRef, HttpResponse } from '@angular/common/http';
 import { Pet, PetList } from '../generated/model.generated.ts';
 import { Observable } from 'rxjs';
-import type {
-  RequestFnVoid,
-  ZeroArgRequestFnVoid,
-} from '../generated/rest.util';
+import type { RequestFnVoid, ZeroArgRequestFnVoid } from '../generated/rest.util';
 
 declare const service: PetRest;
 

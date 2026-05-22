@@ -21,17 +21,11 @@ function joinBasePath(base: string, url: string): string {
 }
 
 test('joinBasePath: absolute base + leading-slash path', t => {
-  t.is(
-    joinBasePath('https://api.example.com', '/pets'),
-    'https://api.example.com/pets',
-  );
+  t.is(joinBasePath('https://api.example.com', '/pets'), 'https://api.example.com/pets');
 });
 
 test('joinBasePath: trailing slash on base is normalised', t => {
-  t.is(
-    joinBasePath('https://api.example.com/', '/pets'),
-    'https://api.example.com/pets',
-  );
+  t.is(joinBasePath('https://api.example.com/', '/pets'), 'https://api.example.com/pets');
 });
 
 test('joinBasePath: base with subpath', t => {

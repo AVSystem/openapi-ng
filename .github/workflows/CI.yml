@@ -97,9 +97,6 @@ jobs:
           - host: windows-latest
             target: aarch64-pc-windows-msvc
             build: pnpm build --target aarch64-pc-windows-msvc
-          - host: ubuntu-latest
-            target: wasm32-wasip1-threads
-            build: pnpm build --target wasm32-wasip1-threads
     name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     steps:
@@ -154,23 +151,11 @@ jobs:
       - name: Build
         run: ${{ matrix.settings.build }}
         shell: bash
-      - name: Restore hand-written browser.js
-        if: matrix.settings.target == 'wasm32-wasip1-threads'
-        run: git restore browser.js
-        shell: bash
       - name: Upload artifact
         uses: actions/upload-artifact@v7
-        if: matrix.settings.target != 'wasm32-wasip1-threads'
         with:
           name: bindings-${{ matrix.settings.target }}
           path: '*.node'
-          if-no-files-found: error
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7
-        if: matrix.settings.target == 'wasm32-wasip1-threads'
-        with:
-          name: bindings-${{ matrix.settings.target }}
-          path: '*.wasm'
           if-no-files-found: error
   test-macOS-windows-binding:
     name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
@@ -283,32 +268,6 @@ jobs:
           name: test-binding
           options: -v ${{ steps.docker.outputs.PNPM_STORE_PATH }}:${{ steps.docker.outputs.PNPM_STORE_PATH }} -v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform ${{ steps.docker.outputs.PLATFORM }}
           args: npm run test
-  test-wasi:
-    name: Test WASI bindings
-    needs:
-      - build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: setup pnpm
-        uses: pnpm/action-setup@v5
-      - name: Setup node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install
-      - name: Download wasm artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: bindings-wasm32-wasip1-threads
-          path: .
-      - name: List packages
-        run: ls -R .
-        shell: bash
-      - name: Test wasi bindings
-        run: pnpm test
   publish:
     name: Publish
     runs-on: ubuntu-latest
@@ -317,7 +276,6 @@ jobs:
       - test-rust-cross-os
       - test-macOS-windows-binding
       - test-linux-binding
-      - test-wasi
     steps:
       - uses: actions/checkout@v6
       - name: setup pnpm

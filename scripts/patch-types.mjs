@@ -212,69 +212,29 @@ if (!nativeContent.includes(INJECTION_GUARD)) {
 // Re-author browser.js. `napi build` writes a single-line `export *` stub
 // that defeats our hand-authored entry. We overwrite unconditionally so
 // the post-build state is canonical regardless of what napi-rs emitted.
-// The optional WASI package name (`@avsystem/openapi-ng-wasm32-wasip1-threads`) must
-// match `package.json#optionalDependencies` — assert that to fail loud if
-// either side ever drifts.
+// The browser entry is a hard-error stub — browser/edge runtimes are not
+// supported, so `generate()` throws `E_UNSUPPORTED_RUNTIME` at call time.
 // ---------------------------------------------------------------------------
 const browserPath = path.join(repoRoot, 'browser.js');
-const WASI_PACKAGE = '@avsystem/openapi-ng-wasm32-wasip1-threads';
-
-const pkg = JSON.parse(
-  fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'),
-);
-if (!Object.keys(pkg.optionalDependencies ?? {}).includes(WASI_PACKAGE)) {
-  throw new Error(
-    `patch-types: WASI package '${WASI_PACKAGE}' missing from package.json#optionalDependencies — ` +
-      `either add it or update WASI_PACKAGE in scripts/patch-types.mjs.`,
-  );
-}
 
 const browserContent = `'use strict';
 
-// Browser/WASI entry point. Mirrors \`lib/index.js\`'s shape — applies the
-// same option validation, URL-fetch ergonomics, and error upgrade — but
-// binds to the wasm32-wasi binding from \`${WASI_PACKAGE}\`
-// instead of \`../native.js\`. Shared logic lives in \`lib/wrapper-core.js\`.
-//
-// The WASI binding is loaded lazily so this module stays importable when
-// the optional \`${WASI_PACKAGE}\` package isn't installed
-// — the stub \`generate\` then throws an \`E_UNSUPPORTED_RUNTIME\`
-// \`GenerateError\` at call time, which is what \`__test__/browser.spec.ts\`
-// asserts.
+// Browser/edge entry point. openapi-ng requires the native binding to
+// generate code, so any browser or edge runtime (Vite/Webpack/esbuild
+// resolving the \`browser\` field, Cloudflare Workers, Vercel Edge, etc.)
+// gets a stub that throws \`E_UNSUPPORTED_RUNTIME\` at call time. The
+// module itself stays importable so bundlers don't choke at build time.
 
 const { GenerateError } = require('./lib/generate-error.js');
-const { fetchInput } = require('./lib/fetch-input.js');
-const { prepareOptions, upgradeError } = require('./lib/wrapper-core.js');
 
-// Lazily try to load the WASI binding. The browser entry must remain
-// importable even when the optional package isn't installed — see
-// \`__test__/browser.spec.ts\`, which asserts that the throw lands at
-// generate() call time, not at module load time.
-let nativeBinding = null;
-let nativeLoadError = null;
-try {
-  nativeBinding = require('${WASI_PACKAGE}');
-} catch (err) {
-  nativeLoadError = err;
-}
-
-async function generate(options) {
-  if (nativeBinding === null) {
-    const cause = nativeLoadError?.message ?? String(nativeLoadError);
-    throw new GenerateError({
-      code: 'E_UNSUPPORTED_RUNTIME',
-      message:
-        \`openapi-ng cannot run in this browser/runtime context: \${cause}. \` +
-        \`Ensure the '${WASI_PACKAGE}' package is installed and reachable.\`,
-      warnings: [],
-    });
-  }
-  const prepared = await prepareOptions(options, fetchInput);
-  try {
-    return nativeBinding.generate(prepared);
-  } catch (err) {
-    throw upgradeError(err);
-  }
+async function generate() {
+  throw new GenerateError({
+    code: 'E_UNSUPPORTED_RUNTIME',
+    message:
+      'openapi-ng does not support browser or edge runtimes. ' +
+      'Run the generator from Node, or remove openapi-ng from your browser bundle.',
+    warnings: [],
+  });
 }
 
 // Frozen runtime shape for \`EmitTarget\`. Mirrors the ambient const
@@ -299,5 +259,5 @@ if (existingBrowser === browserContent) {
   console.log('patch-types: browser.js already canonical (idempotent skip)');
 } else {
   fs.writeFileSync(browserPath, browserContent);
-  console.log('patch-types: re-authored browser.js with canonical WASI binding');
+  console.log('patch-types: re-authored browser.js with hard-error stub');
 }

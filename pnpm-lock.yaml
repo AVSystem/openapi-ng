@@ -22,36 +22,21 @@ importers:
       '@angular/core':
         specifier: 21.2.7
         version: 21.2.7(rxjs@7.8.2)
-      '@emnapi/core':
-        specifier: 1.9.2
-        version: 1.9.2
-      '@emnapi/runtime':
-        specifier: 1.9.2
-        version: 1.9.2
       '@napi-rs/cli':
         specifier: 3.6.0
         version: 3.6.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@25.5.0)
-      '@napi-rs/wasm-runtime':
-        specifier: 1.1.2
-        version: 1.1.2(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)
       '@oxc-node/core':
         specifier: 0.1.0
         version: 0.1.0
       '@taplo/cli':
         specifier: 0.7.0
         version: 0.7.0
-      '@tybys/wasm-util':
-        specifier: 0.10.1
-        version: 0.10.1
       '@types/node':
         specifier: 25.5.0
         version: 25.5.0
       ava:
         specifier: 7.0.0
         version: 7.0.0(rollup@4.60.4)
-      emnapi:
-        specifier: 1.9.2
-        version: 1.9.2
       husky:
         specifier: 9.1.7
         version: 9.1.7
@@ -4023,6 +4008,7 @@ snapshots:
     dependencies:
       '@emnapi/wasi-threads': 1.2.1
       tslib: 2.6.3
+    optional: true
 
   '@emnapi/runtime@1.9.1':
     dependencies:
@@ -4032,6 +4018,7 @@ snapshots:
   '@emnapi/runtime@1.9.2':
     dependencies:
       tslib: 2.6.3
+    optional: true
 
   '@emnapi/wasi-threads@1.2.0':
     dependencies:
@@ -4041,6 +4028,7 @@ snapshots:
   '@emnapi/wasi-threads@1.2.1':
     dependencies:
       tslib: 2.6.3
+    optional: true
 
   '@esbuild/aix-ppc64@0.27.3':
     optional: true
@@ -4702,6 +4690,7 @@ snapshots:
       '@emnapi/core': 1.9.2
       '@emnapi/runtime': 1.9.2
       '@tybys/wasm-util': 0.10.1
+    optional: true
 
   '@napi-rs/wasm-tools-android-arm-eabi@1.0.1':
     optional: true
@@ -5211,6 +5200,7 @@ snapshots:
   '@tybys/wasm-util@0.10.1':
     dependencies:
       tslib: 2.6.3
+    optional: true
 
   '@types/debug@4.1.13':
     dependencies:

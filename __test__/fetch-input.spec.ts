@@ -1,9 +1,5 @@
 import test from 'ava';
-import {
-  fetchInput,
-  isUrl,
-  __setDnsLookupForTest,
-} from '../lib/fetch-input.js';
+import { fetchInput, isUrl, __setDnsLookupForTest } from '../lib/fetch-input.js';
 
 // The SSRF guard added in lib/fetch-input.js performs a DNS lookup on
 // every non-IP-literal host. Ava runs tests concurrently within a file,
@@ -298,20 +294,23 @@ test('fetchInput rejects body that exceeds cap during streaming (no Content-Leng
 // serially so they don't race each other, and restore the public-IP
 // default via t.teardown.
 
-test.serial('fetchInput rejects literal IPv4 metadata address before any fetch', async t => {
-  t.teardown(restoreDns);
-  let fetched = false;
-  const fetchImpl = async () => {
-    fetched = true;
-    return jsonResponse('{}');
-  };
-  const err = await t.throwsAsync(async () => {
-    await fetchInput('https://169.254.169.254/latest/meta-data/', { fetchImpl });
-  });
-  t.is((err as any).code, 'E_INPUT_INVALID');
-  t.true((err as any).message.includes('169.254.169.254'));
-  t.false(fetched, 'fetchImpl must not be invoked when the host resolves private');
-});
+test.serial(
+  'fetchInput rejects literal IPv4 metadata address before any fetch',
+  async t => {
+    t.teardown(restoreDns);
+    let fetched = false;
+    const fetchImpl = async () => {
+      fetched = true;
+      return jsonResponse('{}');
+    };
+    const err = await t.throwsAsync(async () => {
+      await fetchInput('https://169.254.169.254/latest/meta-data/', { fetchImpl });
+    });
+    t.is((err as any).code, 'E_INPUT_INVALID');
+    t.true((err as any).message.includes('169.254.169.254'));
+    t.false(fetched, 'fetchImpl must not be invoked when the host resolves private');
+  },
+);
 
 test.serial('fetchInput rejects a host whose DNS resolves to loopback', async t => {
   t.teardown(restoreDns);

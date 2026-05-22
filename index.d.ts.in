@@ -9,8 +9,8 @@
  * for the JS wrapper in `lib/index.js`:
  *   - `E_UNEXPECTED` is a defensive fallback when a `GenerateError` is
  *     constructed without an explicit `code`.
- *   - `E_UNSUPPORTED_RUNTIME` is thrown by `browser.js` when openapi-ng is
- *     imported in a browser context where the native binding cannot load.
+ *   - `E_UNSUPPORTED_RUNTIME` is thrown by `browser.js` when `generate()`
+ *     is called in a browser or edge runtime (no native binding available).
  *
  * `E_INVALID_OPTION` covers both wrapper-side shape rejections (a JS
  * caller passed an option whose type/shape is wrong — surfaced with

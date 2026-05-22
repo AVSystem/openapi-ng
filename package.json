@@ -72,16 +72,11 @@
   "devDependencies": {
     "@angular/common": "21.2.7",
     "@angular/core": "21.2.7",
-    "@emnapi/core": "1.9.2",
-    "@emnapi/runtime": "1.9.2",
     "@napi-rs/cli": "3.6.0",
-    "@napi-rs/wasm-runtime": "1.1.2",
     "@oxc-node/core": "0.1.0",
     "@taplo/cli": "0.7.0",
-    "@tybys/wasm-util": "0.10.1",
     "@types/node": "25.5.0",
     "ava": "7.0.0",
-    "emnapi": "1.9.2",
     "husky": "9.1.7",
     "lint-staged": "16.4.0",
     "npm-run-all2": "8.0.4",
@@ -126,8 +121,7 @@
       "x86_64-unknown-linux-gnu",
       "x86_64-pc-windows-msvc",
       "aarch64-unknown-linux-gnu",
-      "aarch64-pc-windows-msvc",
-      "wasm32-wasip1-threads"
+      "aarch64-pc-windows-msvc"
     ]
   },
   "ava": {

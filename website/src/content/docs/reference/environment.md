@@ -10,14 +10,14 @@ specs sit several orders of magnitude below — and all five accept a
 positive integer override. A sixth variable opts out of the URL-fetch
 SSRF guard for local/test workflows.
 
-| Variable | Default | Effect on overflow |
-|----------|---------|--------------------|
-| `OPENAPI_NG_MAX_INPUT_BYTES` | `16777216` (16 MiB) | `E_INPUT_INVALID` before parsing |
-| `OPENAPI_NG_INPUT_TIMEOUT_MS` | `30000` (30 s) | URL fetch aborts |
-| `OPENAPI_NG_MAX_SCHEMAS` | `10000` | `E_POLICY_VIOLATION` / `schema-cap-exceeded` |
-| `OPENAPI_NG_MAX_OPERATIONS` | `10000` | `E_POLICY_VIOLATION` / `operation-cap-exceeded` |
-| `OPENAPI_NG_MAX_EXPANSION_RATIO` | `50` | `E_POLICY_VIOLATION` / `mapping-expansion-exceeded` |
-| `OPENAPI_NG_ALLOW_PRIVATE_HOSTS` | *unset* | When set to `1`, disables the SSRF guard on `--input <url>` |
+| Variable                         | Default             | Effect on overflow                                          |
+|----------------------------------|---------------------|-------------------------------------------------------------|
+| `OPENAPI_NG_MAX_INPUT_BYTES`     | `16777216` (16 MiB) | `E_INPUT_INVALID` before parsing                            |
+| `OPENAPI_NG_INPUT_TIMEOUT_MS`    | `30000` (30 s)      | URL fetch aborts                                            |
+| `OPENAPI_NG_MAX_SCHEMAS`         | `10000`             | `E_POLICY_VIOLATION` / `schema-cap-exceeded`                |
+| `OPENAPI_NG_MAX_OPERATIONS`      | `10000`             | `E_POLICY_VIOLATION` / `operation-cap-exceeded`             |
+| `OPENAPI_NG_MAX_EXPANSION_RATIO` | `50`                | `E_POLICY_VIOLATION` / `mapping-expansion-exceeded`         |
+| `OPENAPI_NG_ALLOW_PRIVATE_HOSTS` | *unset*             | When set to `1`, disables the SSRF guard on `--input <url>` |
 
 ## Per-variable detail
 
