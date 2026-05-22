@@ -41,8 +41,7 @@ pub(super) fn render_requestful_builder(
     Some(PlannedRequestBody::FlatJson { properties, .. }) => {
       destructured.extend(properties.iter().map(|p| p.name.as_ref()));
     }
-    Some(PlannedRequestBody::Multipart { fields })
-    | Some(PlannedRequestBody::UrlEncoded { fields }) => {
+    Some(PlannedRequestBody::Multipart { fields } | PlannedRequestBody::UrlEncoded { fields }) => {
       destructured.extend(fields.iter().map(|f| f.name.as_ref()));
     }
   }
@@ -125,8 +124,7 @@ pub(super) fn render_request_interface(
         buffer.push(";\n");
       }
     }
-    Some(PlannedRequestBody::Multipart { fields })
-    | Some(PlannedRequestBody::UrlEncoded { fields }) => {
+    Some(PlannedRequestBody::Multipart { fields } | PlannedRequestBody::UrlEncoded { fields }) => {
       for form in fields {
         let name = safe_property_name(form.name.as_ref()).into_owned();
         let optional_marker = if form.optional { "?" } else { "" };
