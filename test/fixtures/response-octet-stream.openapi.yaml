@@ -1,0 +1,18 @@
+openapi: 3.0.3
+info: { title: Blob, version: 1.0.0 }
+paths:
+  /blob/{id}:
+    get:
+      operationId: getBlob
+      tags: [blob]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: bytes
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }

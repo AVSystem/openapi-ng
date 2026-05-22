@@ -1,0 +1,39 @@
+openapi: 3.0.3
+info:
+  title: anchor-modest
+  version: '1.0.0'
+# Boundary fixture for the OPENAPI_NG_MAX_EXPANSION_RATIO guard. A small
+# anchor (Audit) is aliased 3 times across nested mappings — the kind of
+# legitimate anchor reuse hand-written specs commonly use. The
+# re-serialised byte ratio stays well under 50×, so this fixture
+# exercises the "accept" side of the cap. Pins that modest anchor use is
+# not regressed by the anchor-fanout policy.
+paths: {}
+components:
+  schemas:
+    Audit: &audit
+      type: object
+      properties:
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    Pet:
+      allOf:
+        - *audit
+        - type: object
+          properties:
+            id: { type: string }
+            name: { type: string }
+    Owner:
+      allOf:
+        - *audit
+        - type: object
+          properties:
+            id: { type: string }
+            displayName: { type: string }
+    Visit:
+      allOf:
+        - *audit
+        - type: object
+          properties:
+            id: { type: string }
+            notes: { type: string }

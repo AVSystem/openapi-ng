@@ -1,0 +1,44 @@
+[package]
+edition = "2024"
+name = "openapi_ng"
+version = "0.0.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+indexmap = { version = "2", features = ["serde"] }
+napi = "3.0.0"
+napi-derive = "3.0.0"
+regex = "1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yml = "0.0.12"
+
+[build-dependencies]
+napi-build = "2"
+
+[dev-dependencies]
+proptest = { version = "1.7", default-features = false, features = ["std"] }
+
+[lints.clippy]
+redundant_clone = "warn"
+missing_const_for_fn = "warn"
+manual_let_else = "warn"
+map_unwrap_or = "warn"
+option_if_let_else = "warn"
+unnested_or_patterns = "warn"
+cast_possible_truncation = "warn"
+single_match_else = "warn"
+redundant_closure_for_method_calls = "warn"
+
+[profile.release]
+# Build-time codegen tool: prioritise binary size (cold path, distributed
+# as napi prebuilds). `opt-level = "s"` keeps the inliner conservative
+# enough that overall runtime stays within noise of "z" / "3"; combined
+# with LTO + 1 codegen unit + strip, this trims roughly 10% off the
+# .node bundle vs the prior opt-level = "3" default.
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = "symbols"

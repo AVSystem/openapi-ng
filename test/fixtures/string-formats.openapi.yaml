@@ -1,0 +1,33 @@
+openapi: 3.0.3
+info:
+  title: String Formats
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Contact:
+      type: object
+      required:
+        - email
+        - identifier
+        - homepage
+        - birthday
+        - lastSeen
+      properties:
+        email:
+          type: string
+          format: email
+        identifier:
+          type: string
+          format: uuid
+        homepage:
+          type: string
+          format: uri
+        birthday:
+          type: string
+          format: date
+        lastSeen:
+          type: string
+          format: date-time
+        notes:
+          type: string

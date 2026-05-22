@@ -1,0 +1,22 @@
+openapi: 3.0.3
+info: { title: Default, version: 1.0.0 }
+paths:
+  /thing:
+    get:
+      operationId: getThing
+      tags: [thing]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Thing' }
+        'default':
+          description: error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Err' }
+components:
+  schemas:
+    Thing: { type: object, properties: { id: { type: string } } }
+    Err: { type: object, properties: { message: { type: string } } }

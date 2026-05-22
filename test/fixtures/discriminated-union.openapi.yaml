@@ -1,0 +1,33 @@
+openapi: 3.0.3
+info:
+  title: Discriminated Union
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Cat:
+      type: object
+      required:
+        - kind
+        - lives
+      properties:
+        kind:
+          type: string
+        lives:
+          type: integer
+    Dog:
+      type: object
+      required:
+        - kind
+        - breed
+      properties:
+        kind:
+          type: string
+        breed:
+          type: string
+    PetUnion:
+      oneOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+      discriminator:
+        propertyName: kind

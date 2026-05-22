@@ -1,0 +1,16 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Enum Value Validation",
+    "version": "1.0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "InvalidEnum": {
+        "type": "string",
+        "enum": ["bad\u0000value"]
+      }
+    }
+  }
+}

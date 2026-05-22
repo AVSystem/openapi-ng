@@ -1,0 +1,6 @@
+{
+  "code": "E_POLICY_VIOLATION",
+  "message": "body field 'variant' in POST /x: composed schemas are not supported in multipart bodies.",
+  "path": "test/fixtures/body-multipart-composed-field.openapi.yaml",
+  "warnings": []
+}

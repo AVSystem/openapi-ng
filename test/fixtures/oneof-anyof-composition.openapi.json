@@ -1,0 +1,163 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "OneOf AnyOf Composition",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/union-pets": {
+      "get": {
+        "operationId": "listUnionPets",
+        "tags": ["Pet"],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PetUnionList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/adoption-request": {
+      "post": {
+        "operationId": "createAdoptionRequest",
+        "tags": ["AdoptionRequest"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdoptionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdoptionDecision"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Cat": {
+        "type": "object",
+        "required": ["id", "lives"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "lives": {
+            "type": "integer"
+          }
+        }
+      },
+      "Dog": {
+        "type": "object",
+        "required": ["id", "breed"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "breed": {
+            "type": "string"
+          }
+        }
+      },
+      "PetUnion": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Cat"
+          },
+          {
+            "$ref": "#/components/schemas/Dog"
+          }
+        ]
+      },
+      "PetUnionList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/PetUnion"
+        }
+      },
+      "ContactEmail": {
+        "type": "object",
+        "required": ["email"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        }
+      },
+      "ContactPhone": {
+        "type": "object",
+        "required": ["phone"],
+        "properties": {
+          "phone": {
+            "type": "string"
+          }
+        }
+      },
+      "AdoptionRequest": {
+        "type": "object",
+        "required": ["applicantName", "contact"],
+        "properties": {
+          "applicantName": {
+            "type": "string"
+          },
+          "preferredPet": {
+            "$ref": "#/components/schemas/PetUnion"
+          },
+          "contact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactEmail"
+              },
+              {
+                "$ref": "#/components/schemas/ContactPhone"
+              }
+            ]
+          },
+          "notes": {
+            "type": "string"
+          },
+          "referralCode": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "AdoptionDecision": {
+        "type": "object",
+        "required": ["approved"],
+        "properties": {
+          "approved": {
+            "type": "boolean"
+          },
+          "matchedPet": {
+            "$ref": "#/components/schemas/PetUnion"
+          },
+          "reviewerNote": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      }
+    }
+  }
+}

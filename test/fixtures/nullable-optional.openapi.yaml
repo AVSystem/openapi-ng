@@ -1,0 +1,25 @@
+openapi: 3.0.3
+info:
+  title: Nullable optional fixture
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Profile:
+      type: object
+      required:
+        - id
+        - displayName
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        nickname:
+          type: string
+          nullable: true
+        bio:
+          type: string
+        legalName:
+          type: string
+          nullable: true

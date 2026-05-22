@@ -1,0 +1,40 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/bench-large.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Bench Large",
+    "pathCount": 30,
+    "operationCount": 60,
+    "schemaCount": 90
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.generated.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest/resource1.rest.generated.ts"
+    },
+    {
+      "path": "rest/resource2.rest.generated.ts"
+    },
+    {
+      "path": "rest/resource3.rest.generated.ts"
+    },
+    {
+      "path": "rest/resource4.rest.generated.ts"
+    },
+    {
+      "path": "rest/resource5.rest.generated.ts"
+    },
+    {
+      "path": "rest/resource6.rest.generated.ts"
+    }
+  ]
+}

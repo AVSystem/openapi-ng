@@ -1,0 +1,6 @@
+{
+  "code": "E_POLICY_VIOLATION",
+  "message": "body field 'metadata' in POST /x: nested objects are not supported in multipart bodies.",
+  "path": "test/fixtures/body-multipart-nested-object.openapi.yaml",
+  "warnings": []
+}

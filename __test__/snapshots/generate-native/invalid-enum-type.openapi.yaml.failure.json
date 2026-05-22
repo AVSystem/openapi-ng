@@ -1,0 +1,6 @@
+{
+  "code": "E_UNSUPPORTED_SEMANTIC",
+  "message": "Unsupported OpenAPI semantic shape: schema InvalidEnum enum is supported only for string schemas, found type integer.. See the supported subset documented in README.md ('Out of Scope' section).",
+  "path": "test/fixtures/invalid-enum-type.openapi.yaml",
+  "warnings": []
+}

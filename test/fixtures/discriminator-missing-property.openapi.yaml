@@ -1,0 +1,20 @@
+openapi: 3.0.3
+info: { title: D, version: '1.0' }
+paths: {}
+components:
+  schemas:
+    Pet:
+      oneOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+      discriminator: { propertyName: kind }
+    Cat:
+      type: object
+      properties:
+        name: { type: string }
+        # intentionally missing: kind
+    Dog:
+      type: object
+      properties:
+        kind: { type: string }
+        bark: { type: boolean }

@@ -1,0 +1,6 @@
+{
+  "code": "E_UNSUPPORTED_SEMANTIC",
+  "message": "Unsupported OpenAPI semantic shape: schema Deep composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 composition member 1 nesting exceeds 32 levels (likely cyclic or pathological spec).",
+  "path": "test/fixtures/deep-nested-allof.openapi.yaml",
+  "warnings": []
+}

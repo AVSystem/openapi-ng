@@ -1,0 +1,172 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Petstore Rich",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/pets": {
+      "get": {
+        "operationId": "listPets",
+        "tags": ["Pet"],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PetList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pets/{petId}": {
+      "get": {
+        "operationId": "getPet",
+        "tags": ["Pet"],
+        "parameters": [
+          {
+            "name": "petId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/PetId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pet"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "updatePet",
+        "tags": ["Pet"],
+        "parameters": [
+          {
+            "name": "petId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/PetId"
+            }
+          },
+          {
+            "name": "includeHistory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pet"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PetId": {
+        "type": "string"
+      },
+      "PetStatus": {
+        "type": "string",
+        "enum": ["available", "pending", "sold"]
+      },
+      "Tag": {
+        "type": "object",
+        "required": ["id", "label"],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "Pet": {
+        "type": "object",
+        "required": ["id", "name", "status", "tags"],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/PetId"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PetStatus"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            }
+          },
+          "nickname": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "PetList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Pet"
+        }
+      },
+      "UpdatePetRequest": {
+        "type": "object",
+        "required": ["status", "tagIds"],
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/PetStatus"
+          },
+          "tagIds": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "nickname": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      }
+    }
+  }
+}

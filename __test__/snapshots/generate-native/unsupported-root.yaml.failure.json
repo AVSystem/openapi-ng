@@ -1,0 +1,6 @@
+{
+  "code": "E_INPUT_INVALID",
+  "message": "Failed to decode OpenAPI input as YAML: components.schemas: invalid type: sequence, expected a map at line 8 column 5",
+  "path": "test/fixtures/unsupported-root.yaml",
+  "warnings": []
+}

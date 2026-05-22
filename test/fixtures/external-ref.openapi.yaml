@@ -1,0 +1,16 @@
+openapi: 3.0.3
+info:
+  title: External Ref
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Pet:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+        owner:
+          $ref: 'shared.yaml#/components/schemas/Owner'

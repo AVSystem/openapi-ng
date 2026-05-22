@@ -1,0 +1,39 @@
+openapi: 3.0.3
+info:
+  title: Warning Then Fatal
+  version: 1.0.0
+# Fixture for the NAPI error-enrichment integration test. The first
+# operation emits a cookie-parameter warning during normalize; the second
+# operation triggers a fatal via an unsupported parameter location. The
+# expected end-state: generate throws GenerateError, the fatal
+# carries the bogus-location message, and error.warnings carries the
+# pre-fatal cookie warning.
+paths:
+  /a:
+    get:
+      operationId: opWithCookieWarning
+      tags:
+        - Sample
+      parameters:
+        - name: sessionId
+          in: cookie
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+  /b:
+    get:
+      operationId: opWithFatal
+      tags:
+        - Sample
+      parameters:
+        - name: bad
+          in: bogus_location
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok

@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@avsystem/openapi-ng": ["../../index.d.ts"]
+    }
+  },
+  "include": ["src/emit-target-proof.ts"]
+}

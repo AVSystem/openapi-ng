@@ -1,0 +1,10 @@
+{
+  "artifacts": [
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+openapi: 3.0.3
+info:
+  title: Circular AllOf (Bottoms Out)
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    # Five layers of allOf composition that bottom out into a concrete
+    # object. This exercises the depth-tracking machinery in
+    # normalize/schema.rs (E4) on its happy path — well under
+    # MAX_NORMALIZE_DEPTH but deep enough that any off-by-one in the
+    # guard would surface as a fixture-level regression.
+    BaseAuditFields:
+      type: object
+      required:
+        - createdAt
+      properties:
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+          nullable: true
+    Layer1:
+      allOf:
+        - $ref: '#/components/schemas/BaseAuditFields'
+        - type: object
+          properties:
+            tier1:
+              type: string
+    Layer2:
+      allOf:
+        - $ref: '#/components/schemas/Layer1'
+        - type: object
+          properties:
+            tier2:
+              type: string
+    Layer3:
+      allOf:
+        - $ref: '#/components/schemas/Layer2'
+        - type: object
+          properties:
+            tier3:
+              type: string
+    Layer4:
+      allOf:
+        - $ref: '#/components/schemas/Layer3'
+        - type: object
+          properties:
+            tier4:
+              type: string
+    DeepRecord:
+      allOf:
+        - $ref: '#/components/schemas/Layer4'
+        - type: object
+          properties:
+            tier5:
+              type: string

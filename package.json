@@ -1,0 +1,160 @@
+{
+  "name": "@avsystem/openapi-ng",
+  "version": "0.0.0",
+  "description": "CLI-first Node package for generating TypeScript and Angular artifacts from a supported OpenAPI 3.x subset.",
+  "keywords": [
+    "angular",
+    "codegen",
+    "napi-rs",
+    "openapi",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/AVSystem/openapi-ng.git"
+  },
+  "bin": {
+    "openapi-ng": "bin/openapi-ng.js"
+  },
+  "files": [
+    "bin/openapi-ng.js",
+    "bin/lib/parse.js",
+    "lib/index.js",
+    "lib/config.js",
+    "lib/fetch-input.js",
+    "lib/generate-error.js",
+    "lib/wrapper-core.js",
+    "lib/error-marker.json",
+    "index.d.ts",
+    "native.js",
+    "browser.js"
+  ],
+  "main": "lib/index.js",
+  "browser": "browser.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "browser": "./browser.js",
+      "node": "./lib/index.js",
+      "default": "./lib/index.js"
+    },
+    "./config": {
+      "types": "./index.d.ts",
+      "default": "./lib/config.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "artifacts": "napi artifacts",
+    "bench": "node --import @oxc-node/core/register benchmark/bench.ts",
+    "build": "napi build --platform --release --js native.js",
+    "postbuild": "node scripts/patch-types.mjs",
+    "build:debug": "napi build --platform --js native.js",
+    "format": "run-p format:oxfmt format:rs format:toml",
+    "format:oxfmt": "oxfmt . --write",
+    "format:toml": "taplo format",
+    "format:rs": "cargo fmt",
+    "lint": "oxlint",
+    "prepublishOnly": "node scripts/check-version-not-placeholder.mjs && napi prepublish -t npm",
+    "regen-snapshots": "node scripts/regen-snapshots.mjs",
+    "test": "ava",
+    "version": "napi version"
+  },
+  "dependencies": {
+    "yaml": "^2.8.3"
+  },
+  "devDependencies": {
+    "@angular/common": "21.2.7",
+    "@angular/core": "21.2.7",
+    "@emnapi/core": "1.9.2",
+    "@emnapi/runtime": "1.9.2",
+    "@napi-rs/cli": "3.6.0",
+    "@napi-rs/wasm-runtime": "1.1.2",
+    "@oxc-node/core": "0.1.0",
+    "@taplo/cli": "0.7.0",
+    "@tybys/wasm-util": "0.10.1",
+    "@types/node": "25.5.0",
+    "ava": "7.0.0",
+    "emnapi": "1.9.2",
+    "husky": "9.1.7",
+    "lint-staged": "16.4.0",
+    "npm-run-all2": "8.0.4",
+    "oxfmt": "0.43.0",
+    "oxlint": "1.58.0",
+    "rxjs": "7.8.2",
+    "tinybench": "6.0.0",
+    "typescript": "6.0.2"
+  },
+  "peerDependencies": {
+    "@angular/common": ">=20.0.0",
+    "@angular/core": ">=20.0.0",
+    "rxjs": ">=7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@angular/common": {
+      "optional": true
+    },
+    "@angular/core": {
+      "optional": true
+    },
+    "rxjs": {
+      "optional": true
+    }
+  },
+  "optionalDependencies": {
+    "@avsystem/openapi-ng-darwin-arm64": "0.0.0",
+    "@avsystem/openapi-ng-darwin-x64": "0.0.0",
+    "@avsystem/openapi-ng-linux-arm64-gnu": "0.0.0",
+    "@avsystem/openapi-ng-linux-x64-gnu": "0.0.0",
+    "@avsystem/openapi-ng-wasm32-wasip1-threads": "0.0.0",
+    "@avsystem/openapi-ng-win32-arm64-msvc": "0.0.0",
+    "@avsystem/openapi-ng-win32-x64-msvc": "0.0.0"
+  },
+  "lint-staged": {
+    "*.@(js|ts|tsx)": [
+      "oxlint --fix"
+    ],
+    "*.@(js|ts|tsx|yml|yaml|md|json|rs)": [
+      "oxfmt --write"
+    ],
+    "*.toml": [
+      "taplo format"
+    ]
+  },
+  "napi": {
+    "binaryName": "openapi-ng",
+    "targets": [
+      "x86_64-apple-darwin",
+      "aarch64-apple-darwin",
+      "x86_64-unknown-linux-gnu",
+      "x86_64-pc-windows-msvc",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-pc-windows-msvc",
+      "wasm32-wasip1-threads"
+    ]
+  },
+  "ava": {
+    "environmentVariables": {
+      "TS_NODE_PROJECT": "./tsconfig.json"
+    },
+    "extensions": {
+      "ts": "module"
+    },
+    "nodeArguments": [
+      "--import",
+      "@oxc-node/core/register"
+    ],
+    "timeout": "2m",
+    "workerThreads": false
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "pnpm@11.2.2"
+}

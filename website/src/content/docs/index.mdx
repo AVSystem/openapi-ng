@@ -1,0 +1,59 @@
+---
+title: openapi-ng
+description: Generate TypeScript models and Angular services from OpenAPI 3.x specs.
+template: splash
+hero:
+  tagline: Generate TypeScript models and Angular services from OpenAPI 3.x specs — fast, deterministic, Rust-powered.
+  actions:
+    - text: Get started
+      link: /getting-started/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/AVSystem/openapi-ng
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Why openapi-ng
+
+<CardGrid>
+  <Card title="Rust-powered codegen" icon="rocket">
+    The engine is a native binary loaded via [NAPI-RS](https://napi.rs).
+    The same input always produces identical output.
+  </Card>
+  <Card title="Angular-first output" icon="puzzle">
+    Each operation comes with three flavors — `.observable()`,
+    `.resource()`, and `.request()` — matching Angular's current HTTP
+    primitives.
+  </Card>
+  <Card title="Strict OpenAPI subset" icon="approve-check">
+    A focused 3.x subset with clear diagnostics. No silent
+    misgeneration.
+  </Card>
+  <Card title="Configurable naming" icon="setting">
+    Tune method names and service grouping with template + regex rules,
+    via YAML, JSON, or TypeScript config.
+  </Card>
+</CardGrid>
+
+## Install
+
+```bash
+# pnpm
+pnpm add -D @avsystem/openapi-ng
+
+# npm
+npm install -D @avsystem/openapi-ng
+
+# bun
+bun add -d @avsystem/openapi-ng
+
+# yarn
+yarn add -D @avsystem/openapi-ng
+```
+
+Requires Node.js 18+. Pre-built binaries are published for macOS, Linux,
+and Windows (x64 and ARM64), with a WASI fallback for other hosts. See
+[Runtime & platforms](/reference/runtime/).

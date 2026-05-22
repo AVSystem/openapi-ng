@@ -1,0 +1,22 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/nullable-oneof.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Nullable OneOf",
+    "pathCount": 0,
+    "operationCount": 0,
+    "schemaCount": 4
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.generated.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    }
+  ]
+}

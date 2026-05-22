@@ -1,0 +1,32 @@
+openapi: 3.0.3
+info:
+  title: Field Collision
+  version: 1.0.0
+paths:
+  /users/{id}:
+    post:
+      operationId: createUser
+      tags:
+        - User
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+              required:
+                - id
+      responses:
+        '201':
+          description: created
+components:
+  schemas: {}

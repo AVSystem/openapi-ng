@@ -1,0 +1,14 @@
+{
+  "code": "E_POLICY_VIOLATION",
+  "message": "body field 'avatar' in POST /x: binary fields are not supported in application/x-www-form-urlencoded.",
+  "path": "test/fixtures/body-urlencoded-binary-field.openapi.yaml",
+  "warnings": [
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "requestBody for POST /x.avatar declares format 'binary', which is currently dropped — the generator emits the base type without format-specific narrowing.",
+      "path": "test/fixtures/body-urlencoded-binary-field.openapi.yaml",
+      "subcode": "format-dropped"
+    }
+  ]
+}

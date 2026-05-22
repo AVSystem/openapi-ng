@@ -1,0 +1,31 @@
+openapi: 3.0.3
+info: { title: Multipart Mixed, version: 1.0.0 }
+paths:
+  /pets/{petId}/avatar:
+    post:
+      operationId: updatePetAvatar
+      tags: [pet]
+      parameters:
+        - { name: petId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [status, avatar, galleries]
+              properties:
+                status: { type: string }
+                tagIds: { type: array, items: { type: number } }
+                avatar: { type: string, format: binary }
+                galleries: { type: array, items: { type: string, format: binary } }
+                nickname: { type: string }
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }

@@ -1,0 +1,63 @@
+openapi: 3.0.3
+info:
+  title: AllOf Composition
+  version: 1.0.0
+paths:
+  /adopters/{adopterId}:
+    get:
+      operationId: getAdopterProfile
+      tags:
+        - Adopter
+      parameters:
+        - name: adopterId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdopterProfile'
+components:
+  schemas:
+    AuditFields:
+      type: object
+      required:
+        - createdAt
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+    ContactFields:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+    AdopterProfile:
+      allOf:
+        - $ref: '#/components/schemas/AuditFields'
+        - $ref: '#/components/schemas/ContactFields'
+        - type: object
+          required:
+            - id
+            - name
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            nickname:
+              type: string
+              nullable: true

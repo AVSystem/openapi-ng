@@ -1,0 +1,47 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/allof-composition.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "AllOf Composition",
+    "pathCount": 1,
+    "operationCount": 1,
+    "schemaCount": 3
+  },
+  "diagnostics": [
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "schema AuditFields.createdAt declares format 'date-time', which is currently dropped — the generator emits the base type without format-specific narrowing.",
+      "path": "test/fixtures/allof-composition.openapi.yaml",
+      "subcode": "format-dropped"
+    },
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "schema AuditFields.archivedAt declares format 'date-time', which is currently dropped — the generator emits the base type without format-specific narrowing.",
+      "path": "test/fixtures/allof-composition.openapi.yaml",
+      "subcode": "format-dropped"
+    },
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "schema ContactFields.email declares format 'email', which is currently dropped — the generator emits the base type without format-specific narrowing.",
+      "path": "test/fixtures/allof-composition.openapi.yaml",
+      "subcode": "format-dropped"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "model.generated.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest/adopter.rest.generated.ts"
+    }
+  ]
+}

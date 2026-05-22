@@ -1,0 +1,40 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/multi-warning.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Multi Warning",
+    "pathCount": 1,
+    "operationCount": 1,
+    "schemaCount": 1
+  },
+  "diagnostics": [
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "operationId 'listPets': parameter 'sessionId' uses location 'cookie', which is not supported in the generated service contract and will be omitted.",
+      "path": "test/fixtures/multi-warning.openapi.yaml",
+      "subcode": "unsupported-parameter-location"
+    },
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "operationId 'listPets': parameter 'trackingId' uses location 'cookie', which is not supported in the generated service contract and will be omitted.",
+      "path": "test/fixtures/multi-warning.openapi.yaml",
+      "subcode": "unsupported-parameter-location"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "model.generated.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest/pet.rest.generated.ts"
+    }
+  ]
+}

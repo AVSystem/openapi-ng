@@ -1,0 +1,95 @@
+openapi: 3.0.3
+info:
+  title: Errors Typed
+  version: 1.0.0
+paths:
+  /pets/{petId}:
+    post:
+      operationId: updatePet
+      tags:
+        - Pet
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePetRequest'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '400':
+          description: validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+        '404':
+          description: not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+        '500':
+          description: server error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - traceId
+                properties:
+                  traceId:
+                    type: string
+        # Non-2xx without JSON content — must be silently skipped.
+        '503':
+          description: maintenance
+        # `default` key is intentionally ignored for now.
+        default:
+          description: catch-all
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+components:
+  schemas:
+    Pet:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+    UpdatePetRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+    ValidationProblem:
+      type: object
+      required:
+        - code
+        - field
+      properties:
+        code:
+          type: string
+        field:
+          type: string
+    NotFound:
+      type: object
+      required:
+        - resource
+      properties:
+        resource:
+          type: string

@@ -1,0 +1,58 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/string-formats.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "String Formats",
+    "pathCount": 0,
+    "operationCount": 0,
+    "schemaCount": 1
+  },
+  "diagnostics": [
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "schema Contact.email declares format 'email', which is currently dropped — the generator emits the base type without format-specific narrowing.",
+      "path": "test/fixtures/string-formats.openapi.yaml",
+      "subcode": "format-dropped"
+    },
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "schema Contact.identifier declares format 'uuid', which is currently dropped — the generator emits the base type without format-specific narrowing.",
+      "path": "test/fixtures/string-formats.openapi.yaml",
+      "subcode": "format-dropped"
+    },
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "schema Contact.homepage declares format 'uri', which is currently dropped — the generator emits the base type without format-specific narrowing.",
+      "path": "test/fixtures/string-formats.openapi.yaml",
+      "subcode": "format-dropped"
+    },
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "schema Contact.birthday declares format 'date', which is currently dropped — the generator emits the base type without format-specific narrowing.",
+      "path": "test/fixtures/string-formats.openapi.yaml",
+      "subcode": "format-dropped"
+    },
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "schema Contact.lastSeen declares format 'date-time', which is currently dropped — the generator emits the base type without format-specific narrowing.",
+      "path": "test/fixtures/string-formats.openapi.yaml",
+      "subcode": "format-dropped"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "model.generated.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    }
+  ]
+}
