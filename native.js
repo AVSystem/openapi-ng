@@ -525,6 +525,39 @@ function requireNative() {
 
 nativeBinding = requireNative()
 
+if (!nativeBinding || process.env.NAPI_RS_FORCE_WASI) {
+  let wasiBinding = null
+  let wasiBindingError = null
+  try {
+    wasiBinding = require('./openapi-ng.wasi.cjs')
+    nativeBinding = wasiBinding
+  } catch (err) {
+    if (process.env.NAPI_RS_FORCE_WASI) {
+      wasiBindingError = err
+    }
+  }
+  if (!nativeBinding || process.env.NAPI_RS_FORCE_WASI) {
+    try {
+      wasiBinding = require('@avsystem/openapi-ng-wasm32-wasi')
+      nativeBinding = wasiBinding
+    } catch (err) {
+      if (process.env.NAPI_RS_FORCE_WASI) {
+        if (!wasiBindingError) {
+          wasiBindingError = err
+        } else {
+          wasiBindingError.cause = err
+        }
+        loadErrors.push(err)
+      }
+    }
+  }
+  if (process.env.NAPI_RS_FORCE_WASI === 'error' && !wasiBinding) {
+    const error = new Error('WASI binding not found and NAPI_RS_FORCE_WASI is set to error')
+    error.cause = wasiBindingError
+    throw error
+  }
+}
+
 const __OPENAPI_NG_PLATFORM_KEY__ = process.platform + '/' + process.arch;
 const __OPENAPI_NG_SUPPORTED__ = new Set([
   'darwin/x64', 'darwin/arm64',
