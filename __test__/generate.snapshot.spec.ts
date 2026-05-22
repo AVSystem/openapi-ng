@@ -450,7 +450,7 @@ test('generate preserves stable failure shape for malformed.yaml (regex message)
   const payload = await failurePayload('malformed.yaml');
   t.is(payload.code, 'E_INPUT_INVALID');
   t.regex(payload.message, /^Failed to decode OpenAPI input as YAML:/);
-  t.true((payload.path ?? '').endsWith(path.join('test', 'fixtures', 'malformed.yaml')));
+  t.true((payload.path ?? '').endsWith('test/fixtures/malformed.yaml'));
   // No pre-fatal warnings expected for a decode-stage failure.
   t.deepEqual(payload.warnings, []);
 });

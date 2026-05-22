@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(__dirname, '..');
@@ -641,9 +641,14 @@ test('cli generate reads input from openapi-ng.config.ts (end-to-end)', t => {
     return;
   }
   withTempDir(dir => {
+    // Node's ESM loader requires a file:// URL or a forward-slash specifier;
+    // a raw Windows path like 'D:\\…/lib/config.js' is interpreted as scheme
+    // 'd:' and rejected with "Only URLs with a scheme in: file, data, and
+    // node are supported".
+    const configImport = pathToFileURL(path.join(repoRoot, 'lib', 'config.js')).href;
     fs.writeFileSync(
       path.join(dir, 'openapi-ng.config.ts'),
-      `import { defineConfig } from '${repoRoot.replace(/\\/g, '\\\\')}/lib/config.js';\n` +
+      `import { defineConfig } from '${configImport}';\n` +
         `export default defineConfig({\n` +
         `  input: ${JSON.stringify(fixture('petstore-rich.openapi.yaml'))},\n` +
         `  output: ${JSON.stringify(path.join(dir, 'out'))},\n` +

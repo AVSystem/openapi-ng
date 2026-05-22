@@ -773,35 +773,46 @@ test('loadConfigFile wraps module-load errors as E_INPUT_INVALID', async t => {
   });
 });
 
-test('loadConfigFile maps ERR_UNKNOWN_FILE_EXTENSION on .cts to a version hint', async t => {
-  // Two-outcome contract: on Node ≥ 22.6 native TS stripping handles
-  // the .cts file and the load succeeds; on Node < 22.6 the loader
-  // throws ERR_UNKNOWN_FILE_EXTENSION and our mapping branch turns it
-  // into a friendly E_INPUT_INVALID. Inside the AVA worker the
-  // @oxc-node/core/register hook handles TS files itself, so the
-  // success branch fires; in production with a vanilla Node binary
-  // the branch chosen depends on the running version. Either outcome
-  // proves we never surface a generic "Failed to load" wrap for a
-  // .cts file when the underlying error is ERR_UNKNOWN_FILE_EXTENSION.
-  await withTempDir(async dir => {
-    const p = path.join(dir, 'openapi-ng.config.cts');
-    fs.writeFileSync(
-      p,
-      "const cfg: { input: string } = { input: 'a.yaml' };\nmodule.exports = cfg;\n",
-      'utf8',
-    );
-    try {
-      const result = await parse.loadConfigFile(p);
-      // Modern Node — strip-types worked.
-      t.deepEqual(result, { input: 'a.yaml' });
-    } catch (err) {
-      const e = err as NodeJS.ErrnoException;
-      t.is(e.code, 'E_INPUT_INVALID');
-      t.regex(e.message, /TypeScript config files require Node 22\.6\+/i);
-      t.regex(e.message, /--experimental-strip-types|23\.6/i);
-    }
-  });
-});
+// On Windows + Node 20 the @oxc-node/core/register hook fails inside its
+// own native binding with "Missing field `format`" before our mapping
+// branch ever sees ERR_UNKNOWN_FILE_EXTENSION, so the canonical two-outcome
+// contract this test guards doesn't apply on that combo. The same loader
+// works fine on Linux/macOS Node 20 and on Windows Node 22+, so skipping
+// only the affected matrix entry preserves coverage everywhere else.
+const skipCtsLoaderTest =
+  process.platform === 'win32' && Number(process.versions.node.split('.')[0]) < 22;
+(skipCtsLoaderTest ? test.skip : test)(
+  'loadConfigFile maps ERR_UNKNOWN_FILE_EXTENSION on .cts to a version hint',
+  async t => {
+    // Two-outcome contract: on Node ≥ 22.6 native TS stripping handles
+    // the .cts file and the load succeeds; on Node < 22.6 the loader
+    // throws ERR_UNKNOWN_FILE_EXTENSION and our mapping branch turns it
+    // into a friendly E_INPUT_INVALID. Inside the AVA worker the
+    // @oxc-node/core/register hook handles TS files itself, so the
+    // success branch fires; in production with a vanilla Node binary
+    // the branch chosen depends on the running version. Either outcome
+    // proves we never surface a generic "Failed to load" wrap for a
+    // .cts file when the underlying error is ERR_UNKNOWN_FILE_EXTENSION.
+    await withTempDir(async dir => {
+      const p = path.join(dir, 'openapi-ng.config.cts');
+      fs.writeFileSync(
+        p,
+        "const cfg: { input: string } = { input: 'a.yaml' };\nmodule.exports = cfg;\n",
+        'utf8',
+      );
+      try {
+        const result = await parse.loadConfigFile(p);
+        // Modern Node — strip-types worked.
+        t.deepEqual(result, { input: 'a.yaml' });
+      } catch (err) {
+        const e = err as NodeJS.ErrnoException;
+        t.is(e.code, 'E_INPUT_INVALID');
+        t.regex(e.message, /TypeScript config files require Node 22\.6\+/i);
+        t.regex(e.message, /--experimental-strip-types|23\.6/i);
+      }
+    });
+  },
+);
 
 // Smoke test: only meaningful on Node ≥ 22.6 where native TS stripping
 // is available. Skipped otherwise so old-Node CI runners stay green.

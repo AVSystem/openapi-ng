@@ -109,12 +109,16 @@ const expectedModelSource = [
   '',
 ].join('\n');
 
+// Paths echoed back by generate() are normalized to forward slash on every
+// platform (src/pipeline.rs ~L80 replaces '\\' → '/'), so assert against the
+// normalized form rather than path.join, which would produce backslashes on
+// Windows.
 const unsupportedSemanticDiagnostic = {
   code: 'E_UNSUPPORTED_SEMANTIC',
   severity: 'error',
   message:
     'Unsupported OpenAPI semantic shape: property schema EventEnvelope composition member 2.data must define additionalProperties as a schema object.',
-  path: path.join('test', 'fixtures', 'unsupported-semantic.openapi.yaml'),
+  path: 'test/fixtures/unsupported-semantic.openapi.yaml',
 };
 
 const unsupportedRootDiagnostic = {
@@ -122,7 +126,7 @@ const unsupportedRootDiagnostic = {
   severity: 'error',
   message:
     'Failed to decode OpenAPI input as YAML: components.schemas: invalid type: sequence, expected a map at line 8 column 5',
-  path: path.join('test', 'fixtures', 'unsupported-root.yaml'),
+  path: 'test/fixtures/unsupported-root.yaml',
 };
 
 function artifactPaths(result: { artifacts: Array<{ path: string }> }) {
@@ -289,11 +293,11 @@ test.serial(
 
       t.is(
         jsonResult.summary.normalizedSourcePath,
-        path.join('test', 'fixtures', 'petstore-rich.openapi.json'),
+        'test/fixtures/petstore-rich.openapi.json',
       );
       t.is(
         yamlResult.summary.normalizedSourcePath,
-        path.join('test', 'fixtures', 'petstore-rich.openapi.yaml'),
+        'test/fixtures/petstore-rich.openapi.yaml',
       );
       // Generated artifacts now carry a "// Source: <path>" banner line, so
       // JSON and YAML versions of the same spec produce intentionally
@@ -1215,9 +1219,7 @@ test('generate rejects malformed fixture with stable fatal input diagnostic meta
     t.truthy(error);
     t.true(error instanceof GenerateError);
     t.is((error as any)?.code, 'E_INPUT_INVALID');
-    t.true(
-      (error as any)?.path.endsWith(path.join('test', 'fixtures', 'malformed.yaml')),
-    );
+    t.true((error as any)?.path.endsWith('test/fixtures/malformed.yaml'));
   });
 });
 
