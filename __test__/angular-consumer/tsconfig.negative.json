@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/negative-proof/negative.ts", "generated/**/*.ts"]
+}

@@ -1,0 +1,10 @@
+{
+  "$comment": "Per-bench mean-latency budgets (milliseconds). The runner fails when a task's measured mean exceeds budget * 1.25 — the 25% headroom absorbs noise / slower CI runners while still catching real regressions. Re-baseline by running `pnpm bench` on the reference machine and rounding the reported mean upward; the goal is a budget tight enough to catch 1.5× regressions but loose enough that ordinary cross-machine variance doesn't flake. Tasks not listed here are exempt (no budget) — add an entry when a task becomes load-bearing.",
+  "budgets": {
+    "generate (petstore-minimal, yaml)": 1.0,
+    "generate (petstore-rich, yaml)": 1.2,
+    "generate (petstore-rich, json)": 1.2,
+    "generate (bench-large, yaml)": 6.0,
+    "generate (bench-multi-tag, yaml)": 9.0
+  }
+}

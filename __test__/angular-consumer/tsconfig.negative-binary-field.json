@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/negative-proof/binary-field-rejects-string.ts",
+    "generated/**/*.ts"
+  ]
+}

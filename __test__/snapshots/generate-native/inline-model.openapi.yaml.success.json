@@ -1,0 +1,22 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/inline-model.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Inline Model Schemas",
+    "pathCount": 0,
+    "operationCount": 0,
+    "schemaCount": 1
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.generated.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    }
+  ]
+}

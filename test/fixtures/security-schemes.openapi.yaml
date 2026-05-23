@@ -1,0 +1,40 @@
+openapi: 3.0.3
+info:
+  title: Security Schemes
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      tags:
+        - Pet
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetList'
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    Pet:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+    PetList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Pet'

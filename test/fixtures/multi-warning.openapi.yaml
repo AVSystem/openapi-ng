@@ -1,0 +1,41 @@
+openapi: 3.0.3
+info:
+  title: Multi Warning
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      tags:
+        - Pet
+      # Two cookie parameters on one operation produce two normalize-stage
+      # warnings (each cookie is dropped from the generated contract).
+      # Pins the warning order — first sessionId, then trackingId — so a
+      # regression that reorders or coalesces stage warnings shows up as a
+      # snapshot diff rather than silently passing under deep-equality.
+      parameters:
+        - name: sessionId
+          in: cookie
+          required: true
+          schema:
+            type: string
+        - name: trackingId
+          in: cookie
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string

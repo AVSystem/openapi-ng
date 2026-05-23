@@ -1,0 +1,34 @@
+openapi: 3.0.3
+info:
+  title: Unsupported Semantic
+  version: 1.0.0
+paths:
+  /events:
+    get:
+      operationId: listEvents
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventEnvelope'
+components:
+  schemas:
+    EventEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/BaseEnvelope'
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: object
+              additionalProperties: true
+    BaseEnvelope:
+      type: object
+      required:
+        - kind
+      properties:
+        kind:
+          type: string

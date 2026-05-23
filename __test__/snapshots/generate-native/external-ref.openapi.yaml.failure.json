@@ -1,0 +1,6 @@
+{
+  "code": "E_UNSUPPORTED_SEMANTIC",
+  "message": "Unsupported OpenAPI semantic shape: schema Pet.owner uses unsupported reference shared.yaml#/components/schemas/Owner.. See the supported subset documented in README.md ('Out of Scope' section).",
+  "path": "test/fixtures/external-ref.openapi.yaml",
+  "warnings": []
+}

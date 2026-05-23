@@ -1,0 +1,13 @@
+openapi: 3.0.3
+info:
+  title: Unsupported TRACE Method
+  version: 1.0.0
+paths:
+  /pets:
+    trace:
+      operationId: tracePets
+      tags:
+        - Pet
+      responses:
+        '200':
+          description: ok

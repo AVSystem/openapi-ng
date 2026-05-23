@@ -1,0 +1,11 @@
+# Force LF line endings for all text files on every platform.
+# Without this, Windows checkouts apply core.autocrlf=true which
+# breaks snapshot byte-for-byte comparison and a markdown regex
+# in __test__/diagnostic-codes-drift.spec.ts that hard-codes \n.
+* text=auto eol=lf
+
+# Binary artifacts — never normalize.
+*.node binary
+*.png binary
+*.jpg binary
+*.ico binary

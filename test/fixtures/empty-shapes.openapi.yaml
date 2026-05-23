@@ -1,0 +1,33 @@
+openapi: 3.0.3
+info:
+  title: Empty Schema Shapes
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    AnyValue: {}
+    EmptyObject:
+      type: object
+    EmptyObjectWithProperties:
+      type: object
+      properties: {}
+    ShapeContainer:
+      type: object
+      required:
+        - anything
+        - emptyInline
+        - emptyArray
+        - emptyMap
+      properties:
+        anything: {}
+        emptyInline:
+          type: object
+        emptyInlineWithProperties:
+          type: object
+          properties: {}
+        emptyArray:
+          type: array
+          items: {}
+        emptyMap:
+          type: object
+          additionalProperties: {}

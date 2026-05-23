@@ -1,0 +1,21 @@
+# Pins the generator's handling of `additionalProperties: false`.
+# OpenAPI semantics: "no extras beyond the declared `properties`" —
+# structurally the same as omitting the field for our emit (TypeScript
+# interfaces with declared properties don't accept arbitrary extras by
+# default). The `true` form remains rejected as semantically unsupported
+# (see additional-properties-boolean.openapi.yaml).
+openapi: 3.0.3
+info:
+  title: Additional Properties False
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    StrictBag:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+      properties:
+        id:
+          type: string

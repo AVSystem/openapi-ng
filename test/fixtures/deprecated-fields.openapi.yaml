@@ -1,0 +1,50 @@
+openapi: 3.0.3
+info:
+  title: Deprecated Fields
+  version: 1.0.0
+paths:
+  /pets/{petId}:
+    get:
+      operationId: getPet
+      summary: Retrieve a single pet
+      description: Use `getPetById` instead — this endpoint will be removed.
+      deprecated: true
+      tags:
+        - Pet
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+        legacyTagId:
+          type: number
+          description: Legacy numeric tag id; use `tagIds` instead.
+          deprecated: true
+        tagIds:
+          type: array
+          items:
+            type: number
+    LegacyPetStatus:
+      type: string
+      description: Adoption state, legacy spelling.
+      deprecated: true
+      enum:
+        - available
+        - sold

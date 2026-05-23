@@ -1,0 +1,6 @@
+{
+  "code": "E_POLICY_VIOLATION",
+  "message": "Failed to validate spec: oneOf member 'Cat' does not declare the discriminator property 'kind'. Add the property to the member schema (typically as `type: string`) or remove the discriminator.",
+  "path": "test/fixtures/discriminator-missing-property.openapi.yaml",
+  "warnings": []
+}

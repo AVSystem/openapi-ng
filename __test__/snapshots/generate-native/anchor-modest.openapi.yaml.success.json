@@ -1,0 +1,22 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/anchor-modest.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "anchor-modest",
+    "pathCount": 0,
+    "operationCount": 0,
+    "schemaCount": 4
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.generated.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/single-entry-composition.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Single Entry Composition",
+    "pathCount": 1,
+    "operationCount": 1,
+    "schemaCount": 4
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.generated.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest/animal.rest.generated.ts"
+    }
+  ]
+}

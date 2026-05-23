@@ -1,0 +1,24 @@
+openapi: 3.0.3
+info: { title: discriminator-mapping, version: '1.0.0' }
+paths: {}
+components:
+  schemas:
+    Pet:
+      oneOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+      discriminator:
+        propertyName: kind
+        mapping:
+          feline: '#/components/schemas/Cat'
+          canine: '#/components/schemas/Dog'
+    Cat:
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string }
+    Dog:
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string }

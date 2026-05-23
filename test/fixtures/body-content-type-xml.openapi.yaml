@@ -1,0 +1,17 @@
+openapi: 3.0.3
+info: { title: Xml Body, version: 1.0.0 }
+paths:
+  /x:
+    post:
+      operationId: postX
+      tags: [x]
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema: { type: object, properties: { x: { type: string } } }
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json: { schema: { type: object } }

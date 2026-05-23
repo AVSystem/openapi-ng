@@ -1,0 +1,23 @@
+openapi: 3.0.3
+info:
+  title: Unbalanced Path Template
+  version: 1.0.0
+# The path string `/pets/{id` has an unmatched `{`. Without the
+# normalize-stage check this would emit a broken template like
+# `url: `/pets/id`` — silently dropping the `${encodeURIComponent(id)}`
+# expansion. Normalize rejects the spec instead.
+paths:
+  /pets/{id:
+    get:
+      operationId: getPet
+      tags:
+        - Pet
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok

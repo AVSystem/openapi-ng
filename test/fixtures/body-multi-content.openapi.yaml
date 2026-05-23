@@ -1,0 +1,19 @@
+openapi: 3.0.3
+info: { title: Multi Content Body, version: 1.0.0 }
+paths:
+  /x:
+    post:
+      operationId: postX
+      tags: [x]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, properties: { x: { type: string } } }
+          multipart/form-data:
+            schema: { type: object, properties: { x: { type: string } } }
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json: { schema: { type: object } }

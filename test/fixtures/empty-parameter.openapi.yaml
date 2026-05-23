@@ -1,0 +1,32 @@
+openapi: 3.0.3
+info:
+  title: Empty Parameter Schema
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      tags:
+        - Pet
+      parameters:
+        - name: filter
+          in: query
+          schema: {}
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetList'
+components:
+  schemas:
+    PetList:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            type: string

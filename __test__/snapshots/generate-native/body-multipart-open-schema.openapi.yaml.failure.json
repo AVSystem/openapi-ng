@@ -1,0 +1,6 @@
+{
+  "code": "E_POLICY_VIOLATION",
+  "message": "requestBody for POST /x: multipart bodies must not declare additionalProperties; every field must be enumerated.",
+  "path": "test/fixtures/body-multipart-open-schema.openapi.yaml",
+  "warnings": []
+}

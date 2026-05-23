@@ -1,0 +1,86 @@
+openapi: 3.0.3
+info:
+  title: Consumer Forms and Non-JSON Responses
+  version: 1.0.0
+paths:
+  /pets/{petId}/avatar:
+    post:
+      operationId: updatePetAvatar
+      tags: [pet]
+      parameters:
+        - { name: petId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [status, avatar, galleries, tagIds]
+              properties:
+                status: { type: string }
+                tagIds: { type: array, items: { type: integer } }
+                avatar: { type: string, format: binary }
+                galleries: { type: array, items: { type: string, format: binary } }
+                nickname: { type: string }
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+  /search:
+    post:
+      operationId: submitForm
+      tags: [search]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [status, tagIds]
+              properties:
+                status: { type: string }
+                tagIds: { type: array, items: { type: integer } }
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: number }
+  /invoices/{invoiceId}/pdf:
+    get:
+      operationId: downloadInvoicePdf
+      tags: [invoice]
+      parameters:
+        - { name: invoiceId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: pdf
+          content:
+            application/pdf: {}
+  /config/raw:
+    get:
+      operationId: getRawConfig
+      tags: [config]
+      responses:
+        '200':
+          description: text
+          content:
+            text/plain: {}
+  /binary/fetch:
+    get:
+      operationId: fetchBlob
+      tags: [binary]
+      responses:
+        '200':
+          description: bytes
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }

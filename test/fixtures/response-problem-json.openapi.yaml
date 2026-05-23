@@ -1,0 +1,18 @@
+openapi: 3.0.3
+info: { title: Problem JSON, version: 1.0.0 }
+paths:
+  /errors/{id}:
+    get:
+      operationId: getError
+      tags: [error]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: problem
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  detail: { type: string }

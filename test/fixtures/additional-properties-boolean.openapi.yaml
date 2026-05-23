@@ -1,0 +1,13 @@
+openapi: 3.0.3
+info:
+  title: Additional Properties Boolean
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    PermissiveBag:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string

@@ -1,0 +1,46 @@
+openapi: 3.0.3
+info:
+  title: Nullable OneOf
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Cat:
+      type: object
+      required:
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - cat
+        whiskers:
+          type: integer
+    Dog:
+      type: object
+      required:
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - dog
+        breed:
+          type: string
+    Pet:
+      oneOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+      nullable: true
+    Profile:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+        favoritePet:
+          oneOf:
+            - $ref: '#/components/schemas/Cat'
+            - $ref: '#/components/schemas/Dog'
+          nullable: true

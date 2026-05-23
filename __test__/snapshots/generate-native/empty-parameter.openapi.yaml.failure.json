@@ -1,0 +1,6 @@
+{
+  "code": "E_UNSUPPORTED_SEMANTIC",
+  "message": "Unsupported OpenAPI semantic shape: parameter filter for GET /pets uses an empty schema, which is outside the supported subset.. See the supported subset documented in README.md ('Out of Scope' section).",
+  "path": "test/fixtures/empty-parameter.openapi.yaml",
+  "warnings": []
+}

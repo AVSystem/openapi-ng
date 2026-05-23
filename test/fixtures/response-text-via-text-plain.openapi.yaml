@@ -1,0 +1,14 @@
+openapi: 3.0.3
+info: { title: Text Response, version: 1.0.0 }
+paths:
+  /notes/{id}:
+    get:
+      operationId: getNote
+      tags: [note]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: text
+          content:
+            text/plain: {}

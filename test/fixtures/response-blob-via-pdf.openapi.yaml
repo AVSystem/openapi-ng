@@ -1,0 +1,14 @@
+openapi: 3.0.3
+info: { title: PDF Response, version: 1.0.0 }
+paths:
+  /reports/{id}:
+    get:
+      operationId: getReport
+      tags: [report]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: pdf
+          content:
+            application/pdf: {}

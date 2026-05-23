@@ -1,0 +1,39 @@
+openapi: 3.0.3
+info: { title: discriminator-allof, version: '1.0.0' }
+paths: {}
+components:
+  schemas:
+    # Base type carrying the discriminator property.
+    Animal:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+    # Pet is the oneOf root with a discriminator on `kind`.
+    # Each member uses `allOf` to compose a shared base (Animal) with a
+    # variant-specific tail that redeclares the discriminator property —
+    # the canonical OpenAPI shape for typed unions with a shared
+    # ancestor. The normalize pass must narrow `kind` on the inline
+    # part of each Intersection.
+    Pet:
+      oneOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+      discriminator:
+        propertyName: kind
+    Cat:
+      allOf:
+        - $ref: '#/components/schemas/Animal'
+        - type: object
+          required: [kind]
+          properties:
+            kind: { type: string }
+            whiskers: { type: number }
+    Dog:
+      allOf:
+        - $ref: '#/components/schemas/Animal'
+        - type: object
+          required: [kind]
+          properties:
+            kind: { type: string }
+            barkLoudness: { type: string }

@@ -1,0 +1,6 @@
+{
+  "code": "E_POLICY_VIOLATION",
+  "message": "Failed to decode OpenAPI input: YAML anchor expansion produced 15381905 bytes from 45147 bytes of source — 340× ratio exceeds the cap of 50×. The spec likely uses anchors with deep fan-out; inline the aliases or set OPENAPI_NG_MAX_EXPANSION_RATIO to override.",
+  "path": "test/fixtures/anchor-fanout.openapi.yaml",
+  "warnings": []
+}

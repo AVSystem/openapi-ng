@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 90,
+  "semi": true,
+  "trailingComma": "all",
+  "singleQuote": true,
+  "arrowParens": "avoid",
+  "sortPackageJson": true,
+  "ignorePatterns": [
+    "target",
+    ".yarn",
+    "/*.js",
+    "/*.mjs",
+    "/*.cjs",
+    "/index.js",
+    "index.d.ts",
+    "pnpm-lock.yaml",
+    "/test/fixtures/malformed.yaml",
+    "__test__/snapshots/generate-native"
+  ]
+}

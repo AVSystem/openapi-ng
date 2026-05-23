@@ -1,0 +1,30 @@
+openapi: 3.0.3
+info: { title: Multipart Ref, version: 1.0.0 }
+paths:
+  /uploads:
+    post:
+      operationId: createUpload
+      tags: [upload]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadForm'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+components:
+  schemas:
+    UploadForm:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string }
+        description: { type: string }
