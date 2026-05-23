@@ -1,0 +1,47 @@
+openapi: 3.0.3
+info:
+  title: Single Entry Composition
+  version: 1.0.0
+paths:
+  /animals/{animalId}:
+    get:
+      operationId: getAnimal
+      tags:
+        - Animal
+      parameters:
+        - name: animalId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnimalView'
+components:
+  schemas:
+    AnimalBase:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        nickname:
+          type: string
+          nullable: true
+    AnimalView:
+      oneOf:
+        - $ref: '#/components/schemas/AnimalBase'
+    AnimalDraft:
+      allOf:
+        - $ref: '#/components/schemas/AnimalBase'
+    ContactPreference:
+      anyOf:
+        - type: string

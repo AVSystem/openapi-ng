@@ -1,0 +1,6 @@
+{
+  "code": "E_POLICY_VIOLATION",
+  "message": "requestBody for POST /x: unsupported content type \"application/xml\". Use application/json, multipart/form-data, or application/x-www-form-urlencoded.",
+  "path": "test/fixtures/body-content-type-xml.openapi.yaml",
+  "warnings": []
+}

@@ -1,0 +1,6 @@
+{
+  "code": "E_POLICY_VIOLATION",
+  "message": "operationId 'createUser': body fields [id] duplicate path/query parameter names. Rename the colliding fields in the OpenAPI spec, or hoist the body schema to a named `$ref` so it nests under `body`.",
+  "path": "test/fixtures/field-collision.openapi.yaml",
+  "warnings": []
+}

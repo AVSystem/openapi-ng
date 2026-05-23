@@ -1,0 +1,26 @@
+openapi: 3.0.3
+info: { title: Urlencoded, version: 1.0.0 }
+paths:
+  /search:
+    post:
+      operationId: submitSearch
+      tags: [search]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string }
+                tagIds: { type: array, items: { type: number } }
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: number }

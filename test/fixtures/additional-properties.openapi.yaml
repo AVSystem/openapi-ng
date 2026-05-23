@@ -1,0 +1,71 @@
+openapi: 3.0.3
+info:
+  title: Petstore Additional Properties
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      operationId: listPetCatalog
+      tags:
+        - Pet
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetCatalog'
+components:
+  schemas:
+    PetCatalog:
+      type: object
+      required:
+        - scope
+        - petsByBreed
+      properties:
+        scope:
+          type: string
+          enum:
+            - available
+            - adopted
+            - foster
+        petsByBreed:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              $ref: '#/components/schemas/Pet'
+    Pet:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    PetMetadataByTag:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/PetMetadata'
+    Tag:
+      type: object
+      required:
+        - id
+        - label
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+    PetMetadata:
+      type: object
+      required:
+        - spotlight
+        - tag
+      properties:
+        spotlight:
+          type: boolean
+        tag:
+          $ref: '#/components/schemas/Tag'

@@ -1,0 +1,6 @@
+{
+  "code": "E_POLICY_VIOLATION",
+  "message": "requestBody for POST /x: multipart body schema must resolve to an object.",
+  "path": "test/fixtures/body-multipart-non-object.openapi.yaml",
+  "warnings": []
+}

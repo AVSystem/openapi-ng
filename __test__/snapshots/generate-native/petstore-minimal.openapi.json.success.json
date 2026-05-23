@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/petstore-minimal.openapi.json",
+    "specVersion": "3.0.3",
+    "title": "Petstore Minimal",
+    "pathCount": 1,
+    "operationCount": 1,
+    "schemaCount": 1
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.generated.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest/pet.rest.generated.ts"
+    }
+  ]
+}

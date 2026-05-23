@@ -1,0 +1,30 @@
+openapi: 3.0.3
+info:
+  title: Reserved And Non-Identifier Property Names
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    NonIdentifierProps:
+      type: object
+      required:
+        - class
+        - id
+      properties:
+        # Reserved word — valid as a property name in TS, no quoting needed.
+        class:
+          type: string
+        id:
+          type: string
+        # Digit-first — must be quoted.
+        2legged:
+          type: string
+        # Kebab-case — must be quoted.
+        kebab-case:
+          type: boolean
+        # Dotted — must be quoted.
+        dotted.name:
+          type: integer
+        # Embedded space — must be quoted.
+        with space:
+          type: string

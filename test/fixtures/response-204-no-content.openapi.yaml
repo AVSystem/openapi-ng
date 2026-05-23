@@ -1,0 +1,10 @@
+openapi: 3.0.3
+info: { title: Empty, version: 1.0.0 }
+paths:
+  /ping:
+    delete:
+      operationId: deletePing
+      tags: [util]
+      responses:
+        '204':
+          description: deleted

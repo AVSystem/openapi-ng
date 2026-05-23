@@ -1,0 +1,22 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/response-octet-stream.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Blob",
+    "pathCount": 1,
+    "operationCount": 1,
+    "schemaCount": 0
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest/blob.rest.generated.ts"
+    }
+  ]
+}

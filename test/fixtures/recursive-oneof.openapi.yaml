@@ -1,0 +1,31 @@
+# Self-referential cycle through `oneOf` composition. `recursive-model`
+# pins cycles through plain `$ref` properties; `circular-allof` pins
+# deep `allOf` chains. This fixture closes the gap for cycles routed
+# through union composition: a TreeNode is either a leaf scalar object
+# or a list of TreeNode children. Locks down that named cycles
+# through oneOf members resolve to a regular union type alias (the IR
+# carries the back-edge as an unresolved Ref), not a normalize-time
+# diagnostic or an infinite-recursion fault.
+openapi: 3.0.3
+info:
+  title: Recursive OneOf
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    TreeNode:
+      oneOf:
+        - type: object
+          required:
+            - leaf
+          properties:
+            leaf:
+              type: string
+        - type: object
+          required:
+            - children
+          properties:
+            children:
+              type: array
+              items:
+                $ref: '#/components/schemas/TreeNode'

@@ -1,0 +1,6 @@
+{
+  "code": "E_POLICY_VIOLATION",
+  "message": "requestBody for POST /x must declare exactly one content type.",
+  "path": "test/fixtures/body-multi-content.openapi.yaml",
+  "warnings": []
+}

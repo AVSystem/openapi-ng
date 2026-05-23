@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/form-non-json-proof.ts", "generated/**/*.ts"]
+}

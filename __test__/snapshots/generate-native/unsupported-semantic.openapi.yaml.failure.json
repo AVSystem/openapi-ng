@@ -1,0 +1,6 @@
+{
+  "code": "E_UNSUPPORTED_SEMANTIC",
+  "message": "Unsupported OpenAPI semantic shape: schema EventEnvelope composition member 2.data must define additionalProperties as a schema object.",
+  "path": "test/fixtures/unsupported-semantic.openapi.yaml",
+  "warnings": []
+}

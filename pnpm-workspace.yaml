@@ -1,0 +1,12 @@
+packages:
+  - 'website'
+  - '__test__/angular-consumer'
+
+allowBuilds:
+  esbuild: true
+  sharp: true
+  workerd: true
+
+overrides:
+  'tar@<7.5.15': '7.5.15'
+  'glob@<13': '13.0.6'

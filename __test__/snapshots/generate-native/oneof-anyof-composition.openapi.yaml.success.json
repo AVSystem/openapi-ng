@@ -1,0 +1,36 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/oneof-anyof-composition.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "OneOf AnyOf Composition",
+    "pathCount": 2,
+    "operationCount": 2,
+    "schemaCount": 8
+  },
+  "diagnostics": [
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "schema ContactEmail.email declares format 'email', which is currently dropped — the generator emits the base type without format-specific narrowing.",
+      "path": "test/fixtures/oneof-anyof-composition.openapi.yaml",
+      "subcode": "format-dropped"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "model.generated.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest/adoption-request.rest.generated.ts"
+    },
+    {
+      "path": "rest/pet.rest.generated.ts"
+    }
+  ]
+}

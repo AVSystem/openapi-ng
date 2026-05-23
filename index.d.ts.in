@@ -1,0 +1,146 @@
+// Hand-authored tail concatenated onto the napi-rs-generated index.d.ts
+// by scripts/patch-types.mjs. Contains TS surface that napi-rs cannot
+// emit on its own (named string-literal unions, the GenerateError class
+// defined in lib/index.js).
+
+/**
+ * Diagnostic code taxonomy. Each value maps 1:1 to a Rust DiagnosticCode,
+ * except `E_UNEXPECTED` and `E_UNSUPPORTED_RUNTIME`, which are reserved
+ * for the JS wrapper in `lib/index.js`:
+ *   - `E_UNEXPECTED` is a defensive fallback when a `GenerateError` is
+ *     constructed without an explicit `code`.
+ *   - `E_UNSUPPORTED_RUNTIME` is thrown by `browser.js` when `generate()`
+ *     is called in a browser or edge runtime (no native binding available).
+ *
+ * `E_INVALID_OPTION` covers both wrapper-side shape rejections (a JS
+ * caller passed an option whose type/shape is wrong — surfaced with
+ * `subcode: 'shape'`) and Rust-side semantic rejections of option values
+ * (surfaced with no subcode).
+ */
+export type DiagnosticCode =
+  | 'E_INPUT_INVALID'
+  | 'E_UNSUPPORTED_SEMANTIC'
+  | 'E_UNSUPPORTED_RUNTIME'
+  | 'E_INVALID_REFERENCE'
+  | 'E_INVALID_OPTION'
+  | 'E_POLICY_VIOLATION'
+  | 'E_WRITE_FAILED'
+  | 'E_UNEXPECTED';
+
+/**
+ * Finer-grained taxonomy projected from `Diagnostic.subcode`. Emitted for
+ * `E_POLICY_VIOLATION` diagnostics, a subset of `E_UNSUPPORTED_SEMANTIC`
+ * warnings, and wrapper-side `E_INVALID_OPTION` shape rejections
+ * (`'shape'`) so consumers can route remediation without parsing the
+ * message. Null for every diagnostic that does not carry a sub-class.
+ */
+export type DiagnosticSubcode =
+  | 'shape'
+  | 'missing-operation-id'
+  | 'missing-tag'
+  | 'field-collision'
+  | 'missing-discriminator-property'
+  | 'unsupported-parameter-location'
+  | 'duplicate-operation-id'
+  | 'duplicate-schema-name'
+  | 'format-dropped'
+  | 'schema-cap-exceeded'
+  | 'operation-cap-exceeded'
+  | 'mapping-expansion-exceeded'
+  | 'naming-resolution'
+  | 'multi-content-body'
+  | 'unsupported-body-content-type'
+  | 'multipart-nested-object'
+  | 'multipart-composed-field'
+  | 'multipart-non-object-body'
+  | 'multipart-open-schema'
+  | 'urlencoded-binary-field'
+  | 'urlencoded-nested-object'
+  | 'urlencoded-composed-field'
+  | 'urlencoded-non-object-body'
+  | 'urlencoded-open-schema';
+
+/**
+ * Thrown by `generate` on any fatal diagnostic. Real JS class
+ * that extends `Error`, so consumers can write `err instanceof
+ * GenerateError`.
+ *
+ * Defined in `lib/index.js` (not by napi-rs) — the native binding
+ * throws a plain Error carrying these own-properties and a marker that
+ * the JS wrapper uses to upgrade it.
+ */
+export declare class GenerateError extends Error {
+  constructor(payload: GenerateErrorPayload);
+  readonly code: DiagnosticCode;
+  readonly subcode: DiagnosticSubcode | null;
+  readonly path: string;
+  readonly warnings: Array<GeneratorDiagnostic>;
+
+  /**
+   * Cross-realm-safe predicate. `instanceof GenerateError` only matches
+   * inside the realm where `openapi-ng` was loaded (a different vm
+   * context / worker thread / iframe has a different class identity).
+   * The internal sentinel survives the realm boundary, so consumers
+   * who run across realms should prefer this check.
+   */
+  static isGenerateError(value: unknown): value is GenerateError;
+}
+
+/**
+ * Case transformations supported by naming rules (see `docs/naming-spec.md`).
+ */
+export type Case = 'camel' | 'pascal' | 'snake' | 'kebab' | 'constant';
+
+/**
+ * One rule in a naming chain. All four fields are optional. The
+ * evaluation order is: expand `from` → match `parse` → expand `format`
+ * (defaults to expanded `from` when omitted; required when `parse` is
+ * present) → apply `case`. A rule fails when any template reference is
+ * unbound or `parse` does not match.
+ */
+export interface NamingRule {
+  from?: string;
+  parse?: RegExp;
+  format?: string;
+  case?: Case;
+}
+
+/**
+ * A bare string is shorthand for `{ format: string }` with no case
+ * transformation. An array is a fallback chain — the first rule that
+ * does not fail wins; if every rule fails the generation errors with
+ * `E_POLICY_VIOLATION` subcode `'naming-resolution'`.
+ */
+export type Naming = string | NamingRule | Array<NamingRule | string>;
+
+export interface NamingConfig {
+  methodName?: Naming;
+  group?: Naming;
+}
+
+/**
+ * File-config shape — accepted by `.openapi-ng.{yaml,json}`,
+ * `openapi-ng.config.{ts,mts,cts,mjs,js,cjs}`, and the `defineConfig`
+ * helper. Keys mirror the YAML/JSON surface (`input`/`output`), NOT
+ * the programmatic `generate({ inputPath, outputPath, ... })` surface.
+ */
+export interface Config {
+  input?: string;
+  output?: string;
+  emit?: Array<EmitTarget>;
+  mappedTypes?: Array<MappedType>;
+  responseTypeMapping?: Array<ResponseTypeMapping>;
+  naming?: NamingConfig;
+}
+
+/**
+ * Identity helper that anchors TypeScript inference for JS/TS configs:
+ *   import { defineConfig } from '@avsystem/openapi-ng/config';
+ *   export default defineConfig({ input: 'spec.yaml', output: 'out' });
+ *
+ * Returns its argument unchanged. Has no runtime behaviour.
+ *
+ * Declared here so the `./config` subpath export resolves to the same
+ * `.d.ts` file (one published types surface).
+ */
+export declare function defineConfig(config: Config): Config;

@@ -1,0 +1,22 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/response-problem-json.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Problem JSON",
+    "pathCount": 1,
+    "operationCount": 1,
+    "schemaCount": 0
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest/error.rest.generated.ts"
+    }
+  ]
+}

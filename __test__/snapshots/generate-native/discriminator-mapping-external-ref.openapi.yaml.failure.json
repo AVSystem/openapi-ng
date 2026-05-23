@@ -1,0 +1,6 @@
+{
+  "code": "E_UNSUPPORTED_SEMANTIC",
+  "message": "Unsupported OpenAPI semantic shape: schema Pet uses unsupported reference http://example.com/schemas/Cat.. See the supported subset documented in README.md ('Out of Scope' section).",
+  "path": "test/fixtures/discriminator-mapping-external-ref.openapi.yaml",
+  "warnings": []
+}

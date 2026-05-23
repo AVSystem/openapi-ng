@@ -1,0 +1,22 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/large-enum.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Large Enum",
+    "pathCount": 0,
+    "operationCount": 0,
+    "schemaCount": 2
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.generated.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    }
+  ]
+}

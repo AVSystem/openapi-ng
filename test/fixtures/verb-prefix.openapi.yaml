@@ -1,0 +1,30 @@
+openapi: 3.0.3
+info:
+  title: VerbPrefix
+  version: 1.0.0
+paths:
+  /posts:
+    get:
+      operationId: posts_listAll
+      tags: [Post]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+    post:
+      operationId: posts_create
+      tags: [Post]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: OK

@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/body-multipart-ref-to-named-object.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Multipart Ref",
+    "pathCount": 1,
+    "operationCount": 1,
+    "schemaCount": 1
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.generated.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest/upload.rest.generated.ts"
+    }
+  ]
+}

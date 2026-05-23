@@ -1,0 +1,56 @@
+openapi: 3.0.3
+info:
+  title: Inline Model Schemas
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    PetProfile:
+      type: object
+      required:
+        - id
+        - details
+        - labelsByLocale
+        - visits
+      properties:
+        id:
+          type: string
+        details:
+          type: object
+          required:
+            - displayName
+            - address
+          properties:
+            displayName:
+              type: string
+            address:
+              type: object
+              required:
+                - city
+              properties:
+                city:
+                  type: string
+                postalCode:
+                  type: string
+                  nullable: true
+        labelsByLocale:
+          type: object
+          additionalProperties:
+            type: object
+            required:
+              - value
+            properties:
+              value:
+                type: string
+        visits:
+          type: array
+          items:
+            type: object
+            required:
+              - visitedAt
+            properties:
+              visitedAt:
+                type: string
+              notes:
+                type: string
+                nullable: true

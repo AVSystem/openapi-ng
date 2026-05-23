@@ -1,0 +1,6 @@
+{
+  "code": "E_INVALID_OPTION",
+  "message": "Failed to resolve generation options: mapped schema MissingSchema does not exist in the IR.",
+  "path": "test/fixtures/petstore-rich.openapi.yaml",
+  "warnings": []
+}

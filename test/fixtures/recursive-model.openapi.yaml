@@ -1,0 +1,37 @@
+openapi: 3.0.3
+info:
+  title: Recursive Model
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Category:
+      type: object
+      required:
+        - name
+        - subcategories
+      properties:
+        name:
+          type: string
+        subcategories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+    Person:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        favoritePet:
+          $ref: '#/components/schemas/Pet'
+    Pet:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        owner:
+          $ref: '#/components/schemas/Person'

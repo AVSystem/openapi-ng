@@ -1,0 +1,51 @@
+openapi: 3.0.3
+info:
+  title: JSDoc Descriptions
+  version: 1.0.0
+paths:
+  /pets/{petId}:
+    get:
+      operationId: getPet
+      summary: Retrieve a single pet
+      description: |-
+        Returns the full pet record by id. The returned shape
+        matches `Pet` exactly — no partial fetches.
+      tags:
+        - Pet
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      description: A pet that is up for adoption.
+      required:
+        - id
+        - status
+      properties:
+        id:
+          type: string
+          description: Stable identifier across renames.
+        status:
+          $ref: '#/components/schemas/PetStatus'
+        nickname:
+          type: string
+          description: Optional informal name used in marketing copy.
+    PetStatus:
+      type: string
+      description: Adoption state of the pet.
+      enum:
+        - available
+        - pending
+        - adopted

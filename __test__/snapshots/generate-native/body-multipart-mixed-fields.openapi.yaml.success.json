@@ -1,0 +1,37 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/body-multipart-mixed-fields.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Multipart Mixed",
+    "pathCount": 1,
+    "operationCount": 1,
+    "schemaCount": 0
+  },
+  "diagnostics": [
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "requestBody for POST /pets/{petId}/avatar.avatar declares format 'binary', which is currently dropped — the generator emits the base type without format-specific narrowing.",
+      "path": "test/fixtures/body-multipart-mixed-fields.openapi.yaml",
+      "subcode": "format-dropped"
+    },
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "requestBody for POST /pets/{petId}/avatar.galleries declares format 'binary', which is currently dropped — the generator emits the base type without format-specific narrowing.",
+      "path": "test/fixtures/body-multipart-mixed-fields.openapi.yaml",
+      "subcode": "format-dropped"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest/pet.rest.generated.ts"
+    }
+  ]
+}

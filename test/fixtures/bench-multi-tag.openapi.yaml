@@ -1,0 +1,2757 @@
+openapi: 3.0.3
+info:
+  title: Multi-Tag Bench
+  version: 1.0.0
+paths:
+  /catalog/1:
+    get:
+      operationId: getCatalogItem1
+      tags:
+        - Catalog
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem1List'
+    post:
+      operationId: createCatalogItem1
+      tags:
+        - Catalog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatalogItem1'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem1'
+  /catalog/2:
+    get:
+      operationId: getCatalogItem2
+      tags:
+        - Catalog
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem2List'
+    post:
+      operationId: createCatalogItem2
+      tags:
+        - Catalog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatalogItem2'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem2'
+  /catalog/3:
+    get:
+      operationId: getCatalogItem3
+      tags:
+        - Catalog
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem3List'
+    post:
+      operationId: createCatalogItem3
+      tags:
+        - Catalog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatalogItem3'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem3'
+  /catalog/4:
+    get:
+      operationId: getCatalogItem4
+      tags:
+        - Catalog
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem4List'
+    post:
+      operationId: createCatalogItem4
+      tags:
+        - Catalog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatalogItem4'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem4'
+  /catalog/5:
+    get:
+      operationId: getCatalogItem5
+      tags:
+        - Catalog
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem5List'
+    post:
+      operationId: createCatalogItem5
+      tags:
+        - Catalog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatalogItem5'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem5'
+  /catalog/6:
+    get:
+      operationId: getCatalogItem6
+      tags:
+        - Catalog
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem6List'
+    post:
+      operationId: createCatalogItem6
+      tags:
+        - Catalog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatalogItem6'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem6'
+  /catalog/7:
+    get:
+      operationId: getCatalogItem7
+      tags:
+        - Catalog
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem7List'
+    post:
+      operationId: createCatalogItem7
+      tags:
+        - Catalog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatalogItem7'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem7'
+  /catalog/8:
+    get:
+      operationId: getCatalogItem8
+      tags:
+        - Catalog
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem8List'
+    post:
+      operationId: createCatalogItem8
+      tags:
+        - Catalog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatalogItem8'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem8'
+  /catalog/9:
+    get:
+      operationId: getCatalogItem9
+      tags:
+        - Catalog
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem9List'
+    post:
+      operationId: createCatalogItem9
+      tags:
+        - Catalog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatalogItem9'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem9'
+  /catalog/10:
+    get:
+      operationId: getCatalogItem10
+      tags:
+        - Catalog
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem10List'
+    post:
+      operationId: createCatalogItem10
+      tags:
+        - Catalog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatalogItem10'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItem10'
+  /inventory/1:
+    get:
+      operationId: getInventoryItem1
+      tags:
+        - Inventory
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem1List'
+    post:
+      operationId: createInventoryItem1
+      tags:
+        - Inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryItem1'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem1'
+  /inventory/2:
+    get:
+      operationId: getInventoryItem2
+      tags:
+        - Inventory
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem2List'
+    post:
+      operationId: createInventoryItem2
+      tags:
+        - Inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryItem2'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem2'
+  /inventory/3:
+    get:
+      operationId: getInventoryItem3
+      tags:
+        - Inventory
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem3List'
+    post:
+      operationId: createInventoryItem3
+      tags:
+        - Inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryItem3'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem3'
+  /inventory/4:
+    get:
+      operationId: getInventoryItem4
+      tags:
+        - Inventory
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem4List'
+    post:
+      operationId: createInventoryItem4
+      tags:
+        - Inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryItem4'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem4'
+  /inventory/5:
+    get:
+      operationId: getInventoryItem5
+      tags:
+        - Inventory
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem5List'
+    post:
+      operationId: createInventoryItem5
+      tags:
+        - Inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryItem5'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem5'
+  /inventory/6:
+    get:
+      operationId: getInventoryItem6
+      tags:
+        - Inventory
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem6List'
+    post:
+      operationId: createInventoryItem6
+      tags:
+        - Inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryItem6'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem6'
+  /inventory/7:
+    get:
+      operationId: getInventoryItem7
+      tags:
+        - Inventory
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem7List'
+    post:
+      operationId: createInventoryItem7
+      tags:
+        - Inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryItem7'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem7'
+  /inventory/8:
+    get:
+      operationId: getInventoryItem8
+      tags:
+        - Inventory
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem8List'
+    post:
+      operationId: createInventoryItem8
+      tags:
+        - Inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryItem8'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem8'
+  /inventory/9:
+    get:
+      operationId: getInventoryItem9
+      tags:
+        - Inventory
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem9List'
+    post:
+      operationId: createInventoryItem9
+      tags:
+        - Inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryItem9'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem9'
+  /inventory/10:
+    get:
+      operationId: getInventoryItem10
+      tags:
+        - Inventory
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem10List'
+    post:
+      operationId: createInventoryItem10
+      tags:
+        - Inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryItem10'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem10'
+  /orders/1:
+    get:
+      operationId: getOrdersItem1
+      tags:
+        - Orders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem1List'
+    post:
+      operationId: createOrdersItem1
+      tags:
+        - Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrdersItem1'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem1'
+  /orders/2:
+    get:
+      operationId: getOrdersItem2
+      tags:
+        - Orders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem2List'
+    post:
+      operationId: createOrdersItem2
+      tags:
+        - Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrdersItem2'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem2'
+  /orders/3:
+    get:
+      operationId: getOrdersItem3
+      tags:
+        - Orders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem3List'
+    post:
+      operationId: createOrdersItem3
+      tags:
+        - Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrdersItem3'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem3'
+  /orders/4:
+    get:
+      operationId: getOrdersItem4
+      tags:
+        - Orders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem4List'
+    post:
+      operationId: createOrdersItem4
+      tags:
+        - Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrdersItem4'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem4'
+  /orders/5:
+    get:
+      operationId: getOrdersItem5
+      tags:
+        - Orders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem5List'
+    post:
+      operationId: createOrdersItem5
+      tags:
+        - Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrdersItem5'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem5'
+  /orders/6:
+    get:
+      operationId: getOrdersItem6
+      tags:
+        - Orders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem6List'
+    post:
+      operationId: createOrdersItem6
+      tags:
+        - Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrdersItem6'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem6'
+  /orders/7:
+    get:
+      operationId: getOrdersItem7
+      tags:
+        - Orders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem7List'
+    post:
+      operationId: createOrdersItem7
+      tags:
+        - Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrdersItem7'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem7'
+  /orders/8:
+    get:
+      operationId: getOrdersItem8
+      tags:
+        - Orders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem8List'
+    post:
+      operationId: createOrdersItem8
+      tags:
+        - Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrdersItem8'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem8'
+  /orders/9:
+    get:
+      operationId: getOrdersItem9
+      tags:
+        - Orders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem9List'
+    post:
+      operationId: createOrdersItem9
+      tags:
+        - Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrdersItem9'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem9'
+  /orders/10:
+    get:
+      operationId: getOrdersItem10
+      tags:
+        - Orders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem10List'
+    post:
+      operationId: createOrdersItem10
+      tags:
+        - Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrdersItem10'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersItem10'
+  /customers/1:
+    get:
+      operationId: getCustomersItem1
+      tags:
+        - Customers
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem1List'
+    post:
+      operationId: createCustomersItem1
+      tags:
+        - Customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomersItem1'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem1'
+  /customers/2:
+    get:
+      operationId: getCustomersItem2
+      tags:
+        - Customers
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem2List'
+    post:
+      operationId: createCustomersItem2
+      tags:
+        - Customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomersItem2'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem2'
+  /customers/3:
+    get:
+      operationId: getCustomersItem3
+      tags:
+        - Customers
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem3List'
+    post:
+      operationId: createCustomersItem3
+      tags:
+        - Customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomersItem3'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem3'
+  /customers/4:
+    get:
+      operationId: getCustomersItem4
+      tags:
+        - Customers
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem4List'
+    post:
+      operationId: createCustomersItem4
+      tags:
+        - Customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomersItem4'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem4'
+  /customers/5:
+    get:
+      operationId: getCustomersItem5
+      tags:
+        - Customers
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem5List'
+    post:
+      operationId: createCustomersItem5
+      tags:
+        - Customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomersItem5'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem5'
+  /customers/6:
+    get:
+      operationId: getCustomersItem6
+      tags:
+        - Customers
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem6List'
+    post:
+      operationId: createCustomersItem6
+      tags:
+        - Customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomersItem6'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem6'
+  /customers/7:
+    get:
+      operationId: getCustomersItem7
+      tags:
+        - Customers
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem7List'
+    post:
+      operationId: createCustomersItem7
+      tags:
+        - Customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomersItem7'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem7'
+  /customers/8:
+    get:
+      operationId: getCustomersItem8
+      tags:
+        - Customers
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem8List'
+    post:
+      operationId: createCustomersItem8
+      tags:
+        - Customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomersItem8'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem8'
+  /customers/9:
+    get:
+      operationId: getCustomersItem9
+      tags:
+        - Customers
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem9List'
+    post:
+      operationId: createCustomersItem9
+      tags:
+        - Customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomersItem9'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem9'
+  /customers/10:
+    get:
+      operationId: getCustomersItem10
+      tags:
+        - Customers
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem10List'
+    post:
+      operationId: createCustomersItem10
+      tags:
+        - Customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomersItem10'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomersItem10'
+  /shipping/1:
+    get:
+      operationId: getShippingItem1
+      tags:
+        - Shipping
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem1List'
+    post:
+      operationId: createShippingItem1
+      tags:
+        - Shipping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShippingItem1'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem1'
+  /shipping/2:
+    get:
+      operationId: getShippingItem2
+      tags:
+        - Shipping
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem2List'
+    post:
+      operationId: createShippingItem2
+      tags:
+        - Shipping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShippingItem2'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem2'
+  /shipping/3:
+    get:
+      operationId: getShippingItem3
+      tags:
+        - Shipping
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem3List'
+    post:
+      operationId: createShippingItem3
+      tags:
+        - Shipping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShippingItem3'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem3'
+  /shipping/4:
+    get:
+      operationId: getShippingItem4
+      tags:
+        - Shipping
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem4List'
+    post:
+      operationId: createShippingItem4
+      tags:
+        - Shipping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShippingItem4'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem4'
+  /shipping/5:
+    get:
+      operationId: getShippingItem5
+      tags:
+        - Shipping
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem5List'
+    post:
+      operationId: createShippingItem5
+      tags:
+        - Shipping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShippingItem5'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem5'
+  /shipping/6:
+    get:
+      operationId: getShippingItem6
+      tags:
+        - Shipping
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem6List'
+    post:
+      operationId: createShippingItem6
+      tags:
+        - Shipping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShippingItem6'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem6'
+  /shipping/7:
+    get:
+      operationId: getShippingItem7
+      tags:
+        - Shipping
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem7List'
+    post:
+      operationId: createShippingItem7
+      tags:
+        - Shipping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShippingItem7'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem7'
+  /shipping/8:
+    get:
+      operationId: getShippingItem8
+      tags:
+        - Shipping
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem8List'
+    post:
+      operationId: createShippingItem8
+      tags:
+        - Shipping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShippingItem8'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem8'
+  /shipping/9:
+    get:
+      operationId: getShippingItem9
+      tags:
+        - Shipping
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem9List'
+    post:
+      operationId: createShippingItem9
+      tags:
+        - Shipping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShippingItem9'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem9'
+  /shipping/10:
+    get:
+      operationId: getShippingItem10
+      tags:
+        - Shipping
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem10List'
+    post:
+      operationId: createShippingItem10
+      tags:
+        - Shipping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShippingItem10'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingItem10'
+components:
+  schemas:
+    CatalogItem1:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CatalogItem1Status'
+    CatalogItem1Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CatalogItem1List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CatalogItem1'
+    CatalogItem2:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CatalogItem2Status'
+    CatalogItem2Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CatalogItem2List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CatalogItem2'
+    CatalogItem3:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CatalogItem3Status'
+    CatalogItem3Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CatalogItem3List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CatalogItem3'
+    CatalogItem4:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CatalogItem4Status'
+    CatalogItem4Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CatalogItem4List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CatalogItem4'
+    CatalogItem5:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CatalogItem5Status'
+    CatalogItem5Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CatalogItem5List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CatalogItem5'
+    CatalogItem6:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CatalogItem6Status'
+    CatalogItem6Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CatalogItem6List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CatalogItem6'
+    CatalogItem7:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CatalogItem7Status'
+    CatalogItem7Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CatalogItem7List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CatalogItem7'
+    CatalogItem8:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CatalogItem8Status'
+    CatalogItem8Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CatalogItem8List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CatalogItem8'
+    CatalogItem9:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CatalogItem9Status'
+    CatalogItem9Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CatalogItem9List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CatalogItem9'
+    CatalogItem10:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CatalogItem10Status'
+    CatalogItem10Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CatalogItem10List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CatalogItem10'
+    InventoryItem1:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/InventoryItem1Status'
+    InventoryItem1Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    InventoryItem1List:
+      type: array
+      items:
+        $ref: '#/components/schemas/InventoryItem1'
+    InventoryItem2:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/InventoryItem2Status'
+    InventoryItem2Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    InventoryItem2List:
+      type: array
+      items:
+        $ref: '#/components/schemas/InventoryItem2'
+    InventoryItem3:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/InventoryItem3Status'
+    InventoryItem3Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    InventoryItem3List:
+      type: array
+      items:
+        $ref: '#/components/schemas/InventoryItem3'
+    InventoryItem4:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/InventoryItem4Status'
+    InventoryItem4Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    InventoryItem4List:
+      type: array
+      items:
+        $ref: '#/components/schemas/InventoryItem4'
+    InventoryItem5:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/InventoryItem5Status'
+    InventoryItem5Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    InventoryItem5List:
+      type: array
+      items:
+        $ref: '#/components/schemas/InventoryItem5'
+    InventoryItem6:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/InventoryItem6Status'
+    InventoryItem6Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    InventoryItem6List:
+      type: array
+      items:
+        $ref: '#/components/schemas/InventoryItem6'
+    InventoryItem7:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/InventoryItem7Status'
+    InventoryItem7Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    InventoryItem7List:
+      type: array
+      items:
+        $ref: '#/components/schemas/InventoryItem7'
+    InventoryItem8:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/InventoryItem8Status'
+    InventoryItem8Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    InventoryItem8List:
+      type: array
+      items:
+        $ref: '#/components/schemas/InventoryItem8'
+    InventoryItem9:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/InventoryItem9Status'
+    InventoryItem9Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    InventoryItem9List:
+      type: array
+      items:
+        $ref: '#/components/schemas/InventoryItem9'
+    InventoryItem10:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/InventoryItem10Status'
+    InventoryItem10Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    InventoryItem10List:
+      type: array
+      items:
+        $ref: '#/components/schemas/InventoryItem10'
+    OrdersItem1:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrdersItem1Status'
+    OrdersItem1Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    OrdersItem1List:
+      type: array
+      items:
+        $ref: '#/components/schemas/OrdersItem1'
+    OrdersItem2:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrdersItem2Status'
+    OrdersItem2Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    OrdersItem2List:
+      type: array
+      items:
+        $ref: '#/components/schemas/OrdersItem2'
+    OrdersItem3:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrdersItem3Status'
+    OrdersItem3Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    OrdersItem3List:
+      type: array
+      items:
+        $ref: '#/components/schemas/OrdersItem3'
+    OrdersItem4:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrdersItem4Status'
+    OrdersItem4Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    OrdersItem4List:
+      type: array
+      items:
+        $ref: '#/components/schemas/OrdersItem4'
+    OrdersItem5:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrdersItem5Status'
+    OrdersItem5Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    OrdersItem5List:
+      type: array
+      items:
+        $ref: '#/components/schemas/OrdersItem5'
+    OrdersItem6:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrdersItem6Status'
+    OrdersItem6Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    OrdersItem6List:
+      type: array
+      items:
+        $ref: '#/components/schemas/OrdersItem6'
+    OrdersItem7:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrdersItem7Status'
+    OrdersItem7Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    OrdersItem7List:
+      type: array
+      items:
+        $ref: '#/components/schemas/OrdersItem7'
+    OrdersItem8:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrdersItem8Status'
+    OrdersItem8Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    OrdersItem8List:
+      type: array
+      items:
+        $ref: '#/components/schemas/OrdersItem8'
+    OrdersItem9:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrdersItem9Status'
+    OrdersItem9Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    OrdersItem9List:
+      type: array
+      items:
+        $ref: '#/components/schemas/OrdersItem9'
+    OrdersItem10:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrdersItem10Status'
+    OrdersItem10Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    OrdersItem10List:
+      type: array
+      items:
+        $ref: '#/components/schemas/OrdersItem10'
+    CustomersItem1:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CustomersItem1Status'
+    CustomersItem1Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CustomersItem1List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CustomersItem1'
+    CustomersItem2:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CustomersItem2Status'
+    CustomersItem2Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CustomersItem2List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CustomersItem2'
+    CustomersItem3:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CustomersItem3Status'
+    CustomersItem3Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CustomersItem3List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CustomersItem3'
+    CustomersItem4:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CustomersItem4Status'
+    CustomersItem4Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CustomersItem4List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CustomersItem4'
+    CustomersItem5:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CustomersItem5Status'
+    CustomersItem5Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CustomersItem5List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CustomersItem5'
+    CustomersItem6:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CustomersItem6Status'
+    CustomersItem6Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CustomersItem6List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CustomersItem6'
+    CustomersItem7:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CustomersItem7Status'
+    CustomersItem7Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CustomersItem7List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CustomersItem7'
+    CustomersItem8:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CustomersItem8Status'
+    CustomersItem8Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CustomersItem8List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CustomersItem8'
+    CustomersItem9:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CustomersItem9Status'
+    CustomersItem9Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CustomersItem9List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CustomersItem9'
+    CustomersItem10:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CustomersItem10Status'
+    CustomersItem10Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    CustomersItem10List:
+      type: array
+      items:
+        $ref: '#/components/schemas/CustomersItem10'
+    ShippingItem1:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/ShippingItem1Status'
+    ShippingItem1Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    ShippingItem1List:
+      type: array
+      items:
+        $ref: '#/components/schemas/ShippingItem1'
+    ShippingItem2:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/ShippingItem2Status'
+    ShippingItem2Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    ShippingItem2List:
+      type: array
+      items:
+        $ref: '#/components/schemas/ShippingItem2'
+    ShippingItem3:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/ShippingItem3Status'
+    ShippingItem3Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    ShippingItem3List:
+      type: array
+      items:
+        $ref: '#/components/schemas/ShippingItem3'
+    ShippingItem4:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/ShippingItem4Status'
+    ShippingItem4Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    ShippingItem4List:
+      type: array
+      items:
+        $ref: '#/components/schemas/ShippingItem4'
+    ShippingItem5:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/ShippingItem5Status'
+    ShippingItem5Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    ShippingItem5List:
+      type: array
+      items:
+        $ref: '#/components/schemas/ShippingItem5'
+    ShippingItem6:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/ShippingItem6Status'
+    ShippingItem6Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    ShippingItem6List:
+      type: array
+      items:
+        $ref: '#/components/schemas/ShippingItem6'
+    ShippingItem7:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/ShippingItem7Status'
+    ShippingItem7Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    ShippingItem7List:
+      type: array
+      items:
+        $ref: '#/components/schemas/ShippingItem7'
+    ShippingItem8:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/ShippingItem8Status'
+    ShippingItem8Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    ShippingItem8List:
+      type: array
+      items:
+        $ref: '#/components/schemas/ShippingItem8'
+    ShippingItem9:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/ShippingItem9Status'
+    ShippingItem9Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    ShippingItem9List:
+      type: array
+      items:
+        $ref: '#/components/schemas/ShippingItem9'
+    ShippingItem10:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/ShippingItem10Status'
+    ShippingItem10Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    ShippingItem10List:
+      type: array
+      items:
+        $ref: '#/components/schemas/ShippingItem10'

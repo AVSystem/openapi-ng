@@ -1,0 +1,6 @@
+{
+  "code": "E_UNSUPPORTED_SEMANTIC",
+  "message": "Unsupported OpenAPI semantic shape: schema PermissiveBag combines additionalProperties with named object properties, which remains outside the supported subset.",
+  "path": "test/fixtures/additional-properties-boolean.openapi.yaml",
+  "warnings": []
+}

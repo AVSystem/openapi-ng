@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/response-default-fallback.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Default",
+    "pathCount": 1,
+    "operationCount": 1,
+    "schemaCount": 2
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.generated.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest/thing.rest.generated.ts"
+    }
+  ]
+}
