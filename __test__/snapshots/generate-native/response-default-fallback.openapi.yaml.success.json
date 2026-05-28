@@ -19,6 +19,9 @@
       "path": "rest.util.ts"
     },
     {
+      "path": "rest.validate.ts"
+    },
+    {
       "path": "rest/thing.rest.generated.ts"
     }
   ]

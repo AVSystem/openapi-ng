@@ -5,7 +5,8 @@ use crate::{
   emit::{
     MODEL_ARTIFACT_PATH,
     angular::{
-      REST_MODEL_PATH, REST_MODEL_TEMPLATE, REST_UTIL_PATH, REST_UTIL_TEMPLATE, emit_service,
+      REST_MODEL_PATH, REST_MODEL_TEMPLATE, REST_UTIL_PATH, REST_UTIL_TEMPLATE, REST_VALIDATE_PATH,
+      REST_VALIDATE_TEMPLATE, emit_service,
     },
     model::emit_ts_models::emit_model,
     render_generated_banner,
@@ -143,6 +144,10 @@ fn run_pipeline(
     artifacts.push(GeneratedArtifact::new(
       REST_UTIL_PATH.to_string(),
       format!("{banner}{REST_UTIL_TEMPLATE}"),
+    ));
+    artifacts.push(GeneratedArtifact::new(
+      REST_VALIDATE_PATH.to_string(),
+      format!("{banner}{REST_VALIDATE_TEMPLATE}"),
     ));
     for service in &plan.services {
       let body = emit_service(service);
@@ -344,6 +349,7 @@ mod tests {
         "model.generated.ts",
         "rest.model.ts",
         "rest.util.ts",
+        "rest.validate.ts",
         "rest/pet.rest.generated.ts",
       ]
     );
@@ -493,6 +499,7 @@ mod tests {
         "model.generated.ts",
         "rest.model.ts",
         "rest.util.ts",
+        "rest.validate.ts",
         "rest/pet.rest.generated.ts",
       ]
     );

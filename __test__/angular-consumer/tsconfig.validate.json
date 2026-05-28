@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/validate-proof.ts", "generated/**/*.ts"]
+}
