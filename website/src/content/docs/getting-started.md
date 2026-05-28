@@ -21,12 +21,13 @@ openapi-ng generate --input petstore.openapi.yaml --output ./generated
 Output:
 
 ```
-✓ Generated 4 files from Petstore (3.0.3)
+✓ Generated 5 files from Petstore (3.0.3)
   1 path · 1 operation · 1 schema
 
   model.generated.ts
   rest.model.ts
   rest.util.ts
+  rest.validate.ts
   rest/pet.rest.generated.ts
 ```
 
@@ -52,11 +53,12 @@ Omit `outputPath` to keep the result entirely in memory.
 
 ## What you get
 
-| Artifact          | File                            | Description                                          |
-|-------------------|---------------------------------|------------------------------------------------------|
-| TypeScript models | `model.generated.ts`            | Interfaces, type aliases, and string enum unions     |
-| Angular support   | `rest.model.ts`, `rest.util.ts` | HTTP helper types and request utilities              |
-| Angular services  | `rest/{tag}.rest.generated.ts`  | `@Injectable` service classes grouped by OpenAPI tag |
+| Artifact            | File                            | Description                                                              |
+|---------------------|---------------------------------|--------------------------------------------------------------------------|
+| TypeScript models   | `model.generated.ts`            | Interfaces, type aliases, and string enum unions                         |
+| Angular support     | `rest.model.ts`, `rest.util.ts` | HTTP helper types and request utilities                                  |
+| Forms validation    | `rest.validate.ts`              | `validateRest` helper for signal-forms async validation (optional peer)  |
+| Angular services    | `rest/{tag}.rest.generated.ts`  | `@Injectable` service classes grouped by OpenAPI tag                     |
 
 See [Angular generator](/guides/angular/) for the shape of the emitted
 services and example component usage.

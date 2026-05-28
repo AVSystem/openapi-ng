@@ -5,6 +5,9 @@
     },
     {
       "path": "rest.util.ts"
+    },
+    {
+      "path": "rest.validate.ts"
     }
   ]
 }

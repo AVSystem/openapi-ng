@@ -31,7 +31,11 @@ const BANNER_RE =
 // Listed by path in each per-fixture snapshot but the file bodies live
 // once under __test__/snapshots/generate-native/static-template/ — see
 // scripts/regen-snapshots.mjs for the storage layout.
-const STATIC_TEMPLATE_PATHS = new Set(['rest.model.ts', 'rest.util.ts']);
+const STATIC_TEMPLATE_PATHS = new Set([
+  'rest.model.ts',
+  'rest.util.ts',
+  'rest.validate.ts',
+]);
 const STATIC_TEMPLATE_DIR = path.join(
   repoRoot,
   '__test__',
@@ -284,7 +288,7 @@ for (const fixtureName of successFixtures) {
 // fixture. Pin them once here; per-fixture snapshots above keep only the
 // `path` for these two artifacts. petstore-minimal is the smallest
 // fixture that emits them, so it doubles as the baseline.
-test('generate emits stable static-template artifacts (rest.model.ts, rest.util.ts)', async t => {
+test('generate emits stable static-template artifacts (rest.model.ts, rest.util.ts, rest.validate.ts)', async t => {
   const baseline = await generate({
     inputPath: fixture('petstore-minimal.openapi.yaml'),
     emit: ['models', 'angular'],

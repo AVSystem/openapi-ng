@@ -47,7 +47,11 @@ const BANNER_RE =
 // (the angular static-template artifacts). Each per-fixture sibling
 // directory omits these files — they live once under
 // __test__/snapshots/generate-native/static-template/.
-const STATIC_TEMPLATE_PATHS = new Set(['rest.model.ts', 'rest.util.ts']);
+const STATIC_TEMPLATE_PATHS = new Set([
+  'rest.model.ts',
+  'rest.util.ts',
+  'rest.validate.ts',
+]);
 
 const STATIC_TEMPLATE_DIR = path.join(snapshotDir, 'static-template');
 const STATIC_TEMPLATE_INDEX = path.join(snapshotDir, 'static-template.json');

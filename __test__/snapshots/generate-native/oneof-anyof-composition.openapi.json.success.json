@@ -27,6 +27,9 @@
       "path": "rest.util.ts"
     },
     {
+      "path": "rest.validate.ts"
+    },
+    {
       "path": "rest/adoption-request.rest.generated.ts"
     },
     {
