@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/negative-proof/validate-rejects-mismatched-response.ts",
+    "generated/**/*.ts"
+  ]
+}

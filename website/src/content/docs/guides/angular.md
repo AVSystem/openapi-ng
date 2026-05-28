@@ -331,11 +331,13 @@ The picker uses the response's declared content type; you can override
 the mapping per content type with the `responseTypeMapping` option (CLI:
 not currently exposed; Node: `generate({ responseTypeMapping: [...] })`).
 
-## What `rest.model.ts` / `rest.util.ts` ship
+## What `rest.model.ts` / `rest.util.ts` / `rest.validate.ts` ship
 
-The generator emits two hand-written helper files alongside the
-service. They are stable, dependency-free, and worth knowing because
-your code can import from them directly.
+The generator emits three hand-written helper files alongside the
+service. They are stable and worth knowing because your code can
+import from them directly. `rest.model.ts` and `rest.util.ts` are
+dependency-free; `rest.validate.ts` imports from
+`@angular/forms/signals` and is tree-shaken when unused.
 
 ### `rest.model.ts`
 
@@ -372,6 +374,37 @@ Runtime module. Exports:
   automatically when `Response` is `void`.
 - `requestFactory` — callable for JSON; `.blob` / `.text` /
   `.arrayBuffer` cover the non-JSON response kinds.
+
+### `rest.validate.ts`
+
+Runtime module bridging generated REST methods into Angular signal-forms
+async validation. Exports:
+
+- `validateRest(path, requestFn, opts)` — wraps `validateAsync` from
+  `@angular/forms/signals` and delegates to the generated
+  `RequestFn.resource()`, so request/response typing flows through
+  without manually constructing an `HttpResourceRequest`. `opts.request`
+  builds the typed request from the field context; `opts.onSuccess`
+  (optional) maps the typed response into form errors; `opts.onError`
+  (required) handles HTTP failures. Omit `onSuccess` for the common
+  "HTTP 200 = valid, 4xx = invalid" pattern.
+- `RestValidatorOptions<TRequest, TResponse, TValue, TPathKind>` — the
+  options bag accepted by `validateRest`.
+- `MapToErrorsFn` — re-export from `@angular/forms/signals` so callers
+  need at most one form-signals import.
+
+`@angular/forms` is an **optional peer dependency**. Add it to your
+project only if you import from `rest.validate.ts`; the file
+tree-shakes away when unused.
+
+```ts
+import { validateRest } from './generated/rest.validate';
+
+validateRest(emailPath, accountRest.checkEmail, {
+  request: (ctx) => ({ email: ctx.value() }),
+  onError: () => ({ kind: 'email-taken' }),
+});
+```
 
 ## Assumptions and limitations
 
