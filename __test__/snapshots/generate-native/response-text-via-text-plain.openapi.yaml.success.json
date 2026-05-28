@@ -16,6 +16,9 @@
       "path": "rest.util.ts"
     },
     {
+      "path": "rest.validate.ts"
+    },
+    {
       "path": "rest/note.rest.generated.ts"
     }
   ]

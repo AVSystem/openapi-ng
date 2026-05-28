@@ -45,13 +45,14 @@ test('cli generate prints human-readable summary with title and file list', t =>
 
     t.is(result.status, 0);
     t.is(result.stderr, '');
-    t.true(result.stdout.includes('Generated 4 files from Petstore Rich'));
+    t.true(result.stdout.includes('Generated 5 files from Petstore Rich'));
     t.true(result.stdout.includes('2 paths'));
     t.true(result.stdout.includes('3 operations'));
     t.true(result.stdout.includes('6 schemas'));
     t.true(result.stdout.includes('model.generated.ts'));
     t.true(result.stdout.includes('rest.model.ts'));
     t.true(result.stdout.includes('rest.util.ts'));
+    t.true(result.stdout.includes('rest.validate.ts'));
     t.true(result.stdout.includes('rest/pet.rest.generated.ts'));
   });
 });

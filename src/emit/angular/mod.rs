@@ -6,9 +6,12 @@ pub(crate) use service::emit_service;
 
 pub(crate) const REST_MODEL_PATH: &str = "rest.model.ts";
 pub(crate) const REST_UTIL_PATH: &str = "rest.util.ts";
+pub(crate) const REST_VALIDATE_PATH: &str = "rest.validate.ts";
 pub(crate) const REST_MODEL_TEMPLATE: &str =
   include_str!("../../../templates/angular/rest.model.ts");
 pub(crate) const REST_UTIL_TEMPLATE: &str = include_str!("../../../templates/angular/rest.util.ts");
+pub(crate) const REST_VALIDATE_TEMPLATE: &str =
+  include_str!("../../../templates/angular/rest.validate.ts");
 
 #[cfg(test)]
 mod tests {
@@ -28,6 +31,11 @@ mod tests {
   #[test]
   fn rest_util_template_carries_request_factory_helpers() {
     assert!(REST_UTIL_TEMPLATE.contains("requestFactory"));
+  }
+
+  #[test]
+  fn rest_validate_template_carries_validate_rest_export() {
+    assert!(REST_VALIDATE_TEMPLATE.contains("export function validateRest"));
   }
 
   #[test]

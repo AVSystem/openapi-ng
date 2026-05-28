@@ -89,6 +89,7 @@
   "peerDependencies": {
     "@angular/common": ">=20.0.0",
     "@angular/core": ">=20.0.0",
+    "@angular/forms": ">=21.0.0",
     "rxjs": ">=7.0.0"
   },
   "peerDependenciesMeta": {
@@ -96,6 +97,9 @@
       "optional": true
     },
     "@angular/core": {
+      "optional": true
+    },
+    "@angular/forms": {
       "optional": true
     },
     "rxjs": {

@@ -287,6 +287,7 @@ test.serial(
           { path: 'model.generated.ts' },
           { path: 'rest.model.ts' },
           { path: 'rest.util.ts' },
+          { path: 'rest.validate.ts' },
           { path: 'rest/pet.rest.generated.ts' },
         ],
       });
@@ -371,6 +372,7 @@ test('generate produces models+angular when emit lists both targets', async t =>
       'model.generated.ts',
       'rest.model.ts',
       'rest.util.ts',
+      'rest.validate.ts',
       'rest/pet.rest.generated.ts',
     ]);
     t.is(stripBanner(result.artifacts[0]?.contents), expectedModelSource);
@@ -713,6 +715,33 @@ test.serial(
   },
 );
 
+test.serial(
+  'generate emits validateRest typings that type-check in a consumer project',
+  async t => {
+    resetAngularConsumerGeneratedDir();
+
+    await generate({
+      inputPath: fixture('petstore-rich.openapi.json'),
+      outputPath: angularConsumerGeneratedDir,
+      emit: [...DEFAULT_EMIT],
+    });
+
+    execFileSync(
+      process.execPath,
+      [
+        path.join(__dirname, '..', 'node_modules', 'typescript', 'bin', 'tsc'),
+        '-p',
+        path.join(__dirname, 'angular-consumer', 'tsconfig.validate.json'),
+      ],
+      {
+        cwd: path.join(__dirname, 'angular-consumer'),
+        stdio: 'pipe',
+      },
+    );
+    t.pass('tsc type-checked generated validateRest surface successfully');
+  },
+);
+
 // Type-surface gate for `EmitTarget`. The proof file destructures the
 // runtime `EmitTarget` and asserts assignability between its named
 // properties and the published `EmitTarget` type, compiled under
@@ -912,6 +941,80 @@ test.serial(
   },
 );
 
+test.serial(
+  'negative-proof tsconfig fails to compile when validateRest request returns a mismatched shape',
+  async t => {
+    resetAngularConsumerGeneratedDir();
+
+    await generate({
+      inputPath: fixture('petstore-rich.openapi.json'),
+      outputPath: angularConsumerGeneratedDir,
+      emit: [...DEFAULT_EMIT],
+    });
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        path.join(__dirname, '..', 'node_modules', 'typescript', 'bin', 'tsc'),
+        '-p',
+        path.join(__dirname, 'angular-consumer', 'tsconfig.negative-validate.json'),
+      ],
+      {
+        cwd: path.join(__dirname, 'angular-consumer'),
+        encoding: 'utf8',
+      },
+    );
+
+    const stdout = (result.stdout ?? '') + (result.stderr ?? '');
+
+    // Must fail — otherwise the request callback's return type has widened.
+    t.not(result.status, 0, `expected tsc to fail but it succeeded; output:\n${stdout}`);
+    // The error must be a type-mismatch on the request shape (TS2322 type
+    // assignability or TS2739 missing-properties), not e.g. TS2304 (cannot
+    // find name) — that would mean the proof file is broken, not that the
+    // typing rejected the mismatch.
+    t.regex(
+      stdout,
+      /TS2322|TS2739/,
+      `expected TS2322/TS2739 type-mismatch error; output:\n${stdout}`,
+    );
+  },
+);
+
+test.serial(
+  'negative-proof tsconfig fails to compile when validateRest onSuccess reads a non-existent response field',
+  async t => {
+    resetAngularConsumerGeneratedDir();
+
+    await generate({
+      inputPath: fixture('petstore-rich.openapi.json'),
+      outputPath: angularConsumerGeneratedDir,
+      emit: [...DEFAULT_EMIT],
+    });
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        path.join(__dirname, '..', 'node_modules', 'typescript', 'bin', 'tsc'),
+        '-p',
+        path.join(__dirname, 'angular-consumer', 'tsconfig.negative-validate-response.json'),
+      ],
+      {
+        cwd: path.join(__dirname, 'angular-consumer'),
+        encoding: 'utf8',
+      },
+    );
+
+    const stdout = (result.stdout ?? '') + (result.stderr ?? '');
+
+    // Must fail — otherwise the onSuccess result type has widened.
+    t.not(result.status, 0, `expected tsc to fail but it succeeded; output:\n${stdout}`);
+    // The error must be TS2339 (property does not exist), not e.g. TS2304
+    // (cannot find name) — that would mean the proof file is broken.
+    t.regex(stdout, /TS2339/, `expected TS2339 property-access error; output:\n${stdout}`);
+  },
+);
+
 test('generate maps a targeted schema to an imported external type without changing unrelated model symbols', async t => {
   await withTempDir(async outputPath => {
     const result = await generate({
@@ -977,6 +1080,7 @@ test('generate encodes oneOf/anyOf composition as focused public contract fragme
       'model.generated.ts',
       'rest.model.ts',
       'rest.util.ts',
+      'rest.validate.ts',
       'rest/adoption-request.rest.generated.ts',
       'rest/pet.rest.generated.ts',
     ]);
@@ -1117,6 +1221,7 @@ test('generate encodes allOf composition as an intersection contract with nullab
       'model.generated.ts',
       'rest.model.ts',
       'rest.util.ts',
+      'rest.validate.ts',
       'rest/adopter.rest.generated.ts',
     ]);
     t.true(
