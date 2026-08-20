@@ -13,7 +13,10 @@ napi-derive = "3.0.0"
 regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_yml = "0.0.12"
+# Pinned: 0.0.13 swapped its YAML backend and dropped error line/column plus
+# duplicate-mapping-key rejection, which the duplicate-schema-name and
+# mapping-expansion-exceeded diagnostics both read out of serde_yml errors.
+serde_yml = "=0.0.12"
 
 [build-dependencies]
 napi-build = "2"

@@ -14,7 +14,7 @@ guide](/guides/angular/#what-rest-model-ts--rest-util-ts-ship).
 `openapi-ng` targets Node.js as its primary runtime: the generation
 engine is a Rust binary loaded via [NAPI-RS](https://napi.rs).
 
-Requires Node.js 18+.
+Requires Node.js 22.12+.
 
 Bun and Deno are supported on the same native path because both
 implement N-API and pick up the prebuilt `.node` artifact directly.

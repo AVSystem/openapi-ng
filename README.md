@@ -18,7 +18,7 @@ Generate TypeScript models and Angular services from OpenAPI 3.x specs — fast,
 bun add -d @avsystem/openapi-ng
 ```
 
-Requires Node.js >= 18. Pre-built binaries for macOS, Linux, and Windows (x64 / ARM64). See [Runtime & platforms](https://docs.openapi-ng.dev/reference/runtime/).
+Requires Node.js >= 22.12. Pre-built binaries for macOS, Linux, and Windows (x64 / ARM64). See [Runtime & platforms](https://docs.openapi-ng.dev/reference/runtime/).
 
 ## Quickstart
 

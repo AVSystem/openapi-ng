@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@angular/common": "21.2.5",
-    "@angular/core": "21.2.5",
-    "@angular/forms": "21.2.5",
+    "@angular/common": "22.1.3",
+    "@angular/core": "22.1.3",
+    "@angular/forms": "22.1.3",
     "rxjs": "7.8.2"
   }
 }

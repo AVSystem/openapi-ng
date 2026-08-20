@@ -140,8 +140,8 @@ test('package.json engines.node matches README', t => {
     fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'),
   ) as { engines?: { node?: string } };
   const readme = fs.readFileSync(path.join(repoRoot, 'README.md'), 'utf8');
-  t.is(pkg.engines?.node, '>=18.0.0');
-  t.regex(readme, /Requires Node\.js >= 18/);
+  t.is(pkg.engines?.node, '>=22.12.0');
+  t.regex(readme, /Requires Node\.js >= 22\.12/);
 });
 
 test('patch-types narrows GeneratorDiagnostic and GenerateErrorPayload bodies', t => {

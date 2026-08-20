@@ -11,12 +11,12 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/starlight": "0.39.2",
-    "astro": "6.3.6",
-    "sharp": "0.34.5"
+    "@astrojs/starlight": "0.41.7",
+    "astro": "7.2.4",
+    "sharp": "0.35.3"
   },
   "devDependencies": {
-    "wrangler": "4.93.1"
+    "wrangler": "4.124.0"
   },
   "packageManager": "pnpm@10.33.3"
 }
