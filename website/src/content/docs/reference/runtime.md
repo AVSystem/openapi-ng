@@ -24,12 +24,16 @@ implement N-API and pick up the prebuilt `.node` artifact directly.
 Pre-built native binaries are published for:
 
 - macOS (x64, ARM64)
-- Linux (x64, ARM64)
+- Linux glibc (x64, ARM64)
+- Linux musl (x64, ARM64) — Alpine and other musl-based images
 - Windows (x64, ARM64)
 
-On any other platform (musl Linux, FreeBSD, 32-bit, etc.), `require`
-of the package throws an explicit unsupported-platform error listing
-the supported set — open an issue if you need an additional target.
+The correct glibc or musl artifact is selected at load time, so Alpine
+and distroless images need no extra configuration.
+
+On any other platform (FreeBSD, 32-bit, etc.), `require` of the package
+throws an explicit unsupported-platform error listing the supported set
+— open an issue if you need an additional target.
 
 ## Browser and edge runtimes
 
