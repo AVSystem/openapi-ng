@@ -64,3 +64,34 @@ schema<string>(path => {
     onError: () => undefined,
   });
 });
+
+// Angular 22 pass-through options. `debounce` and `when` are picked off
+// Angular's own `AsyncValidatorOptions`, so this call site is what proves they
+// resolve to real types rather than to `{}` or `any`.
+schema<string>(path => {
+  validateRest<UpdatePetParams, Pet, string>(path, service.updatePet, {
+    request: ctx => ({
+      petId: ctx.value(),
+      body: { status: 'available', tagIds: [] },
+    }),
+    debounce: 300,
+    when: ctx => ctx.value().length > 2,
+    onError: () => undefined,
+  });
+});
+
+// Function-form debounce: receives the params signal's value plus the previous
+// resource snapshot, and returns a promise gating the request.
+schema<string>(path => {
+  validateRest<UpdatePetParams, Pet, string>(path, service.updatePet, {
+    request: ctx => ({
+      petId: ctx.value(),
+      body: { status: 'available', tagIds: [] },
+    }),
+    debounce: value => {
+      expectType<UpdatePetParams | undefined>(value);
+      return new Promise<void>(resolve => setTimeout(resolve, 50));
+    },
+    onError: () => undefined,
+  });
+});

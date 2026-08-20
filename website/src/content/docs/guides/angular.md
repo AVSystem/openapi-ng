@@ -406,6 +406,37 @@ validateRest(emailPath, accountRest.checkEmail, {
 });
 ```
 
+#### `debounce` and `when`
+
+`opts.debounce` and `opts.when` are passed straight through to
+`validateAsync`, so they behave exactly as documented for Angular's own
+`validateHttp`. Use `debounce` to avoid firing a request on every
+keystroke, and `when` to skip the validation entirely for some field
+states:
+
+```ts
+validateRest(emailPath, accountRest.checkEmail, {
+  request: (ctx) => ({ email: ctx.value() }),
+  debounce: 300,
+  when: (ctx) => ctx.value().length > 2,
+  onError: () => ({ kind: 'email-taken' }),
+});
+```
+
+`debounce` accepts a duration in milliseconds or a debouncer function
+receiving the request value, and `when` a predicate over the field
+context. Neither shape is restated in the emitted file: everything
+`validateRest` does not supply itself is inherited from Angular's
+`AsyncValidatorOptions`, so the typed request flows into `debounce` as
+`DebounceTimer<TRequest | undefined>`, and any option a later Angular
+version adds passes through without regenerating.
+
+Both options require **`@angular/forms` 22 or newer**, where
+`validateAsync` gained them. On `@angular/forms` 21 the emitted file
+still compiles — the two keys are simply absent from
+`RestValidatorOptions`, so passing them is a compile error rather than a
+silently ignored option.
+
 ## Assumptions and limitations
 
 `openapi-ng` accepts a focused subset of OpenAPI 3.x. See the

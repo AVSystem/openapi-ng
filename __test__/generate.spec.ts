@@ -997,7 +997,11 @@ test.serial(
       [
         path.join(__dirname, '..', 'node_modules', 'typescript', 'bin', 'tsc'),
         '-p',
-        path.join(__dirname, 'angular-consumer', 'tsconfig.negative-validate-response.json'),
+        path.join(
+          __dirname,
+          'angular-consumer',
+          'tsconfig.negative-validate-response.json',
+        ),
       ],
       {
         cwd: path.join(__dirname, 'angular-consumer'),
@@ -1011,7 +1015,49 @@ test.serial(
     t.not(result.status, 0, `expected tsc to fail but it succeeded; output:\n${stdout}`);
     // The error must be TS2339 (property does not exist), not e.g. TS2304
     // (cannot find name) — that would mean the proof file is broken.
-    t.regex(stdout, /TS2339/, `expected TS2339 property-access error; output:\n${stdout}`);
+    t.regex(
+      stdout,
+      /TS2339/,
+      `expected TS2339 property-access error; output:\n${stdout}`,
+    );
+  },
+);
+
+test.serial(
+  'negative-proof tsconfig fails to compile when validateRest debounce is not a DebounceTimer',
+  async t => {
+    resetAngularConsumerGeneratedDir();
+
+    await generate({
+      inputPath: fixture('petstore-rich.openapi.json'),
+      outputPath: angularConsumerGeneratedDir,
+      emit: [...DEFAULT_EMIT],
+    });
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        path.join(__dirname, '..', 'node_modules', 'typescript', 'bin', 'tsc'),
+        '-p',
+        path.join(
+          __dirname,
+          'angular-consumer',
+          'tsconfig.negative-validate-debounce.json',
+        ),
+      ],
+      {
+        cwd: path.join(__dirname, 'angular-consumer'),
+        encoding: 'utf8',
+      },
+    );
+
+    const stdout = (result.stdout ?? '') + (result.stderr ?? '');
+
+    // Must fail — otherwise `debounce` is no longer picked off Angular's
+    // AsyncValidatorOptions as a real DebounceTimer (e.g. it widened to `any`,
+    // or the Extract<keyof …> pick silently resolved to an index signature).
+    t.not(result.status, 0, `expected tsc to fail but it succeeded; output:\n${stdout}`);
+    t.regex(stdout, /TS2322/, `expected TS2322 type-mismatch error; output:\n${stdout}`);
   },
 );
 
