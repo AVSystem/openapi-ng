@@ -15,10 +15,12 @@ permissions:
       - '**'
     paths-ignore:
       - '**/*.md'
+      - '**/*.mdx'
       - LICENSE
       - '**/*.gitignore'
       - .editorconfig
       - docs/**
+      - website/**
   pull_request: null
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
