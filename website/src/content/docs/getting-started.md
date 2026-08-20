@@ -9,7 +9,7 @@ description: Install openapi-ng and generate your first TypeScript models and An
 pnpm add -D @avsystem/openapi-ng
 ```
 
-`openapi-ng` requires Node.js 18+. See [Runtime & platforms](/reference/runtime/)
+`openapi-ng` requires Node.js 22.12+. See [Runtime & platforms](/reference/runtime/)
 for the full compatibility matrix.
 
 ## Generate from the CLI
