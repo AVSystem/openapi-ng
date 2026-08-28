@@ -1,6 +1,6 @@
 {
   "name": "@avsystem/openapi-ng",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "CLI-first Node package for generating TypeScript and Angular artifacts from a supported OpenAPI 3.x subset.",
   "keywords": [
     "angular",
