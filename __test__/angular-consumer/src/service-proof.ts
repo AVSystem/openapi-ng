@@ -2,7 +2,12 @@ import type { PetRest, UpdatePetParams } from '../generated/rest/pet.rest.genera
 import type { HttpEvent, HttpResourceRef, HttpResponse } from '@angular/common/http';
 import { Pet, PetList } from '../generated/model.generated.ts';
 import { Observable } from 'rxjs';
-import type { RequestFnVoid, ZeroArgRequestFnVoid } from '../generated/rest.util';
+import type { ResourceParamsContext } from '@angular/core';
+import type {
+  RequestFnVoid,
+  ResourceRequestContext,
+  ZeroArgRequestFnVoid,
+} from '../generated/rest.util';
 
 declare const service: PetRest;
 
@@ -76,6 +81,19 @@ const updatePetResourceParseDefaultValue = service.updatePet.resource<number>(
   { parse: raw => raw.tags.length, defaultValue: 42 },
 );
 
+// ResourceRequestContext is derived from httpResource's callback; on Angular 22
+// it must resolve to exactly ResourceParamsContext (not degrade to unknown).
+declare const paramsContext: ResourceParamsContext;
+declare const requestContext: ResourceRequestContext;
+expectType<ResourceRequestContext>(paramsContext);
+expectType<ResourceParamsContext>(requestContext);
+
+// `chain` from ResourceParamsContext must flow through the resource() wrapper.
+const updatePetResourceChained = service.updatePet.resource(context => {
+  const firstPet = context.chain(listPetsResourceDefaultValue).at(0);
+  return firstPet === undefined ? undefined : { ...request, petId: firstPet.id };
+});
+
 const updatePetObservableResponse = service.updatePet.observable(request, {
   observe: 'response',
 });
@@ -87,6 +105,7 @@ const updatePetObservableEvents = service.updatePet.observable(request, {
 expectType<string>(updatePetRequest.url);
 expectType<Observable<Pet>>(updatePetObservable);
 expectType<HttpResourceRef<Pet | undefined>>(updatePetResource);
+expectType<HttpResourceRef<Pet | undefined>>(updatePetResourceChained);
 expectType<HttpResourceRef<Pet>>(updatePetResourceDefaultValue);
 expectType<HttpResourceRef<number | undefined>>(updatePetResourceParse);
 expectType<HttpResourceRef<number>>(updatePetResourceParseDefaultValue);

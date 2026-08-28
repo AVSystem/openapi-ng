@@ -49,6 +49,15 @@ export function httpParams(params: QueryParamRecord): HttpParams {
   return resolved;
 }
 
+// Derived from httpResource itself so the template compiles on every supported
+// Angular version: ResourceParamsContext (chain) on 22+, unknown on 20/21 where
+// the callback is typed as zero-arg.
+export type ResourceRequestContext = Parameters<typeof httpResource>[0] extends (
+  context: infer Context,
+) => unknown
+  ? Context
+  : unknown;
+
 export interface RequestFnValue<Request, Response> {
   request(request: Request): CommonRequest;
   observable(
@@ -61,19 +70,19 @@ export interface RequestFnValue<Request, Response> {
   ): Observable<HttpEvent<Response>>;
   observable(request: Request, options?: ObservableOptions): Observable<Response>;
   resource(
-    reactiveReq: () => Request | undefined,
+    reactiveReq: (context: ResourceRequestContext) => Request | undefined,
     options: BaseHttpResourceOptionsWithDefault<Response>,
   ): HttpResourceRef<Response>;
   resource<TResult>(
-    reactiveReq: () => Request | undefined,
+    reactiveReq: (context: ResourceRequestContext) => Request | undefined,
     options: BaseHttpResourceOptionsWithDefaultAndParse<TResult, Response>,
   ): HttpResourceRef<TResult>;
   resource(
-    reactiveReq: () => Request | undefined,
+    reactiveReq: (context: ResourceRequestContext) => Request | undefined,
     options?: HttpResourceOptionsUnion<Response, Response>,
   ): HttpResourceRef<Response | undefined>;
   resource<TResult>(
-    reactiveReq: () => Request | undefined,
+    reactiveReq: (context: ResourceRequestContext) => Request | undefined,
     options: BaseHttpResourceOptionsWithParse<TResult, Response>,
   ): HttpResourceRef<TResult | undefined>;
 }
@@ -90,7 +99,7 @@ export interface RequestFnVoid<Request> {
   ): Observable<HttpEvent<void>>;
   observable(request: Request, options?: ObservableOptions): Observable<void>;
   resource(
-    reactiveReq: () => Request | undefined,
+    reactiveReq: (context: ResourceRequestContext) => Request | undefined,
     options?: HttpResourceOptionsUnion<void, unknown>,
   ): HttpResourceRef<void>;
 }
@@ -182,7 +191,9 @@ function makeRequestFn<Request, TResult, TRaw>(
   reqFn: (req: Request) => CommonRequest,
   observe: ObserveFn<TResult>,
   resourceImpl: (
-    request: () => CommonRequest | undefined,
+    // Optional: on Angular 20/21 httpResource expects a zero-arg callback and
+    // invokes it with no context.
+    request: (context?: ResourceRequestContext) => CommonRequest | undefined,
     options?: HttpResourceOptions<TResult, TRaw>,
   ) => HttpResourceRef<TResult | undefined>,
 ): RequestFn<Request, TResult> {
@@ -192,11 +203,11 @@ function makeRequestFn<Request, TResult, TRaw>(
     observable: (req: Request, options?: ObservableOptions): Observable<TResult> =>
       observe(wrappedReqFn(req), options),
     resource: (
-      reactiveReq: () => Request | undefined,
+      reactiveReq: (context: ResourceRequestContext | undefined) => Request | undefined,
       options?: HttpResourceOptionsUnion<TResult, TRaw>,
     ): HttpResourceRef<TResult | undefined> =>
-      resourceImpl(() => {
-        const request = reactiveReq();
+      resourceImpl(context => {
+        const request = reactiveReq(context);
         return request === undefined ? undefined : wrappedReqFn(request);
       }, options),
   } as RequestFn<Request, TResult>;
@@ -206,7 +217,9 @@ function makeZeroArgRequestFn<TResult, TRaw>(
   reqFn: () => CommonRequest,
   observe: ObserveFn<TResult>,
   resourceImpl: (
-    request: () => CommonRequest | undefined,
+    // Optional: on Angular 20/21 httpResource expects a zero-arg callback and
+    // invokes it with no context.
+    request: (context?: ResourceRequestContext) => CommonRequest | undefined,
     options?: HttpResourceOptions<TResult, TRaw>,
   ) => HttpResourceRef<TResult | undefined>,
 ): ZeroArgRequestFn<TResult> {

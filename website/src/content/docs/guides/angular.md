@@ -221,6 +221,36 @@ this.#petRest.getPet.resource(
 );
 ```
 
+### Chaining resources (Angular 22+)
+
+On Angular 22+ the callback receives `httpResource`'s params context, so
+a request can
+[chain](https://angular.dev/guide/signals/resource#chaining-resources)
+off any other `Resource` — the dependent resource mirrors its source's
+idle/loading/error status until it resolves. This pairs naturally with
+the experimental
+[`debounced`](https://angular.dev/guide/signals/debounced), which turns
+a signal into a `Resource` that resolves once the value settles:
+
+```ts
+protected readonly petId = signal('');
+readonly #debouncedPetId = debounced(this.petId, 300);
+
+protected readonly pet = this.#petRest.getPet.resource(({ chain }) => {
+  const petId = chain(this.#debouncedPetId);
+  return petId ? { petId } : undefined;
+});
+```
+
+While the user types, `pet` reports `loading` instead of firing a
+request per keystroke; the request goes out once the input settles (and
+is non-empty).
+
+The parameter's type, `ResourceRequestContext`, is derived from your
+installed Angular version: `ResourceParamsContext` on 22+, `unknown` on
+20/21 (which never pass a context). Zero-arg callbacks work on every
+version.
+
 ### Response metadata via the ref
 
 `HttpResourceRef` exposes the response envelope as Angular signals on
