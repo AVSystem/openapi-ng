@@ -178,6 +178,7 @@ jobs:
         node:
           - '22'
           - '24'
+          - '26'
     runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v7
@@ -216,6 +217,7 @@ jobs:
         node:
           - '22'
           - '24'
+          - '26'
     runs-on: ${{ contains(matrix.target, 'aarch64') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
