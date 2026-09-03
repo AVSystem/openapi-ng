@@ -361,6 +361,20 @@ jobs:
         run: pnpm napi create-npm-dirs
       - name: Move artifacts
         run: pnpm artifacts
+      # With a WASI target, `napi artifacts` treats native.js and browser.js as
+      # managed root entries: it rewrites browser.js as an ESM stub and deletes
+      # native.js. The committed files are the real entries.
+      - name: Restore committed entry files
+        run: git checkout -- native.js browser.js lib/index.js
+      - name: Verify package contents
+        run: |
+          npm pack --dry-run --json | node -e '
+            const files = new Set(JSON.parse(require("fs").readFileSync(0, "utf8"))[0].files.map(f => f.path));
+            const required = ["native.js", "browser.js", "browser.d.ts", "index.d.ts", "lib/index.js", "lib/browser.js"];
+            const missing = required.filter(f => !files.has(f));
+            if (missing.length) { console.error("package is missing: " + missing.join(", ")); process.exit(1); }
+            console.log("package contents ok: " + files.size + " files");
+          '
       - name: List packages
         run: ls -R ./npm
         shell: bash
