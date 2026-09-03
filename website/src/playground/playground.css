@@ -1,3 +1,74 @@
+/* Night Owl as Expressive Code renders it in the docs (its light variant is
+   contrast-adjusted there), on the background Starlight paints code blocks with. */
+:root[data-theme='dark'] {
+  --pg-bg: var(--sl-color-gray-6);
+  --pg-fg: #d6deeb;
+  --pg-gutter: #4b6479;
+  --pg-gutter-active: #c5e4fd;
+  --pg-active-line: #0003;
+  --pg-selection: #1d3b53;
+  --pg-cursor: #80a4c2;
+  --pg-bracket: #5f7e974d;
+  --pg-match: #1085bb5d;
+  --pg-match-selected: #5f7e9779;
+  --pg-tok-keyword: #c792ea;
+  --pg-tok-type: #ffcb8b;
+  --pg-tok-function: #82aaff;
+  --pg-tok-property: #faf39f;
+  --pg-tok-string: #ecc48d;
+  --pg-tok-interpolation: #e2817f;
+  --pg-tok-regexp: #5ca7e4;
+  --pg-tok-number: #f78c6c;
+  --pg-tok-literal: #ff6a83;
+  --pg-tok-operator: #7fdbca;
+  --pg-tok-comment: #919f9f;
+  --pg-tok-invalid: #ffffff;
+  --pg-tok-yaml-key: #7fdbca;
+  --pg-tok-yaml-value: #ecc48d;
+}
+:root[data-theme='light'] {
+  --pg-bg: var(--sl-color-gray-7);
+  --pg-fg: #403f53;
+  --pg-gutter: #90a7b2;
+  --pg-gutter-active: #403f53;
+  --pg-active-line: #f0f0f0;
+  --pg-selection: #e0e0e0;
+  --pg-cursor: #90a7b2;
+  --pg-bracket: #d3e8f8;
+  --pg-match: #93a1a16c;
+  --pg-match-selected: #93a1a1a6;
+  --pg-tok-keyword: #8844ae;
+  --pg-tok-type: #111111;
+  --pg-tok-function: #3b61b0;
+  --pg-tok-property: #111111;
+  --pg-tok-string: #984e4d;
+  --pg-tok-interpolation: #b23834;
+  --pg-tok-regexp: #3a688f;
+  --pg-tok-number: #aa0982;
+  --pg-tok-literal: #a24848;
+  --pg-tok-operator: #096e72;
+  --pg-tok-comment: #5d6376;
+  --pg-tok-invalid: #ff2c83;
+  --pg-tok-yaml-key: #111111;
+  --pg-tok-yaml-value: #3b61b0;
+}
+.tok-keyword { color: var(--pg-tok-keyword); }
+.tok-type { color: var(--pg-tok-type); }
+.tok-function { color: var(--pg-tok-function); }
+.tok-plain { color: var(--pg-fg); }
+.tok-property { color: var(--pg-tok-property); }
+.tok-string { color: var(--pg-tok-string); }
+.tok-interpolation { color: var(--pg-tok-interpolation); }
+.tok-regexp { color: var(--pg-tok-regexp); }
+.tok-number { color: var(--pg-tok-number); }
+.tok-literal { color: var(--pg-tok-literal); }
+.tok-operator { color: var(--pg-tok-operator); }
+.tok-comment { color: var(--pg-tok-comment); }
+.tok-invalid { color: var(--pg-tok-invalid); }
+/* Scoped YAML classes ride along with the base ones, so they must come last. */
+.tok-yaml-key { color: var(--pg-tok-yaml-key); }
+.tok-yaml-value { color: var(--pg-tok-yaml-value); }
+
 /* Scoped below the header, whose grid also reads this width. */
 main {
   --sl-content-width: 100%;

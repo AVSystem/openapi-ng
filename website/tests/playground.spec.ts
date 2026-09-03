@@ -275,7 +275,7 @@ test('shows the generated file in a read-only editor with line numbers and searc
   const output = page.locator('#pg-code');
   await expect(output.locator('.cm-content')).toHaveAttribute('contenteditable', 'false');
   await expect(output.locator('.cm-lineNumbers .cm-gutterElement').nth(1)).toHaveText('1');
-  await expect(output.locator('.cm-content .hljs-keyword').first()).toBeVisible();
+  await expect(output.locator('.cm-content .tok-keyword').first()).toBeVisible();
   await output.locator('.cm-content').click();
   await page.keyboard.press('ControlOrMeta+f');
   const search = output.locator('.cm-search');
@@ -287,6 +287,32 @@ test('shows the generated file in a read-only editor with line numbers and searc
   await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.type('x');
   await expect(output).toContainText('listPets');
+});
+
+test('paints the editors like the docs code blocks in both themes', async ({ page }) => {
+  const themed = async (theme: 'light' | 'dark', selector: string) => {
+    await page.evaluate(t => (document.documentElement.dataset.theme = t), theme);
+    return page.locator(selector).first().evaluate(el => getComputedStyle(el).backgroundColor);
+  };
+  const colourOf = (selector: string) =>
+    page.locator(selector).first().evaluate(el => getComputedStyle(el).color);
+  await page.goto('/getting-started/');
+  const snippet: Record<string, { background: string; keyword: string }> = {};
+  for (const theme of ['light', 'dark'] as const) {
+    snippet[theme] = {
+      background: await themed(theme, '.expressive-code pre'),
+      keyword: await colourOf('.expressive-code pre span:text-is("import")'),
+    };
+  }
+  expect(snippet.light.background).not.toBe(snippet.dark.background);
+  await ready(page);
+  await page.locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button').click();
+  for (const theme of ['light', 'dark'] as const) {
+    for (const pane of ['#pg-editor', '#pg-config', '#pg-code']) {
+      expect(await themed(theme, `${pane} .cm-editor`)).toBe(snippet[theme].background);
+    }
+    expect(await colourOf('#pg-code .tok-keyword')).toBe(snippet[theme].keyword);
+  }
 });
 
 test('shows a themed selection in the config editor', async ({ page }) => {

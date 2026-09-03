@@ -1,19 +1,11 @@
 ---
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
 import '../playground/playground.css';
-import hljsLight from 'highlight.js/styles/github.css?raw';
-import hljsDark from 'highlight.js/styles/github-dark.css?raw';
-
-// highlight.js ships light and dark as separate unscoped sheets; nesting them
-// under Starlight's theme attribute lets its toggle pick one.
-const hljsTheme =
-  `:root[data-theme='light'] { ${hljsLight} }\n` + `:root[data-theme='dark'] { ${hljsDark} }`;
 ---
 
 <StarlightPage
   frontmatter={{ title: 'Playground', template: 'splash', tableOfContents: false }}
 >
-  <style is:global set:html={hljsTheme}></style>
   <section class="pg not-content" aria-label="openapi-ng playground">
     <header class="pg-toolbar">
       <span id="pg-status" class="pg-status" role="status">Loading generator (about 600 KB)…</span>
