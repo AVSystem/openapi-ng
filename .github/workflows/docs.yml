@@ -7,10 +7,16 @@ on:
     paths:
       - 'website/**'
       - '.github/workflows/docs.yml'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'stackblitz/petstore.openapi.yaml'
   pull_request:
     paths:
       - 'website/**'
       - '.github/workflows/docs.yml'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'stackblitz/petstore.openapi.yaml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -43,6 +49,12 @@ jobs:
       - name: Type-check
         working-directory: website
         run: pnpm check
+      - name: Install Playwright browser
+        working-directory: website
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Test
+        working-directory: website
+        run: pnpm test
       - name: Deploy to production
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: cloudflare/wrangler-action@v3

@@ -12,7 +12,9 @@
     "preview": "astro preview",
     "astro": "astro",
     "check": "astro check",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test": "pnpm test:unit && pnpm test:e2e"
   },
   "dependencies": {
     "@astrojs/starlight": "0.41.7",
@@ -29,6 +31,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",
+    "@playwright/test": "1.62.1",
     "esbuild": "0.28.2",
     "typescript": "6.0.3",
     "vitest": "5.0.0",
