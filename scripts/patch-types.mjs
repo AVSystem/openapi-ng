@@ -27,8 +27,7 @@ const tailPath = path.join(repoRoot, 'index.d.ts.in');
 let content = fs.readFileSync(dtsPath, 'utf8');
 const tail = fs.readFileSync(tailPath, 'utf8');
 
-// Strip any prior tail concatenation so reruns stay idempotent. The
-// tail begins with the BEGIN marker comment.
+// Strip any prior tail concatenation so reruns stay idempotent.
 const TAIL_BEGIN = '\n// Hand-authored tail';
 const beginIdx = content.indexOf(TAIL_BEGIN);
 if (beginIdx !== -1) {
@@ -124,26 +123,29 @@ if (content.includes('naming?: NamingOptions')) {
   throw new Error('patch-types: expected `naming?: NamingOptions` in index.d.ts');
 }
 
-// `generate` becomes async on the JS wrapper boundary: it always
-// returns Promise<GenerateResult>. napi-rs emits a synchronous
-// signature because the Rust generate fn itself is sync; the wrapper
-// in lib/index.js adds the async semantics around URL fetching, so
-// the published surface must reflect that.
+// The native export and its union are wrapper-internal. Remove them (and
+// their leading doc comment) from the public surface; the hand-authored
+// tail declares `generate`.
+// `[^*]|\*(?!/)` (not `[\s\S]*?`) so the lazy match can't skip past this
+// declaration's own closing `*/` and swallow a later, unrelated block.
+const LEADING_DOC = '(?:^/\\*\\*(?:[^*]|\\*(?!/))*\\*/\\n)?';
+const NATIVE_FN_RE = new RegExp(
+  `${LEADING_DOC}^export declare function generateNative\\([^\\n]*\\n`,
+  'm',
+);
+const OUTCOME_RE = new RegExp(
+  `${LEADING_DOC}^export interface GenerateOutcome \\{[\\s\\S]*?^\\}\\n`,
+  'm',
+);
+content = content.replace(NATIVE_FN_RE, '').replace(OUTCOME_RE, '');
+// Scoped to the declaration forms because GenerateErrorPayload's doc comment
+// legitimately mentions `GenerateOutcome.error` in prose.
 if (
-  content.includes(
-    'export declare function generate(options: GenerateOptions): GenerateResult',
-  )
+  /^export (?:declare function generateNative|interface GenerateOutcome)\b/m.test(content)
 ) {
-  content = content.replace(
-    'export declare function generate(options: GenerateOptions): GenerateResult',
-    'export declare function generate(options: GenerateOptions): Promise<GenerateResult>',
+  throw new Error(
+    'patch-types: generateNative/GenerateOutcome declaration survived stripping; update the patterns',
   );
-} else if (
-  !content.includes(
-    'export declare function generate(options: GenerateOptions): Promise<GenerateResult>',
-  )
-) {
-  throw new Error('patch-types: expected `generate(...): GenerateResult` in index.d.ts');
 }
 
 // `inputPath` becomes optional on the published surface because the
@@ -160,6 +162,8 @@ if (content.includes('inputPath: string')) {
 }
 
 content = content.trimEnd() + '\n\n' + tail.trimEnd() + '\n';
+// Stripped declarations leave runs of blank lines behind.
+content = content.replace(/\n{3,}/g, '\n\n');
 
 fs.writeFileSync(dtsPath, content);
 console.log('patch-types: narrowed code/severity and appended tail to index.d.ts');
@@ -195,7 +199,7 @@ if (!nativeContent.includes(INJECTION_GUARD)) {
     '  throw new Error(\n' +
     "    'openapi-ng does not ship a native binary for ' + __OPENAPI_NG_PLATFORM_KEY__ + '. ' +\n" +
     "    'Supported platforms: ' + [...__OPENAPI_NG_SUPPORTED__].sort().join(', ') + '. ' +\n" +
-    "    'If you need this platform, please file an issue.',\n" +
+    "    'If you need this platform, please file an issue, or install @avsystem/openapi-ng-wasm32-wasi for a WebAssembly fallback.',\n" +
     '  );\n' +
     '}\n\n';
 
@@ -209,48 +213,12 @@ if (!nativeContent.includes(INJECTION_GUARD)) {
 }
 
 // ---------------------------------------------------------------------------
-// Re-author browser.js. `napi build` writes a single-line `export *` stub
-// that defeats our hand-authored entry. We overwrite unconditionally so
-// the post-build state is canonical regardless of what napi-rs emitted.
-// The browser entry is a hard-error stub — browser/edge runtimes are not
-// supported, so `generate()` throws `E_UNSUPPORTED_RUNTIME` at call time.
+// Re-author browser.js. `napi build` writes an `export *` stub over it, so
+// the post-build step restores the real entry, which lives in
+// lib/browser.js where napi never touches it.
 // ---------------------------------------------------------------------------
 const browserPath = path.join(repoRoot, 'browser.js');
-
-const browserContent = `'use strict';
-
-// Browser/edge entry point. openapi-ng requires the native binding to
-// generate code, so any browser or edge runtime (Vite/Webpack/esbuild
-// resolving the \`browser\` field, Cloudflare Workers, Vercel Edge, etc.)
-// gets a stub that throws \`E_UNSUPPORTED_RUNTIME\` at call time. The
-// module itself stays importable so bundlers don't choke at build time.
-
-const { GenerateError } = require('./lib/generate-error.js');
-
-async function generate() {
-  throw new GenerateError({
-    code: 'E_UNSUPPORTED_RUNTIME',
-    message:
-      'openapi-ng does not support browser or edge runtimes. ' +
-      'Run the generator from Node, or remove openapi-ng from your browser bundle.',
-    warnings: [],
-  });
-}
-
-// Frozen runtime shape for \`EmitTarget\`. Mirrors the ambient const
-// declared in \`index.d.ts\` and matches the \`lib/index.js\` entry, so the
-// surface a consumer destructures is identical across both runtimes.
-const EmitTarget = Object.freeze({
-  Models: 'models',
-  Angular: 'angular',
-});
-
-module.exports = {
-  generate,
-  GenerateError,
-  EmitTarget,
-};
-`;
+const browserContent = `'use strict';\n\nmodule.exports = require('./lib/browser.js');\n`;
 
 const existingBrowser = fs.existsSync(browserPath)
   ? fs.readFileSync(browserPath, 'utf8')
@@ -259,5 +227,15 @@ if (existingBrowser === browserContent) {
   console.log('patch-types: browser.js already canonical (idempotent skip)');
 } else {
   fs.writeFileSync(browserPath, browserContent);
-  console.log('patch-types: re-authored browser.js with hard-error stub');
+  console.log('patch-types: re-authored browser.js as a lib/browser.js re-export');
+}
+
+// `browser.d.ts` types the `./browser` subpath. napi never writes a file with
+// this name, so it is hand-authored and committed; fail loud if it goes
+// missing rather than publishing an untyped browser entry.
+const browserDtsPath = path.join(repoRoot, 'browser.d.ts');
+if (!fs.existsSync(browserDtsPath)) {
+  throw new Error(
+    'patch-types: browser.d.ts is missing — the ./browser subpath would publish untyped',
+  );
 }

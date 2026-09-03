@@ -105,6 +105,9 @@ jobs:
           - host: windows-latest
             target: aarch64-pc-windows-msvc
             build: pnpm build --target aarch64-pc-windows-msvc
+          - host: ubuntu-latest
+            target: wasm32-wasip1-threads
+            build: pnpm build --target wasm32-wasip1-threads
     name: stable - ${{ matrix.settings.target }}
     runs-on: ${{ matrix.settings.host }}
     steps:
@@ -156,7 +159,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: bindings-${{ matrix.settings.target }}
-          path: '*.node'
+          path: |
+            *.node
+            *.wasm
+            !*.debug.wasm
+            *.wasi.cjs
+            *.wasi-browser.js
+            *.wasi.d.cts
+            wasi-worker.mjs
+            wasi-worker-browser.mjs
           if-no-files-found: error
   test-macOS-windows-binding:
     name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
@@ -273,6 +284,55 @@ jobs:
           name: test-binding
           options: -v ${{ steps.docker.outputs.PNPM_STORE_PATH }}:${{ steps.docker.outputs.PNPM_STORE_PATH }} -v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform ${{ steps.docker.outputs.PLATFORM }}
           args: npm run test
+  test-wasm-binding:
+    name: Test wasm32-wasi binding - node@${{ matrix.node }}
+    needs:
+      - build
+    strategy:
+      fail-fast: false
+      matrix:
+        node:
+          - '22'
+          - '26'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: setup pnpm
+        uses: pnpm/action-setup@v6
+      - name: Setup node
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: bindings-wasm32-wasip1-threads
+          path: .
+      - name: Download native artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: bindings-x86_64-unknown-linux-gnu
+          path: .
+      - name: List packages
+        run: ls -R .
+        shell: bash
+      - name: Test bindings (WASI forced)
+        run: pnpm test
+        env:
+          # The generated loader only honours the literal strings 'true' and
+          # 'error'; 'error' would also force @oxc-node/core (ava's TS loader)
+          # onto a WASI build it does not ship.
+          NAPI_RS_FORCE_WASI: 'true'
+          # Node prints "ExperimentalWarning: WASI" on stderr, which CLI tests compare.
+          NODE_OPTIONS: --no-warnings
+      - name: Test bindings (native, WASI cross-check)
+        run: pnpm test
+        env:
+          OPENAPI_NG_EXPECT_WASI_BINDING: '1'
+          NODE_OPTIONS: --no-warnings
   publish:
     name: Publish
     runs-on: ubuntu-latest
@@ -281,6 +341,7 @@ jobs:
       - test-rust-cross-os
       - test-macOS-windows-binding
       - test-linux-binding
+      - test-wasm-binding
     steps:
       - uses: actions/checkout@v7
       - name: setup pnpm

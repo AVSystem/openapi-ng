@@ -1444,7 +1444,11 @@ test('generate wraps Rust panic into E_UNEXPECTED GenerateError', async t => {
     { instanceOf: GenerateError },
   );
   t.is(err?.code, 'E_UNEXPECTED');
-  t.regex(err?.message ?? '', /unexpected.*panic/i);
+  // wasm cannot unwind, so a panic traps as `unreachable` and the payload is
+  // lost; only the native binding carries the panic text through.
+  if (process.env.NAPI_RS_FORCE_WASI !== 'true') {
+    t.regex(err?.message ?? '', /unexpected.*panic/i);
+  }
 });
 
 test('GenerateError is a real class so consumers can guard with instanceof', async t => {
@@ -1508,11 +1512,11 @@ test('GenerateError.isGenerateError detects upgraded errors via the cross-realm 
   t.false(GenerateError.isGenerateError({ code: 'E_INVALID_OPTION' }));
 });
 
-test('GenerateError marker constant matches the value Rust embeds via build.rs', async t => {
-  // `lib/error-marker.json` is the single source of truth shared with
-  // the Rust binding through `env!("OPENAPI_NG_ERROR_MARKER")` (see
-  // build.rs). The constant inside the published JSON file must remain
-  // a non-empty string so the cross-realm marker survives the boundary.
+test('GenerateError marker constant is stamped by the constructor alone', async t => {
+  // `lib/error-marker.json` is the only source of the marker; the Rust side
+  // neither embeds nor reads it, `GenerateError`'s constructor stamps it.
+  // The constant must stay a non-empty string so the cross-realm marker
+  // survives the boundary.
   const marker = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'lib', 'error-marker.json'), 'utf8'),
   );

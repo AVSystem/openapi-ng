@@ -153,6 +153,12 @@ dist
 .pnp.*
 
 *.node
+*.wasm
+*.wasi.cjs
+*.wasi-browser.js
+*.wasi.d.cts
+wasi-worker.mjs
+wasi-worker-browser.mjs
 
 ### Node Patch ###
 # Serverless Webpack directories

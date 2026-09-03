@@ -68,6 +68,14 @@ await generate({
 | `responseTypeMapping` | Per-content-type override for the response decoding kind (`json` / `blob` / `text` / `arrayBuffer`). Matched case-insensitively against the spec's media types. Wires the right `requestFactory.*` variant. |
 | `naming`              | Customise emitted method and group names. See the [Configuration guide](/guides/configuration/).                                                                                                            |
 
+### Browser usage
+
+The same `generate` function is exported from the package's `browser`
+entry. Only two options differ: `inputPath` and `outputPath` are rejected
+with `E_INVALID_OPTION`; pass `inputContents` and `displayPath` and read
+`result.artifacts`. See [Runtime & platforms](/reference/runtime/#browsers)
+for installation and the required response headers.
+
 ### `MappedType`
 
 ```ts
