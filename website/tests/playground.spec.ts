@@ -182,15 +182,32 @@ test('scrolls inside each pane, never in a nested wrapper', async ({ page }) => 
       .evaluate(el => [el.scrollWidth, el.clientWidth]);
     expect(scrollWidth).toBe(clientWidth);
   }
-  // The output pane is the single scroller: the code element must not scroll too.
-  await expect(page.locator('.pg-output pre code')).toHaveCSS('overflow-x', 'visible');
-  const stable = await page.locator('.pg-output').evaluate(async el => {
-    const before = el.scrollWidth;
-    el.scrollLeft = el.scrollWidth;
-    await new Promise(r => setTimeout(r, 200));
-    return [before, el.scrollWidth];
-  });
-  expect(stable[1]).toBe(stable[0]);
+  // The output editor scrolls inside its own scroller as well.
+  await expect(page.locator('.pg-output')).toHaveCSS('overflow-x', 'hidden');
+  const [outputScrollWidth, outputClientWidth] = await page
+    .locator('.pg-output')
+    .evaluate(el => [el.scrollWidth, el.clientWidth]);
+  expect(outputScrollWidth).toBe(outputClientWidth);
+});
+
+test('shows the generated file in a read-only editor with line numbers and search', async ({ page }) => {
+  await ready(page);
+  await page.locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button').click();
+  const output = page.locator('#pg-code');
+  await expect(output.locator('.cm-content')).toHaveAttribute('contenteditable', 'false');
+  await expect(output.locator('.cm-lineNumbers .cm-gutterElement').nth(1)).toHaveText('1');
+  await expect(output.locator('.cm-content .hljs-keyword').first()).toBeVisible();
+  await output.locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+f');
+  const search = output.locator('.cm-search');
+  await expect(search).toBeVisible();
+  await search.locator('input[name="search"]').pressSequentially('listPets');
+  await page.keyboard.press('Enter');
+  await expect(output.locator('.cm-searchMatch-selected')).toHaveText('listPets');
+  await output.locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.type('x');
+  await expect(output).toContainText('listPets');
 });
 
 test('shows a themed selection in the config editor', async ({ page }) => {

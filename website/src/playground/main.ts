@@ -4,7 +4,7 @@ import { DEFAULT_CONFIG, parseConfig } from './config';
 import { createEditor } from './editor';
 import { detectFormat, displayPathFor } from './format';
 import { engineVersion, GenerateError, loadGenerate, type GenerateFn } from './generator';
-import { copyText, renderOutput } from './output';
+import { copyText, createOutput } from './output';
 import { buildTree, renderTree } from './tree';
 
 const DEBOUNCE_MS = 150;
@@ -41,7 +41,6 @@ export function start(doc: Document): void {
 
   const status = byId<HTMLElement>(doc, 'pg-status');
   const treeEl = byId<HTMLElement>(doc, 'pg-tree');
-  const codeEl = byId<HTMLElement>(doc, 'pg-code');
   const summaryEl = byId<HTMLElement>(doc, 'pg-summary');
   const diagnosticsEl = byId<HTMLUListElement>(doc, 'pg-diagnostics');
 
@@ -60,6 +59,7 @@ export function start(doc: Document): void {
   }
 
   const editor = createEditor(byId(doc, 'pg-editor'), petstoreSpec, schedule);
+  const output = createOutput(byId(doc, 'pg-code'));
   const configEditor = createEditor(byId(doc, 'pg-config'), DEFAULT_CONFIG, schedule);
 
   function schedule(): void {
@@ -89,7 +89,7 @@ export function start(doc: Document): void {
     const rows = buildTree(lastResult.artifacts);
     renderTree(treeEl, rows, selectedPath, select);
     const artifact = lastResult.artifacts.find(a => a.path === path);
-    if (artifact) renderOutput(codeEl, artifact.contents);
+    if (artifact) output.setValue(artifact.contents);
   }
 
   function showResult(result: GenerateResult, elapsedMs: number, notes: string[]): void {
@@ -99,7 +99,7 @@ export function start(doc: Document): void {
     if (!selectedPath || !paths.includes(selectedPath)) selectedPath = paths[0] ?? null;
     renderTree(treeEl, buildTree(result.artifacts), selectedPath, select);
     const current = result.artifacts.find(a => a.path === selectedPath);
-    renderOutput(codeEl, current ? current.contents : '');
+    output.setValue(current ? current.contents : '');
     summaryEl.textContent =
       `${result.summary.operationCount} operations · ${result.summary.schemaCount} schemas · ` +
       `${result.artifacts.length} files · ${elapsedMs.toFixed(0)} ms`;

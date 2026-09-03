@@ -105,11 +105,13 @@ main {
 }
 /* CodeMirror scrolls itself; a second scroller here would fight its measuring. */
 .pg-editor,
-.pg-config {
+.pg-config,
+.pg-output {
   overflow: hidden;
 }
 .pg-editor .cm-editor,
-.pg-config .cm-editor {
+.pg-config .cm-editor,
+.pg-output .cm-editor {
   height: 100%;
   font-size: 0.8rem;
 }
@@ -160,26 +162,14 @@ main {
 .pg-output {
   position: relative;
 }
-.pg-output pre {
-  margin: 0;
+.pg-code {
   height: 100%;
-  font-size: 0.75rem;
-}
-/* The pane is the only scroller; the hljs theme's own overflow on `code`
-   would otherwise nest a second one and resize the pane as you scroll. The id
-   outranks that theme's `pre code.hljs`, which ties on specificity and is
-   injected later in the document. */
-#pg-code.hljs {
-  box-sizing: border-box;
-  min-height: 100%;
-  overflow: visible;
-  width: max-content;
-  min-width: 100%;
 }
 .pg-copy {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
+  z-index: 1;
 }
 .pg-console {
   max-height: 9rem;
