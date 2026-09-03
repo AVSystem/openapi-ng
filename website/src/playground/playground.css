@@ -1,0 +1,112 @@
+.pg {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.75rem;
+  height: calc(100vh - var(--sl-nav-height) - 3rem);
+  min-height: 32rem;
+}
+.pg-toolbar,
+.pg-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  font-size: var(--sl-text-sm);
+}
+.pg-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.pg button {
+  border: 1px solid var(--sl-color-gray-5);
+  background: var(--sl-color-bg-nav);
+  color: var(--sl-color-white);
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  cursor: pointer;
+}
+.pg-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) 14rem minmax(0, 6fr);
+  gap: 0.75rem;
+  min-height: 0;
+}
+.pg-editor,
+.pg-tree,
+.pg-output {
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
+  overflow: auto;
+  min-height: 0;
+}
+.pg-editor .cm-editor {
+  height: 100%;
+  font-size: 0.8rem;
+}
+.pg-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0;
+}
+.pg-tree li {
+  padding: 0.25rem 0.75rem;
+  font-family: var(--__sl-font-mono);
+  font-size: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.pg-tree li[data-depth='1'] {
+  padding-left: 1.75rem;
+}
+.pg-tree li.is-dir {
+  cursor: default;
+  color: var(--sl-color-gray-3);
+}
+.pg-tree li.is-selected {
+  background: var(--sl-color-gray-6);
+}
+.pg-tree .size {
+  color: var(--sl-color-gray-3);
+}
+.pg-output {
+  position: relative;
+}
+.pg-output pre {
+  margin: 0;
+  height: 100%;
+  font-size: 0.75rem;
+}
+.pg-copy {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
+.pg-diagnostics {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.pg-diagnostics li {
+  font-family: var(--__sl-font-mono);
+  font-size: 0.75rem;
+}
+.pg-diagnostics li.is-error {
+  color: var(--sl-color-red);
+}
+.pg.is-stale .pg-tree,
+.pg.is-stale .pg-output {
+  opacity: 0.5;
+}
+.pg-unsupported {
+  padding: 2rem;
+}
+@media (max-width: 72rem) {
+  .pg-panes {
+    grid-template-columns: 1fr;
+    grid-template-rows: 20rem auto 20rem;
+  }
+}

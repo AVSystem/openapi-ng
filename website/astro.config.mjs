@@ -30,6 +30,7 @@ export default defineConfig({
           items: [
             { label: 'Introduction', slug: '' },
             { label: 'Getting started', slug: 'getting-started' },
+            { label: 'Playground', link: '/playground/' },
           ],
         },
         {
@@ -53,4 +54,8 @@ export default defineConfig({
       ],
     }),
   ],
+  vite: {
+    build: { target: 'es2022' },
+    server: { fs: { allow: ['..'] } },
+  },
 });

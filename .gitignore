@@ -240,3 +240,5 @@ tmp/
 
 *.bak
 
+website/public/playground-engine/
+

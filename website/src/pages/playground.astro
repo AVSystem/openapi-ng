@@ -1,0 +1,35 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import '../playground/playground.css';
+---
+
+<StarlightPage
+  frontmatter={{ title: 'Playground', template: 'splash', tableOfContents: false }}
+>
+  <section class="pg" aria-label="openapi-ng playground">
+    <header class="pg-toolbar">
+      <span id="pg-status" class="pg-status" role="status">Loading generator (about 600 KB)…</span>
+      <span class="pg-actions">
+        <button id="pg-reset" type="button">Load petstore</button>
+        <button id="pg-share" type="button">Share</button>
+      </span>
+    </header>
+    <div class="pg-panes">
+      <div id="pg-editor" class="pg-editor" aria-label="OpenAPI spec"></div>
+      <nav id="pg-tree" class="pg-tree" aria-label="Generated files"></nav>
+      <div class="pg-output">
+        <button id="pg-copy" class="pg-copy" type="button">Copy</button>
+        <pre><code id="pg-code" class="language-typescript"></code></pre>
+      </div>
+    </div>
+    <footer class="pg-footer">
+      <span id="pg-summary" class="pg-summary"></span>
+      <ul id="pg-diagnostics" class="pg-diagnostics"></ul>
+    </footer>
+  </section>
+</StarlightPage>
+
+<script>
+  import { start } from '../playground/main';
+  start(document);
+</script>
