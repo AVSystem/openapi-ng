@@ -76,7 +76,10 @@ export function start(doc: Document): void {
       diagnosticsEl.append(li);
     };
     for (const error of errors) append(error, 'is-error');
-    for (const warning of warnings) append(describe(warning));
+    // A diagnostic list can carry either severity; colour by what it says.
+    for (const item of warnings) {
+      append(describe(item), item.severity === 'error' ? 'is-error' : 'is-warning');
+    }
     for (const note of notes) append(note, 'is-note');
   }
 

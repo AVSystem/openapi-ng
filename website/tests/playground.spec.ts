@@ -3,6 +3,17 @@ import { expect, test, type Page } from '@playwright/test';
 const INVALID_SPEC =
   'openapi: 3.0.3\ninfo: {title: x, version: "1"}\npaths: {/a: {get: {responses: {"200": {description: ok}}}}}';
 
+const COOKIE_PARAM_SPEC = [
+  'openapi: 3.0.3',
+  'info: {title: cookies, version: "1"}',
+  'paths:',
+  '  /a:',
+  '    get:',
+  '      operationId: getA',
+  '      parameters: [{name: sid, in: cookie, schema: {type: string}}]',
+  '      responses: {"200": {description: ok}}',
+].join('\n');
+
 const SNAKE_CASE_CONFIG = JSON.stringify({
   input: './openapi/internal.json',
   output: './libs/openapi-ng',
@@ -36,6 +47,63 @@ test('shows a typed diagnostic for an unsupported spec', async ({ page }) => {
   await replaceText(page, '#pg-editor', INVALID_SPEC);
   await expect(page.locator('#pg-diagnostics li.is-error')).toContainText('E_POLICY_VIOLATION');
   await expect(page.locator('#pg-diagnostics li.is-error')).toContainText('missing-operation-id');
+});
+
+test('separates warnings from errors and notes by colour', async ({ page }) => {
+  await ready(page);
+  await replaceText(page, '#pg-editor', COOKIE_PARAM_SPEC);
+  const warning = page.locator('#pg-diagnostics li.is-warning');
+  await expect(warning).toContainText('unsupported-parameter-location');
+  await replaceText(page, '#pg-config', '{"emit": ["models"], "input": "./spec.yaml"}');
+  const note = page.locator('#pg-diagnostics li.is-note');
+  await expect(note).toContainText('input and output are ignored');
+  await replaceText(page, '#pg-config', '{"emit": [');
+  const error = page.locator('#pg-diagnostics li.is-error');
+  await expect(error).toContainText('not valid JSON');
+  const colours = await page.evaluate(() => {
+    const colourOf = (cls: string) => {
+      const el = document.createElement('li');
+      el.className = cls;
+      document.querySelector('#pg-diagnostics')!.append(el);
+      const colour = getComputedStyle(el).color;
+      el.remove();
+      return colour;
+    };
+    return ['is-warning', 'is-error', 'is-note', ''].map(colourOf);
+  });
+  expect(new Set(colours).size).toBe(4);
+});
+
+test('keeps diagnostic colours readable in both themes', async ({ page }) => {
+  await ready(page);
+  const contrasts = await page.evaluate(() => {
+    const luminance = (colour: string) => {
+      const [r, g, b] = colour.match(/\d+/g)!.map(Number).map(v => {
+        const channel = v / 255;
+        return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const ratio = (a: string, b: string) => {
+      const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+      return (hi + 0.05) / (lo + 0.05);
+    };
+    const consoleEl = document.querySelector('#pg-console')!;
+    const out: number[] = [];
+    for (const theme of ['light', 'dark']) {
+      document.documentElement.dataset.theme = theme;
+      const background = getComputedStyle(consoleEl).backgroundColor;
+      for (const className of ['is-warning', 'is-error', 'is-note']) {
+        const li = document.createElement('li');
+        li.className = className;
+        document.querySelector('#pg-diagnostics')!.append(li);
+        out.push(ratio(getComputedStyle(li).color, background));
+        li.remove();
+      }
+    }
+    return out;
+  });
+  for (const contrast of contrasts) expect(contrast).toBeGreaterThanOrEqual(4.5);
 });
 
 test('applies a pasted project config to the generated names', async ({ page }) => {

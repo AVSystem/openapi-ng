@@ -202,11 +202,16 @@ main {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+/* The `-high` tints are the readable pair: the mid tones drop under 3.5:1
+   against the console background in the light theme. */
 .pg-diagnostics li.is-error {
-  color: var(--sl-color-red);
+  color: var(--sl-color-red-high);
+}
+.pg-diagnostics li.is-warning {
+  color: var(--sl-color-orange-high);
 }
 .pg-diagnostics li.is-note {
-  color: var(--sl-color-gray-3);
+  color: var(--sl-color-blue-high);
 }
 .pg.is-stale .pg-tree,
 .pg.is-stale .pg-output {
