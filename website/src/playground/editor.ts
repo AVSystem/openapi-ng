@@ -26,6 +26,18 @@ export function createEditor(
         basicSetup,
         chrome,
         language.of(format === 'json' ? json() : yaml()),
+        // CodeMirror's own handler would splice the file in at the cursor.
+        EditorView.domEventHandlers({
+          drop(event, view) {
+            const file = event.dataTransfer?.files[0];
+            if (!file) return false;
+            event.preventDefault();
+            void file.text().then(text => {
+              view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
+            });
+            return true;
+          },
+        }),
         EditorView.updateListener.of(update => {
           if (!update.docChanged) return;
           const value = update.state.doc.toString();

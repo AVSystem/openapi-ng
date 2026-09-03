@@ -143,6 +143,14 @@ export function start(doc: Document): void {
     }
   }
 
+  const fileInput = byId<HTMLInputElement>(doc, 'pg-file');
+  byId<HTMLButtonElement>(doc, 'pg-open').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files?.[0];
+    // Cleared so picking the same file again still fires `change`.
+    fileInput.value = '';
+    if (file) editor.setValue(await file.text());
+  });
   byId<HTMLButtonElement>(doc, 'pg-reset').addEventListener('click', () => {
     editor.setValue(petstoreSpec);
     configEditor.setValue(DEFAULT_CONFIG);

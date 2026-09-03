@@ -190,6 +190,26 @@ test('scrolls inside each pane, never in a nested wrapper', async ({ page }) => 
   expect(outputScrollWidth).toBe(outputClientWidth);
 });
 
+test('opens a spec file from disk or by dropping it on the editor', async ({ page }) => {
+  await ready(page);
+  await page.locator('#pg-file').setInputFiles({
+    name: 'cookies.yaml',
+    mimeType: 'application/yaml',
+    buffer: Buffer.from(COOKIE_PARAM_SPEC),
+  });
+  await expect(page.locator('#pg-editor .cm-content')).toContainText('operationId: getA');
+  await expect(page.locator('#pg-diagnostics li.is-warning')).toContainText('unsupported-parameter-location');
+  // Dropping a file replaces the document instead of splicing it in at the cursor.
+  await page.locator('#pg-editor .cm-content').evaluate((el, spec) => {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File([spec], 'invalid.yaml', { type: 'application/yaml' }));
+    el.dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }));
+  }, INVALID_SPEC);
+  await expect(page.locator('#pg-editor .cm-content')).not.toContainText('getA');
+  await expect(page.locator('#pg-editor .cm-content')).toContainText('/a: {get:');
+  await expect(page.locator('#pg-diagnostics li.is-error')).toContainText('missing-operation-id');
+});
+
 test('shows the generated file in a read-only editor with line numbers and search', async ({ page }) => {
   await ready(page);
   await page.locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button').click();
