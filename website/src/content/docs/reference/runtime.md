@@ -76,6 +76,8 @@ WebAssembly binding cannot be loaded, `generate()` rejects with
 `E_UNSUPPORTED_RUNTIME` and a message naming the missing package or
 header.
 
+Try it without installing anything: [the playground](/playground/).
+
 ## Edge runtimes
 
 Cloudflare Workers, Vercel Edge and Deno Deploy are not verified. The
