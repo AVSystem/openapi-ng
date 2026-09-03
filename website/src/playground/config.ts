@@ -1,4 +1,5 @@
 import type { GenerateOptions } from '@avsystem/openapi-ng/browser';
+import stripJsonComments from 'strip-json-comments';
 
 export type ConfigOptions = Pick<
   GenerateOptions,
@@ -9,7 +10,34 @@ export type ParsedConfig =
   | { ok: true; options: ConfigOptions; notes: string[] }
   | { ok: false; error: string };
 
-export const DEFAULT_CONFIG = '{\n  "emit": ["models", "angular"]\n}\n';
+// Commented-out options spell out the generator's defaults; enabling them
+// all must not change the output.
+export const DEFAULT_CONFIG = `{
+  "emit": ["models", "angular"],
+
+  // External TypeScript types standing in for schemas,
+  // e.g. { "schema": "GeoFeature", "import": "geojson", "type": "Feature", "alias": "Geo" }
+  // "mappedTypes": [],
+
+  // Decode a response content type as "json" | "blob" | "text" | "arrayBuffer",
+  // e.g. { "contentType": "application/pdf", "responseType": "blob" }
+  // "responseTypeMapping": [],
+
+  // Naming chains: each rule runs in turn until one succeeds.
+  // Write "parse" regexes as "/…/flags".
+  // "naming": {
+  //   "methodName": [
+  //     { "format": "{operationId}", "case": "camel" },
+  //     { "format": "{method}_{path}", "case": "camel" }
+  //   ],
+  //   "group": [
+  //     { "format": "{tags[0]}", "case": "pascal" },
+  //     { "format": "{pathSegments[0]}", "case": "pascal" },
+  //     { "format": "Default" }
+  //   ]
+  // }
+}
+`;
 
 const REGEX_LITERAL = /^\/(.*)\/([a-z]*)$/s;
 
@@ -38,9 +66,9 @@ function lowerNaming(value: unknown, path: string): unknown {
 export function parseConfig(text: string): ParsedConfig {
   let doc: unknown;
   try {
-    doc = JSON.parse(text);
+    doc = JSON.parse(stripJsonComments(text, { trailingCommas: true }));
   } catch (err) {
-    return { ok: false, error: `config is not valid JSON: ${(err as Error).message}` };
+    return { ok: false, error: `config is not valid JSONC: ${(err as Error).message}` };
   }
   if (!isRecord(doc)) return { ok: false, error: 'config must be a JSON object' };
 

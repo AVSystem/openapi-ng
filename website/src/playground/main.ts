@@ -1,4 +1,5 @@
 import petstoreSpec from '../../../stackblitz/petstore.openapi.yaml?raw';
+import { javascript } from '@codemirror/lang-javascript';
 import type { GenerateResult, GeneratorDiagnostic } from '@avsystem/openapi-ng/browser';
 import { DEFAULT_CONFIG, parseConfig } from './config';
 import { createEditor } from './editor';
@@ -60,7 +61,8 @@ export function start(doc: Document): void {
 
   const editor = createEditor(byId(doc, 'pg-editor'), petstoreSpec, schedule);
   const output = createOutput(byId(doc, 'pg-code'));
-  const configEditor = createEditor(byId(doc, 'pg-config'), DEFAULT_CONFIG, schedule);
+  // The JSON grammar has no comments; the JavaScript one highlights JSONC fine.
+  const configEditor = createEditor(byId(doc, 'pg-config'), DEFAULT_CONFIG, schedule, javascript());
 
   function schedule(): void {
     clearTimeout(timer);
@@ -140,6 +142,9 @@ export function start(doc: Document): void {
         summaryEl.textContent = err instanceof Error ? err.message : String(err);
         renderConsole({ notes: config.notes });
       }
+    } finally {
+      // Lets tests and tooling wait for a specific edit's generation to settle.
+      if (id === runId) root!.dataset.run = String(id);
     }
   }
 

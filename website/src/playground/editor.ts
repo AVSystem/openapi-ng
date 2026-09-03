@@ -1,4 +1,4 @@
-import { EditorState, Compartment } from '@codemirror/state';
+import { EditorState, Compartment, type Extension } from '@codemirror/state';
 import { EditorView, basicSetup } from 'codemirror';
 import { json } from '@codemirror/lang-json';
 import { yaml } from '@codemirror/lang-yaml';
@@ -10,10 +10,12 @@ export interface SpecEditor {
   setValue(value: string): void;
 }
 
+// Without an explicit language the editor follows the document between YAML and JSON.
 export function createEditor(
   parent: HTMLElement,
   initial: string,
   onChange: (value: string) => void,
+  fixedLanguage?: Extension,
 ): SpecEditor {
   const language = new Compartment();
   let format: SpecFormat = detectFormat(initial);
@@ -25,7 +27,7 @@ export function createEditor(
       extensions: [
         basicSetup,
         chrome,
-        language.of(format === 'json' ? json() : yaml()),
+        fixedLanguage ?? language.of(format === 'json' ? json() : yaml()),
         // CodeMirror's own handler would splice the file in at the cursor.
         EditorView.domEventHandlers({
           drop(event, view) {
@@ -42,7 +44,7 @@ export function createEditor(
           if (!update.docChanged) return;
           const value = update.state.doc.toString();
           const next = detectFormat(value);
-          if (next !== format) {
+          if (!fixedLanguage && next !== format) {
             format = next;
             view.dispatch({ effects: language.reconfigure(next === 'json' ? json() : yaml()) });
           }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { uncommentConfig } from '../../tests/uncomment';
 import { DEFAULT_CONFIG, parseConfig } from './config';
 
 describe('parseConfig', () => {
@@ -89,7 +90,12 @@ describe('parseConfig', () => {
   it('rejects invalid JSON', () => {
     const result = parseConfig('{"emit": [');
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toMatch(/^config is not valid JSON: /);
+    if (!result.ok) expect(result.error).toMatch(/^config is not valid JSONC: /);
+  });
+
+  it('accepts comments and trailing commas', () => {
+    const text = '{\n  // both\n  "emit": ["models", /* inline */ "angular",],\n}\n';
+    expect(parseConfig(text)).toEqual({ ok: true, options: { emit: ['models', 'angular'] }, notes: [] });
   });
 
   it('rejects a non-object document', () => {
@@ -101,6 +107,31 @@ describe('parseConfig', () => {
     expect(parseConfig(DEFAULT_CONFIG)).toEqual({
       ok: true,
       options: { emit: ['models', 'angular'] },
+      notes: [],
+    });
+  });
+
+  it('ships a default whose commented-out options all parse once enabled', () => {
+    const enabled = uncommentConfig(DEFAULT_CONFIG);
+    expect(enabled).not.toContain('//   ');
+    expect(parseConfig(enabled)).toEqual({
+      ok: true,
+      options: {
+        emit: ['models', 'angular'],
+        mappedTypes: [],
+        responseTypeMapping: [],
+        naming: {
+          methodName: [
+            { format: '{operationId}', case: 'camel' },
+            { format: '{method}_{path}', case: 'camel' },
+          ],
+          group: [
+            { format: '{tags[0]}', case: 'pascal' },
+            { format: '{pathSegments[0]}', case: 'pascal' },
+            { format: 'Default' },
+          ],
+        },
+      },
       notes: [],
     });
   });

@@ -77,7 +77,7 @@ main > .content-panel:first-child {
 }
 .pg-inputs {
   display: grid;
-  grid-template-rows: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 3fr) minmax(0, 2fr);
   gap: 0.75rem;
   min-height: 0;
 }

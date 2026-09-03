@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import { DEFAULT_CONFIG } from '../src/playground/config';
+import { uncommentConfig } from './uncomment';
 
 const INVALID_SPEC =
   'openapi: 3.0.3\ninfo: {title: x, version: "1"}\npaths: {/a: {get: {responses: {"200": {description: ok}}}}}';
@@ -59,7 +61,7 @@ test('separates warnings from errors and notes by colour', async ({ page }) => {
   await expect(note).toContainText('input and output are ignored');
   await replaceText(page, '#pg-config', '{"emit": [');
   const error = page.locator('#pg-diagnostics li.is-error');
-  await expect(error).toContainText('not valid JSON');
+  await expect(error).toContainText('not valid JSONC');
   const colours = await page.evaluate(() => {
     const colourOf = (cls: string) => {
       const el = document.createElement('li');
@@ -122,6 +124,47 @@ test('reports a broken config in the console and keeps the last output', async (
   await expect(page.locator('.pg')).toHaveClass(/is-stale/);
   await replaceText(page, '#pg-config', '{"emit": ["models"], "typo": true}');
   await expect(page.locator('#pg-diagnostics li.is-error')).toContainText('E_INVALID_OPTION');
+});
+
+const NO_TAGS_SPEC = [
+  'openapi: 3.0.3',
+  'info: {title: untagged, version: "1"}',
+  'paths:',
+  '  /store-items/{itemId}:',
+  '    get:',
+  '      operationId: fetch_storeItem',
+  '      parameters: [{name: itemId, in: path, required: true, schema: {type: string}}]',
+  '      responses: {"200": {description: ok}}',
+].join('\n');
+
+test('generates the same files with every default option enabled in the config', async ({ page }) => {
+  await ready(page);
+  const artifacts = () =>
+    page.locator('#pg-tree li[data-path]').evaluateAll(els => els.map(el => el.getAttribute('data-path')));
+  // The editor renders only the viewport, so the tree's byte size covers the rest.
+  const codeOf = async (path: string) => {
+    const row = page.locator(`#pg-tree li[data-path="${path}"]`);
+    await row.locator('button').click();
+    return `${await row.locator('.size').innerText()}\n${await page.locator('#pg-code .cm-content').innerText()}`;
+  };
+  const generated = async (edit: () => Promise<void>) => {
+    const before = await page.locator('.pg').getAttribute('data-run');
+    await edit();
+    await expect(page.locator('.pg')).not.toHaveAttribute('data-run', before ?? '');
+    await expect(page.locator('#pg-diagnostics li.is-error')).toHaveCount(0);
+  };
+  for (const spec of [null, NO_TAGS_SPEC]) {
+    await generated(async () => {
+      if (spec) await replaceText(page, '#pg-editor', spec);
+      await replaceText(page, '#pg-config', DEFAULT_CONFIG);
+    });
+    const paths = await artifacts();
+    const expected = new Map<string, string>();
+    for (const path of paths) expected.set(path!, await codeOf(path!));
+    await generated(() => replaceText(page, '#pg-config', uncommentConfig(DEFAULT_CONFIG)));
+    expect(await artifacts()).toEqual(paths);
+    for (const [path, code] of expected) expect(await codeOf(path)).toBe(code);
+  }
 });
 
 test('lays the panes out untouched by the prose styles', async ({ page }) => {
