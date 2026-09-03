@@ -10,3 +10,6 @@ allowBuilds:
 overrides:
   'tar@<7.5.15': '7.5.15'
   'glob@<13': '13.0.6'
+  emnapi: 1.11.3
+  '@emnapi/core': 1.11.3
+  '@emnapi/runtime': 1.11.3

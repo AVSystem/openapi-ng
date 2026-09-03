@@ -10,8 +10,6 @@ export declare const EmitTarget: {
   readonly Angular: 'angular';
 };
 
-export declare function generate(options: GenerateOptions): Promise<GenerateResult>
-
 /**
  * A single generated artifact. `contents` always carries the emitted
  * source; callers that only need on-disk output can pass `outputPath`
@@ -23,11 +21,10 @@ export interface GeneratedArtifact {
 }
 
 /**
- * Payload attached to every fatal native throw. The JS wrapper in
- * `lib/index.js` upgrades the thrown plain Error into a `GenerateError`
- * (a real JS class that extends Error), copying these own-properties
- * across so consumers can `instanceof GenerateError` and still read
- * `code/subcode/message/path/warnings`.
+ * Payload returned inside `GenerateOutcome.error`. The JS wrapper
+ * constructs a `GenerateError` (a real JS class that extends Error)
+ * from these fields, so consumers can `instanceof GenerateError` and
+ * read `code/subcode/message/path/warnings`.
  *
  * The fatal sits at the top level (`code/subcode/message/path`); pre-fatal
  * warnings ride in `warnings`. `subcode` is set for `PolicyViolation`
@@ -218,16 +215,16 @@ export interface ResponseTypeMapping {
 // Hand-authored tail concatenated onto the napi-rs-generated index.d.ts
 // by scripts/patch-types.mjs. Contains TS surface that napi-rs cannot
 // emit on its own (named string-literal unions, the GenerateError class
-// defined in lib/index.js).
+// defined in lib/generate-error.js).
 
 /**
  * Diagnostic code taxonomy. Each value maps 1:1 to a Rust DiagnosticCode,
  * except `E_UNEXPECTED` and `E_UNSUPPORTED_RUNTIME`, which are reserved
- * for the JS wrapper in `lib/index.js`:
+ * for the JS wrappers:
  *   - `E_UNEXPECTED` is a defensive fallback when a `GenerateError` is
  *     constructed without an explicit `code`.
- *   - `E_UNSUPPORTED_RUNTIME` is thrown by `browser.js` when `generate()`
- *     is called in a browser or edge runtime (no native binding available).
+ *   - `E_UNSUPPORTED_RUNTIME` is thrown by the browser entry when the
+ *     WebAssembly binding cannot be loaded.
  *
  * `E_INVALID_OPTION` covers both wrapper-side shape rejections (a JS
  * caller passed an option whose type/shape is wrong — surfaced with
@@ -282,9 +279,9 @@ export type DiagnosticSubcode =
  * that extends `Error`, so consumers can write `err instanceof
  * GenerateError`.
  *
- * Defined in `lib/index.js` (not by napi-rs) — the native binding
- * throws a plain Error carrying these own-properties and a marker that
- * the JS wrapper uses to upgrade it.
+ * Defined in `lib/generate-error.js`. The native binding returns the
+ * payload as data; the JS wrappers (`lib/index.js`, `lib/browser.js`)
+ * construct and throw this class.
  */
 export declare class GenerateError extends Error {
   constructor(payload: GenerateErrorPayload);
@@ -349,6 +346,13 @@ export interface Config {
   responseTypeMapping?: Array<ResponseTypeMapping>;
   naming?: NamingConfig;
 }
+
+/**
+ * Generate TypeScript artifacts from an OpenAPI 3.x document. Resolves
+ * with the summary, warnings and artifacts; rejects with `GenerateError`
+ * on any fatal diagnostic.
+ */
+export declare function generate(options: GenerateOptions): Promise<GenerateResult>;
 
 /**
  * Identity helper that anchors TypeScript inference for JS/TS configs:

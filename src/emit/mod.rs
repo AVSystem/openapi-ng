@@ -45,19 +45,20 @@ pub(crate) fn render_generated_banner(source_path: &str) -> String {
 /// Relativise an input path against the current working directory.
 /// Returns the input unchanged when:
 ///   - the input is not absolute (already relative — caller's call), or
-///   - `current_dir()` is unavailable (e.g. CWD was deleted), or
+///   - the host cwd is unknown (e.g. CWD was deleted), or
 ///   - `strip_prefix` fails (path lives outside CWD).
 ///
 /// Uses forward slashes on the result so banner format stays
 /// platform-independent and matches `pipeline::generate`'s display-path
 /// normalization.
 fn relativise_against_cwd(source_path: &str) -> String {
+  use crate::io::host_cwd::host_cwd;
   use std::path::Path;
   let input = Path::new(source_path);
   if !input.is_absolute() {
     return source_path.to_owned();
   }
-  let Ok(cwd) = std::env::current_dir() else {
+  let Some(cwd) = host_cwd() else {
     return source_path.to_owned();
   };
   input.strip_prefix(&cwd).map_or_else(

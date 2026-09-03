@@ -11,41 +11,55 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(__dirname, '..');
 const require = createRequire(import.meta.url);
 
-test('browser entry exists and fails with an explicit unsupported-runtime error', async t => {
-  const browserEntry = require(path.join(repoRoot, 'browser.js')) as {
-    generate: (options?: unknown) => Promise<never>;
-  };
-
-  t.is(typeof browserEntry.generate, 'function');
-
-  // The browser entry is a hard-error stub — browser/edge runtimes are
-  // unsupported, so generate() rejects with E_UNSUPPORTED_RUNTIME at call
-  // time. The module itself must stay importable so bundlers don't choke.
-  const generateError = (await t.throwsAsync(async () => {
-    await browserEntry.generate();
-  })) as GenerateError | undefined;
-  t.is(generateError?.code, 'E_UNSUPPORTED_RUNTIME');
-  t.regex(generateError?.message ?? '', /browser|runtime/i);
+test('browser entry re-exports lib/browser.js and ships in the files allow-list', t => {
+  const browserSource = fs.readFileSync(path.join(repoRoot, 'browser.js'), 'utf8');
+  t.regex(browserSource, /require\('\.\/lib\/browser\.js'\)/);
+  const packageJson = JSON.parse(
+    fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'),
+  ) as { files?: string[] };
+  t.true(packageJson.files?.includes('lib/browser.js') ?? false);
 });
 
 test('package.json exports map covers node, browser, default, and types conditions', t => {
   const packageJson = JSON.parse(
     fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'),
   ) as {
-    exports?: Record<string, Record<string, string> | string>;
+    exports?: Record<string, unknown>;
   };
 
   const root = packageJson.exports?.['.'];
   t.truthy(root, 'package.json exports map must include "."');
   t.is(typeof root, 'object');
-  const conditions = root as Record<string, string>;
+  const conditions = root as Record<string, unknown>;
   t.is(conditions.types, './index.d.ts');
-  t.is(conditions.browser, './browser.js');
+  t.deepEqual(conditions.browser, {
+    types: './browser.d.ts',
+    default: './browser.js',
+  });
   // Node entry is the wrapper at lib/index.js that upgrades thrown
   // errors into `GenerateError` instances. The raw napi-rs binding at
   // ./index.js is internal.
   t.is(conditions.node, './lib/index.js');
   t.is(conditions.default, './lib/index.js');
+
+  t.deepEqual(packageJson.exports?.['./browser'], {
+    types: './browser.d.ts',
+    default: './browser.js',
+  });
+});
+
+test('createGenerate is declared on the browser surface only', t => {
+  const dts = fs.readFileSync(path.join(repoRoot, 'index.d.ts'), 'utf8');
+  const browserDts = fs.readFileSync(path.join(repoRoot, 'browser.d.ts'), 'utf8');
+  // The Node entry does not export it, so declaring it in index.d.ts would
+  // typecheck green and fail at runtime.
+  t.false(dts.includes('createGenerate'), 'index.d.ts must not declare createGenerate');
+  t.true(browserDts.includes('createGenerate'));
+
+  const packageJson = JSON.parse(
+    fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'),
+  ) as { files?: string[] };
+  t.true(packageJson.files?.includes('browser.d.ts') ?? false);
 });
 
 test('package metadata keeps the node-only packaging contract explicit', t => {
@@ -67,14 +81,16 @@ test('package metadata keeps the node-only packaging contract explicit', t => {
   t.notRegex(packageJson.description ?? '', /Template project/i);
 });
 
-test('napi.targets is non-empty and lists only native triples (no wasm)', t => {
+test('napi.targets is non-empty and the only wasm target is the wasip1-threads fallback', t => {
   const packageJson = JSON.parse(
     fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'),
   ) as { napi?: { targets?: string[] } };
   const targets = packageJson.napi?.targets ?? [];
   t.true(targets.length > 0, 'napi.targets must be non-empty');
   for (const triple of targets) {
-    t.false(triple.startsWith('wasm32-'), `unexpected wasm32 target: ${triple}`);
+    if (triple.startsWith('wasm32-')) {
+      t.is(triple, 'wasm32-wasip1-threads', `unexpected wasm32 target: ${triple}`);
+    }
   }
 });
 
@@ -163,14 +179,16 @@ test('patch-types narrows GeneratorDiagnostic and GenerateErrorPayload bodies', 
   t.false(dts.includes('  severity: string'));
 });
 
-test('runtime docs document the current node-only boundary and browser stub', t => {
+test('runtime docs describe the WebAssembly browser path', t => {
   const runtimeDoc = fs.readFileSync(
     path.join(repoRoot, 'website', 'src', 'content', 'docs', 'reference', 'runtime.md'),
     'utf8',
   );
 
-  t.regex(runtimeDoc, /does not support browser runtimes/i);
+  t.regex(runtimeDoc, /@avsystem\/openapi-ng-wasm32-wasi/);
+  t.regex(runtimeDoc, /Cross-Origin-Embedder-Policy/);
   t.regex(runtimeDoc, /E_UNSUPPORTED_RUNTIME/);
+  t.notRegex(runtimeDoc, /does not support browser runtimes/i);
 });
 
 test('native.js includes a friendly unsupported-platform error with supported list', t => {
@@ -195,6 +213,27 @@ test('native.js includes a friendly unsupported-platform error with supported li
       `native.js must list '${platformKey}' as a supported platform`,
     );
   }
+});
+
+// `NAPI_RS_FORCE_WASI=true` keeps native as a lazy fallback, so a missing
+// wasm artifact would otherwise let the WASI job pass on a host binary.
+test('NAPI_RS_FORCE_WASI=true loads the WASI binding, not a native one', t => {
+  if (process.env.NAPI_RS_FORCE_WASI !== 'true') {
+    t.pass('not a forced-WASI run');
+    return;
+  }
+  require(path.join(repoRoot, 'lib', 'index.js'));
+  const loaded = Object.keys(require.cache).map(p => path.basename(p));
+  t.true(
+    loaded.includes('openapi-ng.wasi.cjs'),
+    `loaded modules: ${loaded.filter(n => /\.node$|wasi/.test(n)).join(', ')}`,
+  );
+  // Scoped to our binary: ava's TypeScript loader (@oxc-node/core) always
+  // brings its own .node addon into the cache.
+  t.false(
+    loaded.some(n => /^openapi-ng\..+\.node$/.test(n)),
+    'a native openapi-ng binding was loaded alongside WASI',
+  );
 });
 
 test('lib/config.js is shipped in package.json files allow-list', t => {

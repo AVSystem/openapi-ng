@@ -1,8 +1,9 @@
-use std::{fs, path::Path, path::PathBuf, rc::Rc, sync::OnceLock};
+use std::{fs, path::Path, rc::Rc, sync::OnceLock};
 
 use crate::{
   bindings::InputFormat,
   error::{Diagnostic, DiagnosticCode},
+  io::host_cwd::resolve_against_host_cwd,
   parse::openapi_model::OpenApiDocument,
 };
 
@@ -101,7 +102,7 @@ pub(crate) fn read_and_decode(
   input_path: &str,
   display_path: &Rc<str>,
 ) -> Result<OpenApiDocument, Diagnostic> {
-  let path = PathBuf::from(input_path);
+  let path = resolve_against_host_cwd(Path::new(input_path));
 
   let metadata = fs::metadata(&path).map_err(|error| {
     Diagnostic::new(

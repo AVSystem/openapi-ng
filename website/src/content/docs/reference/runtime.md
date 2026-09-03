@@ -1,6 +1,6 @@
 ---
 title: Runtime & platforms
-description: Supported runtimes and platforms — Node, Bun, Deno via N-API. Browser and edge runtimes are not supported.
+description: Supported runtimes and platforms — Node, Bun, Deno via N-API; browsers via WebAssembly.
 ---
 
 This page covers the runtimes that can host the **`openapi-ng`
@@ -31,20 +31,53 @@ Pre-built native binaries are published for:
 The correct glibc or musl artifact is selected at load time, so Alpine
 and distroless images need no extra configuration.
 
-On any other platform (FreeBSD, 32-bit, etc.), `require` of the package
-throws an explicit unsupported-platform error listing the supported set
-— open an issue if you need an additional target.
+On any other platform (FreeBSD, 32-bit, etc.) the loader falls back to
+the WebAssembly build if `@avsystem/openapi-ng-wasm32-wasi` is installed
+next to `@avsystem/openapi-ng`; otherwise `require` throws an explicit
+unsupported-platform error listing the supported set.
 
-## Browser and edge runtimes
+## Browsers
 
-`openapi-ng` does not support browser runtimes, Cloudflare Workers,
-Vercel Edge, Deno Deploy, or any other host that cannot load a native
-N-API binary. The package ships a `browser.js` stub that any
-browser-aware bundler (Vite, Webpack, esbuild) will resolve in those
-contexts; calling `generate()` from it throws a `GenerateError` with
-code `E_UNSUPPORTED_RUNTIME`.
+The generator also ships as WebAssembly in the platform package
+`@avsystem/openapi-ng-wasm32-wasi`. The `browser` entry of
+`@avsystem/openapi-ng` loads it on demand, so bundlers that honour the
+`browser` field (Vite, webpack, esbuild) pick the WebAssembly path
+automatically.
 
-Code generation is a build-time activity — run it from a Node script,
-not from a browser bundle. See
-[`E_UNSUPPORTED_RUNTIME`](/reference/diagnostics/#diagnostic-codes)
-for the error shape.
+Two requirements:
+
+1. Add the platform package yourself. napi-rs does not list it among the
+   root package's optional dependencies, so it is not installed
+   transitively:
+
+   ```bash
+   pnpm add -D @avsystem/openapi-ng @avsystem/openapi-ng-wasm32-wasi
+   ```
+
+   Import `createGenerate` from `@avsystem/openapi-ng/browser` when you
+   serve the WebAssembly files yourself.
+
+2. Serve the page cross-origin isolated. The binding uses shared memory,
+   which browsers only enable under these response headers:
+
+   ```
+   Cross-Origin-Opener-Policy: same-origin
+   Cross-Origin-Embedder-Policy: require-corp
+   ```
+
+If the package is missing, bundlers may warn about an unresolvable
+dynamic import and `generate()` rejects with `E_UNSUPPORTED_RUNTIME` at
+call time.
+
+In the browser, `generate()` accepts `inputContents` plus `displayPath`
+and returns the artifacts in memory. `inputPath` and `outputPath` are
+rejected with `E_INVALID_OPTION` because there is no filesystem. If the
+WebAssembly binding cannot be loaded, `generate()` rejects with
+`E_UNSUPPORTED_RUNTIME` and a message naming the missing package or
+header.
+
+## Edge runtimes
+
+Cloudflare Workers, Vercel Edge and Deno Deploy are not verified. The
+WebAssembly build may run there; open an issue with your findings if you
+try it.

@@ -1,7 +1,8 @@
-use std::{fs, path::PathBuf};
+use std::fs;
 
 use crate::{
   error::{Diagnostic, DiagnosticCode, Reporter},
+  io::host_cwd::resolve_against_host_cwd,
   result::GeneratedArtifact,
 };
 
@@ -51,7 +52,7 @@ fn write_artifact(
     ));
   }
 
-  let output_dir = PathBuf::from(output_path);
+  let output_dir = resolve_against_host_cwd(std::path::Path::new(output_path));
   fs::create_dir_all(&output_dir).map_err(|error| {
     reporter.error(
       DiagnosticCode::WriteFailed,

@@ -1,5 +1,3 @@
-use napi::bindgen_prelude::{Function, JsObjectValue, Object, Unknown};
-use napi::{Env, Error, Status};
 use napi_derive::napi;
 
 use crate::{
@@ -114,11 +112,10 @@ pub struct GenerateResult {
   pub artifacts: Vec<GeneratedArtifact>,
 }
 
-/// Payload attached to every fatal native throw. The JS wrapper in
-/// `lib/index.js` upgrades the thrown plain Error into a `GenerateError`
-/// (a real JS class that extends Error), copying these own-properties
-/// across so consumers can `instanceof GenerateError` and still read
-/// `code/subcode/message/path/warnings`.
+/// Payload returned inside `GenerateOutcome.error`. The JS wrapper
+/// constructs a `GenerateError` (a real JS class that extends Error)
+/// from these fields, so consumers can `instanceof GenerateError` and
+/// read `code/subcode/message/path/warnings`.
 ///
 /// The fatal sits at the top level (`code/subcode/message/path`); pre-fatal
 /// warnings ride in `warnings`. `subcode` is set for `PolicyViolation`
@@ -132,26 +129,19 @@ pub struct GenerateErrorPayload {
   pub warnings: Vec<GeneratorDiagnostic>,
 }
 
-/// Sentinel set on every thrown error so the JS wrapper can identify
-/// them without leaking the marker into application code (consumers
-/// guard with `err instanceof GenerateError`, not by inspecting this).
-///
-/// The value is read from `lib/error-marker.json` at compile time by
-/// `build.rs`, the same file `lib/index.js` reads at module load. Single
-/// source of truth — the two sides cannot drift.
-const GENERATE_ERROR_MARKER: &str = env!("OPENAPI_NG_ERROR_MARKER");
+/// Return shape of the native export. Exactly one field is set. The JS
+/// wrapper turns `error` into a thrown `GenerateError`; returning data
+/// instead of throwing keeps native and WASI runtimes identical.
+#[napi(object)]
+pub struct GenerateOutcome {
+  pub result: Option<GenerateResult>,
+  pub error: Option<GenerateErrorPayload>,
+}
 
-/// Project a `catch_unwind` payload into the same `GenerateError` shape
-/// that fatal diagnostics produce. The two common payload types are
-/// `&'static str` (from `panic!("literal")`) and `String` (from
-/// `panic!("{}", ...)` / `panic!(format!(...))`); everything else
-/// collapses to a generic fallback message so the surface stays bounded.
-///
-/// The result is a `napi::Error` indistinguishable from the one a typed
-/// fatal would produce, so the JS wrapper upgrades it to a real
-/// `GenerateError` via the same path and consumers can write
-/// `err.code === 'E_UNEXPECTED'`.
-pub(crate) fn map_panic(panic: Box<dyn std::any::Any + Send>, env: Env) -> Error {
+/// Project a `catch_unwind` payload into the same payload shape a typed
+/// fatal produces. `&'static str` and `String` are the two common panic
+/// payload types; anything else collapses to a generic message.
+pub(crate) fn map_panic(panic: Box<dyn std::any::Any + Send>) -> GenerateErrorPayload {
   let message = panic
     .downcast_ref::<&'static str>()
     .map(|s| (*s).to_string())
@@ -163,63 +153,22 @@ pub(crate) fn map_panic(panic: Box<dyn std::any::Any + Send>, env: Env) -> Error
     message: format!("unexpected panic in native binding: {message}"),
     path: std::rc::Rc::from(""),
   };
-  map_failure(
-    GenerateFailure {
-      warnings: Vec::new(),
-      fatal,
-    },
-    env,
-  )
-}
-
-pub(crate) fn map_failure(failure: GenerateFailure, env: Env) -> Error {
-  let GenerateFailure { warnings, fatal } = failure;
-  let fatal = fatal.to_napi_error();
-  let warnings: Vec<GeneratorDiagnostic> =
-    warnings.iter().map(Diagnostic::to_napi_warning).collect();
-  try_enrich_error(&fatal, &warnings, env).unwrap_or_else(|_| {
-    // Boundary-side decoration failed (typically OOM during JS Object
-    // construction): embed the diagnostic code and warning count into the
-    // message so consumers branching on `err.code` still get a usable
-    // signal instead of a bare Error.
-    let dropped_suffix = if warnings.is_empty() {
-      String::new()
-    } else {
-      format!(" ({} warning(s) dropped)", warnings.len())
-    };
-    Error::new(
-      Status::GenericFailure,
-      format!("[{}] {}{}", fatal.code, fatal.message, dropped_suffix),
-    )
+  map_failure(GenerateFailure {
+    warnings: Vec::new(),
+    fatal,
   })
 }
 
-fn try_enrich_error(
-  fatal: &GeneratorDiagnostic,
-  warnings: &[GeneratorDiagnostic],
-  env: Env,
-) -> napi::Result<Error> {
-  // Build a plain JS Error and decorate it with the public own-properties.
-  // The JS wrapper in `lib/index.js` then re-throws as a GenerateError
-  // class instance so `err instanceof GenerateError` works while keeping
-  // the native binding free of subclass-of-Error gymnastics that
-  // `napi_is_error` doesn't honor for `#[napi]` classes.
-  let global = env.get_global()?;
-  let error_ctor: Function<String, Unknown> = global.get_named_property("Error")?;
-  let unknown = error_ctor.new_instance(fatal.message.clone())?;
-  // SAFETY: `unknown` was just constructed on the previous line via
-  // `error_ctor.new_instance(...)` against the global `Error` constructor,
-  // which always returns a JS `Object`. Downcasting back to `Object` therefore
-  // cannot violate the napi-rs type invariant on `Unknown::cast`.
-  let mut js_error: Object = unsafe { unknown.cast()? };
-  js_error.set_named_property("code", fatal.code.clone())?;
-  if let Some(subcode) = fatal.subcode.clone() {
-    js_error.set_named_property("subcode", subcode)?;
+pub(crate) fn map_failure(failure: GenerateFailure) -> GenerateErrorPayload {
+  let GenerateFailure { warnings, fatal } = failure;
+  let fatal = fatal.to_napi_error();
+  GenerateErrorPayload {
+    code: fatal.code,
+    subcode: fatal.subcode,
+    message: fatal.message,
+    path: fatal.path,
+    warnings: warnings.iter().map(Diagnostic::to_napi_warning).collect(),
   }
-  js_error.set_named_property("path", fatal.path.clone())?;
-  js_error.set_named_property("warnings", warnings.to_vec())?;
-  js_error.set_named_property(GENERATE_ERROR_MARKER, true)?;
-  Ok(Error::from(unknown))
 }
 
 /// Boundary projection: take the wire-shaped `GenerateOptions` from the
@@ -263,7 +212,7 @@ mod tests {
     bindings::{EmitTarget, GenerateOptions},
     error::{Diagnostic, DiagnosticCode},
     options::GenerateConfig,
-    pipeline::GenerateResult as ApplicationGenerateResult,
+    pipeline::{GenerateFailure, GenerateResult as ApplicationGenerateResult},
     result::{GenerateSummary, GeneratedArtifact},
   };
 
@@ -332,5 +281,46 @@ mod tests {
     assert_eq!(result.artifacts[0].contents, "export interface Pet {}\n");
     assert_eq!(result.diagnostics.len(), 1);
     assert_eq!(result.diagnostics[0].code, "E_UNSUPPORTED_SEMANTIC");
+  }
+
+  #[test]
+  fn map_failure_projects_fatal_and_warnings_into_payload() {
+    let failure = GenerateFailure {
+      warnings: vec![Diagnostic::new(
+        DiagnosticCode::UnsupportedSemantic,
+        "warned",
+        std::rc::Rc::from("spec.yaml"),
+      )],
+      fatal: Diagnostic {
+        code: DiagnosticCode::PolicyViolation,
+        subcode: Some("missing-operation-id"),
+        message: "no operationId".to_string(),
+        path: std::rc::Rc::from("spec.yaml"),
+      },
+    };
+
+    let payload = super::map_failure(failure);
+
+    assert_eq!(payload.code, "E_POLICY_VIOLATION");
+    assert_eq!(payload.subcode.as_deref(), Some("missing-operation-id"));
+    assert_eq!(payload.message, "no operationId");
+    assert_eq!(payload.path, "spec.yaml");
+    assert_eq!(payload.warnings.len(), 1);
+    assert_eq!(payload.warnings[0].code, "E_UNSUPPORTED_SEMANTIC");
+    assert_eq!(payload.warnings[0].severity, "warning");
+  }
+
+  #[test]
+  fn map_panic_projects_string_payloads_into_e_unexpected() {
+    let payload = super::map_panic(Box::new("boom"));
+    assert_eq!(payload.code, "E_UNEXPECTED");
+    assert!(payload.message.contains("boom"));
+    assert!(payload.warnings.is_empty());
+
+    let payload = super::map_panic(Box::new(String::from("owned boom")));
+    assert!(payload.message.contains("owned boom"));
+
+    let payload = super::map_panic(Box::new(42_u8));
+    assert!(payload.message.contains("unexpected panic"));
   }
 }
