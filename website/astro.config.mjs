@@ -41,6 +41,9 @@ export default defineConfig({
           href: 'https://www.npmjs.com/package/@avsystem/openapi-ng',
         },
       ],
+      components: {
+        Header: './src/components/Header.astro',
+      },
       editLink: {
         baseUrl: 'https://github.com/AVSystem/openapi-ng/edit/main/website/',
       },
@@ -50,7 +53,6 @@ export default defineConfig({
           items: [
             { label: 'Introduction', slug: '' },
             { label: 'Getting started', slug: 'getting-started' },
-            { label: 'Playground', link: '/playground/' },
           ],
         },
         {

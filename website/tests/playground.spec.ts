@@ -136,7 +136,7 @@ test('lays the panes out untouched by the prose styles', async ({ page }) => {
   expect(new Set(buttonHeights).size).toBe(1);
   await expect(page.locator('.cm-line').nth(1)).toHaveCSS('margin-top', '0px');
   const [pgWidth, panelWidth] = await page.evaluate(() => {
-    const panel = document.querySelector('.content-panel') as HTMLElement;
+    const panel = document.querySelector('main > .content-panel:last-child') as HTMLElement;
     const panelStyle = getComputedStyle(panel);
     return [
       document.querySelector('.pg')!.getBoundingClientRect().width,
@@ -208,6 +208,22 @@ test('opens a spec file from disk or by dropping it on the editor', async ({ pag
   await expect(page.locator('#pg-editor .cm-content')).not.toContainText('getA');
   await expect(page.locator('#pg-editor .cm-content')).toContainText('/a: {get:');
   await expect(page.locator('#pg-diagnostics li.is-error')).toContainText('missing-operation-id');
+});
+
+test('switches between docs and playground from the header', async ({ page }) => {
+  await ready(page);
+  const sections = page.locator('header nav[aria-label="Site sections"]');
+  await expect(sections.locator('a[aria-current="page"]')).toHaveText('Playground');
+  await expect(page.locator('main h1')).toBeHidden();
+  await expect(page.locator('header site-search')).toHaveCount(0);
+  await sections.getByRole('link', { name: 'Docs' }).click();
+  await expect(page).toHaveURL('/getting-started/');
+  await expect(page.locator('header site-search')).toHaveCount(1);
+  await expect(sections.locator('a[aria-current="page"]')).toHaveText('Docs');
+  await expect(page.locator('.sidebar-content')).toContainText('Getting started');
+  await expect(page.locator('.sidebar-content')).not.toContainText('Playground');
+  await sections.getByRole('link', { name: 'Playground' }).click();
+  await expect(page).toHaveURL('/playground/');
 });
 
 test('shows the generated file in a read-only editor with line numbers and search', async ({ page }) => {

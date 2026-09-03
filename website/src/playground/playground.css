@@ -2,6 +2,10 @@
 main {
   --sl-content-width: 100%;
 }
+/* The header's section switch already names the page. */
+main > .content-panel:first-child {
+  display: none;
+}
 
 /* Hand the viewport below the title to the playground; only the panes scroll. */
 @media (min-width: 72rem) {
