@@ -1,30 +1,44 @@
 ---
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
 import '../playground/playground.css';
-import '../playground/hljs-theme.css';
+import hljsLight from 'highlight.js/styles/github.css?raw';
+import hljsDark from 'highlight.js/styles/github-dark.css?raw';
+
+// highlight.js ships light and dark as separate unscoped sheets; nesting them
+// under Starlight's theme attribute lets its toggle pick one.
+const hljsTheme =
+  `:root[data-theme='light'] { ${hljsLight} }\n` + `:root[data-theme='dark'] { ${hljsDark} }`;
 ---
 
 <StarlightPage
   frontmatter={{ title: 'Playground', template: 'splash', tableOfContents: false }}
 >
-  <section class="pg" aria-label="openapi-ng playground">
+  <style is:global set:html={hljsTheme}></style>
+  <section class="pg not-content" aria-label="openapi-ng playground">
     <header class="pg-toolbar">
       <span id="pg-status" class="pg-status" role="status">Loading generator (about 600 KB)…</span>
       <span class="pg-actions">
         <button id="pg-reset" type="button">Load petstore</button>
-        <button id="pg-share" type="button">Share</button>
       </span>
     </header>
     <div class="pg-panes">
-      <div id="pg-editor" class="pg-editor" aria-label="OpenAPI spec"></div>
+      <div class="pg-inputs">
+        <div id="pg-editor" class="pg-editor" aria-label="OpenAPI spec"></div>
+        <div class="pg-config-pane">
+          <div class="pg-pane-label">
+            Config <span>openapi-ng.config as JSON; write <code>parse</code> regexes as <code>"/…/flags"</code></span>
+          </div>
+          <div id="pg-config" class="pg-config" aria-label="Generator config"></div>
+        </div>
+      </div>
       <nav id="pg-tree" class="pg-tree" aria-label="Generated files"></nav>
       <div class="pg-output">
         <button id="pg-copy" class="pg-copy" type="button">Copy</button>
         <pre><code id="pg-code" class="language-typescript"></code></pre>
       </div>
     </div>
-    <footer class="pg-footer">
-      <span id="pg-summary" class="pg-summary"></span>
+    <footer id="pg-console" class="pg-console" aria-label="Generator output">
+      <div id="pg-summary" class="pg-summary"></div>
       <ul id="pg-diagnostics" class="pg-diagnostics"></ul>
     </footer>
   </section>

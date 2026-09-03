@@ -1,20 +1,30 @@
 import petstoreSpec from '../../../stackblitz/petstore.openapi.yaml?raw';
 import type { GenerateResult, GeneratorDiagnostic } from '@avsystem/openapi-ng/browser';
+import { DEFAULT_CONFIG, parseConfig } from './config';
 import { createEditor } from './editor';
 import { detectFormat, displayPathFor } from './format';
 import { engineVersion, GenerateError, loadGenerate, type GenerateFn } from './generator';
 import { copyText, renderOutput } from './output';
-import { decodeShareHash, encodeShareHash } from './share';
 import { buildTree, renderTree } from './tree';
 
 const DEBOUNCE_MS = 150;
 const STATUS_RESTORE_MS = 2000;
 const WARMUP_SPEC = 'openapi: 3.0.3\ninfo: {title: warmup, version: "1"}\npaths: {}';
 
+interface ConsoleLines {
+  errors?: string[];
+  warnings?: GeneratorDiagnostic[];
+  notes?: string[];
+}
+
 function byId<T extends HTMLElement>(doc: Document, id: string): T {
   const el = doc.getElementById(id);
   if (!el) throw new Error(`playground: missing #${id}`);
   return el as T;
+}
+
+function describe(item: { code: string; subcode?: string | null; message: string }): string {
+  return `${item.code}${item.subcode ? ` (${item.subcode})` : ''}: ${item.message}`;
 }
 
 export function start(doc: Document): void {
@@ -49,27 +59,25 @@ export function start(doc: Document): void {
     }, STATUS_RESTORE_MS);
   }
 
-  const initial = decodeShareHash(location.hash) ?? petstoreSpec;
-  const editor = createEditor(byId(doc, 'pg-editor'), initial, schedule);
+  const editor = createEditor(byId(doc, 'pg-editor'), petstoreSpec, schedule);
+  const configEditor = createEditor(byId(doc, 'pg-config'), DEFAULT_CONFIG, schedule);
 
   function schedule(): void {
     clearTimeout(timer);
     timer = setTimeout(run, DEBOUNCE_MS);
   }
 
-  function renderDiagnostics(items: GeneratorDiagnostic[], fatal?: GenerateError): void {
+  function renderConsole({ errors = [], warnings = [], notes = [] }: ConsoleLines): void {
     diagnosticsEl.replaceChildren();
-    if (fatal) {
+    const append = (text: string, className?: string) => {
       const li = doc.createElement('li');
-      li.className = 'is-error';
-      li.textContent = `${fatal.code}${fatal.subcode ? ` (${fatal.subcode})` : ''}: ${fatal.message}`;
+      if (className) li.className = className;
+      li.textContent = text;
       diagnosticsEl.append(li);
-    }
-    for (const item of items) {
-      const li = doc.createElement('li');
-      li.textContent = `${item.code}${item.subcode ? ` (${item.subcode})` : ''}: ${item.message}`;
-      diagnosticsEl.append(li);
-    }
+    };
+    for (const error of errors) append(error, 'is-error');
+    for (const warning of warnings) append(describe(warning));
+    for (const note of notes) append(note, 'is-note');
   }
 
   function select(path: string): void {
@@ -81,7 +89,7 @@ export function start(doc: Document): void {
     if (artifact) renderOutput(codeEl, artifact.contents);
   }
 
-  function showResult(result: GenerateResult, elapsedMs: number): void {
+  function showResult(result: GenerateResult, elapsedMs: number, notes: string[]): void {
     lastResult = result;
     root!.classList.remove('is-stale');
     const paths = result.artifacts.map(a => a.path);
@@ -92,7 +100,7 @@ export function start(doc: Document): void {
     summaryEl.textContent =
       `${result.summary.operationCount} operations · ${result.summary.schemaCount} schemas · ` +
       `${result.artifacts.length} files · ${elapsedMs.toFixed(0)} ms`;
-    renderDiagnostics(result.diagnostics);
+    renderConsole({ warnings: result.diagnostics, notes });
   }
 
   async function run(): Promise<void> {
@@ -101,6 +109,13 @@ export function start(doc: Document): void {
     // resolve before an earlier, slower one still in flight.
     const id = ++runId;
     const source = editor.getValue();
+    const config = parseConfig(configEditor.getValue());
+    if (!config.ok) {
+      root!.classList.add('is-stale');
+      summaryEl.textContent = 'config error';
+      renderConsole({ errors: [config.error] });
+      return;
+    }
     const started = performance.now();
     try {
       // No inputFormat: the /browser subpath's InputFormat is a const enum with no
@@ -108,36 +123,26 @@ export function start(doc: Document): void {
       const result = await generate({
         inputContents: source,
         displayPath: displayPathFor(detectFormat(source)),
-        emit: ['models', 'angular'],
+        ...config.options,
       });
       if (id !== runId) return;
-      showResult(result, performance.now() - started);
+      showResult(result, performance.now() - started, config.notes);
     } catch (err) {
       if (id !== runId) return;
       root!.classList.add('is-stale');
       if (err instanceof GenerateError) {
         summaryEl.textContent = 'generation failed';
-        renderDiagnostics(err.warnings, err);
+        renderConsole({ errors: [describe(err)], warnings: err.warnings, notes: config.notes });
       } else {
-        renderDiagnostics([]);
         summaryEl.textContent = err instanceof Error ? err.message : String(err);
+        renderConsole({ notes: config.notes });
       }
     }
   }
 
   byId<HTMLButtonElement>(doc, 'pg-reset').addEventListener('click', () => {
     editor.setValue(petstoreSpec);
-    history.replaceState(null, '', location.pathname);
-  });
-  byId<HTMLButtonElement>(doc, 'pg-share').addEventListener('click', async () => {
-    const hash = encodeShareHash(editor.getValue());
-    history.replaceState(null, '', location.pathname + hash);
-    try {
-      await copyText(location.href);
-      announce('Link copied');
-    } catch (err) {
-      announce(`Copy failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
+    configEditor.setValue(DEFAULT_CONFIG);
   });
   byId<HTMLButtonElement>(doc, 'pg-copy').addEventListener('click', async () => {
     const artifact = lastResult?.artifacts.find(a => a.path === selectedPath);

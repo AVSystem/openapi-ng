@@ -64,7 +64,9 @@ export function renderTree(
       if (row.path === selectedPath) item.className = 'is-selected';
       const button = doc.createElement('button');
       button.type = 'button';
+      button.title = row.path;
       const name = doc.createElement('span');
+      name.className = 'name';
       name.textContent = row.name;
       const size = doc.createElement('span');
       size.className = 'size';

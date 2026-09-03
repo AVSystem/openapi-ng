@@ -1,12 +1,52 @@
+/* Scoped below the header, whose grid also reads this width. */
+main {
+  --sl-content-width: 100%;
+}
+
+/* Hand the viewport below the title to the playground; only the panes scroll. */
+@media (min-width: 72rem) {
+  .main-frame {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+  .main-frame > div,
+  .main-pane,
+  main,
+  main > .content-panel:last-child,
+  .content-panel:last-child > .sl-container,
+  .sl-container > .sl-markdown-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  /* Starlight's auto inline margins would make the container a content-sized
+     flex item, so its width would track the widest generated file. */
+  .content-panel:last-child > .sl-container {
+    width: 100%;
+    margin-inline: 0;
+  }
+  main {
+    padding-bottom: 0;
+  }
+  /* Pagination links would eat into the height the panes claim. */
+  .content-panel:last-child > .sl-container > footer {
+    display: none;
+  }
+  .pg {
+    flex: 1;
+    min-height: 0;
+    margin-top: 0;
+  }
+}
+
 .pg {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 0.75rem;
-  height: calc(100dvh - var(--sl-nav-height) - 3rem);
-  min-height: 32rem;
 }
-.pg-toolbar,
-.pg-footer {
+.pg-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -27,19 +67,49 @@
 }
 .pg-panes {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) 14rem minmax(0, 6fr);
+  grid-template-columns: minmax(0, 5fr) 18rem minmax(0, 6fr);
   gap: 0.75rem;
   min-height: 0;
 }
+.pg-inputs {
+  display: grid;
+  grid-template-rows: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  min-height: 0;
+}
+.pg-config-pane {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.25rem;
+  min-height: 0;
+}
+.pg-pane-label {
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pg-pane-label span {
+  margin-left: 0.5rem;
+}
 .pg-editor,
+.pg-config,
 .pg-tree,
-.pg-output {
+.pg-output,
+.pg-console {
   border: 1px solid var(--sl-color-gray-5);
   border-radius: 0.5rem;
   overflow: auto;
   min-height: 0;
 }
-.pg-editor .cm-editor {
+/* CodeMirror scrolls itself; a second scroller here would fight its measuring. */
+.pg-editor,
+.pg-config {
+  overflow: hidden;
+}
+.pg-editor .cm-editor,
+.pg-config .cm-editor {
   height: 100%;
   font-size: 0.8rem;
 }
@@ -62,12 +132,14 @@
   box-sizing: border-box;
   display: flex;
   justify-content: space-between;
+  gap: 1rem;
   width: 100%;
   padding: 0.25rem 0.75rem;
   cursor: pointer;
   font-family: var(--__sl-font-mono);
   font-size: 0.75rem;
   text-align: left;
+  white-space: nowrap;
 }
 .pg-tree li[data-depth='1'] button {
   padding-left: 1.75rem;
@@ -76,7 +148,13 @@
   outline: 2px solid var(--sl-color-accent);
   outline-offset: -2px;
 }
+.pg-tree .name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .pg-tree .size {
+  flex-shrink: 0;
   color: var(--sl-color-gray-3);
 }
 .pg-output {
@@ -87,25 +165,48 @@
   height: 100%;
   font-size: 0.75rem;
 }
+/* The pane is the only scroller; the hljs theme's own overflow on `code`
+   would otherwise nest a second one and resize the pane as you scroll. The id
+   outranks that theme's `pre code.hljs`, which ties on specificity and is
+   injected later in the document. */
+#pg-code.hljs {
+  box-sizing: border-box;
+  min-height: 100%;
+  overflow: visible;
+  width: max-content;
+  min-width: 100%;
+}
 .pg-copy {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
 }
+.pg-console {
+  max-height: 9rem;
+  overflow-y: auto;
+  padding: 0.5rem 0.75rem;
+  background: var(--sl-color-bg-nav);
+  font-family: var(--__sl-font-mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+.pg-summary {
+  color: var(--sl-color-gray-3);
+}
 .pg-diagnostics {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
 }
 .pg-diagnostics li {
-  font-family: var(--__sl-font-mono);
-  font-size: 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .pg-diagnostics li.is-error {
   color: var(--sl-color-red);
+}
+.pg-diagnostics li.is-note {
+  color: var(--sl-color-gray-3);
 }
 .pg.is-stale .pg-tree,
 .pg.is-stale .pg-output {
@@ -115,11 +216,8 @@
   padding: 2rem;
 }
 @media (max-width: 72rem) {
-  .pg {
-    height: auto;
-  }
   .pg-panes {
     grid-template-columns: 1fr;
-    grid-template-rows: 20rem auto 20rem;
+    grid-template-rows: 32rem auto 20rem;
   }
 }

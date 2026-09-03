@@ -87,6 +87,8 @@ export default defineConfig({
         '@codemirror/state',
         '@codemirror/lang-json',
         '@codemirror/lang-yaml',
+        '@codemirror/language',
+        '@lezer/highlight',
         'highlight.js/lib/core',
         'highlight.js/lib/languages/typescript',
         'lz-string',
