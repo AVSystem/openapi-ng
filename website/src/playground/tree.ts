@@ -16,7 +16,13 @@ export function buildTree(artifacts: ReadonlyArray<Artifact>): TreeRow[] {
     const slash = artifact.path.indexOf('/');
     const bytes = encoder.encode(artifact.contents).length;
     if (slash === -1) {
-      root.push({ kind: 'file', path: artifact.path, name: artifact.path, depth: 0, bytes });
+      root.push({
+        kind: 'file',
+        path: artifact.path,
+        name: artifact.path,
+        depth: 0,
+        bytes,
+      });
       continue;
     }
     const dir = artifact.path.slice(0, slash);
@@ -25,7 +31,8 @@ export function buildTree(artifacts: ReadonlyArray<Artifact>): TreeRow[] {
     rows.push({ kind: 'file', path: artifact.path, name, depth: 1, bytes });
     dirs.set(dir, rows);
   }
-  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+  const byName = (a: { name: string }, b: { name: string }) =>
+    a.name.localeCompare(b.name);
   root.sort(byName);
   for (const dir of [...dirs.keys()].sort()) {
     root.push({ kind: 'dir', name: dir, depth: 0 });
@@ -44,9 +51,10 @@ export function renderTree(
   selectedPath: string | null,
   onSelect: (path: string) => void,
 ): void {
-  const list = document.createElement('ul');
+  const doc = container.ownerDocument;
+  const list = doc.createElement('ul');
   for (const row of rows) {
-    const item = document.createElement('li');
+    const item = doc.createElement('li');
     item.dataset.depth = String(row.depth);
     if (row.kind === 'dir') {
       item.className = 'is-dir';
@@ -54,13 +62,16 @@ export function renderTree(
     } else {
       item.dataset.path = row.path;
       if (row.path === selectedPath) item.className = 'is-selected';
-      const name = document.createElement('span');
+      const button = doc.createElement('button');
+      button.type = 'button';
+      const name = doc.createElement('span');
       name.textContent = row.name;
-      const size = document.createElement('span');
+      const size = doc.createElement('span');
       size.className = 'size';
       size.textContent = formatBytes(row.bytes);
-      item.append(name, size);
-      item.addEventListener('click', () => onSelect(row.path));
+      button.append(name, size);
+      button.addEventListener('click', () => onSelect(row.path));
+      item.append(button);
     }
     list.append(item);
   }

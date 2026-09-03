@@ -1,6 +1,26 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
+// `astro dev` ignores public/_headers; mirror its COOP/COEP scope so the
+// playground page is cross-origin isolated and its wasm worker inherits COEP.
+const playgroundHeaders = {
+  name: 'playground-headers',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      const pathname = req.url?.split('?')[0] ?? '';
+      if (
+        pathname === '/playground' ||
+        pathname.startsWith('/playground/') ||
+        pathname.startsWith('/playground-engine/')
+      ) {
+        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+        res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+      }
+      next();
+    });
+  },
+};
+
 export default defineConfig({
   site: 'https://docs.openapi-ng.dev',
   integrations: [
@@ -57,5 +77,20 @@ export default defineConfig({
   vite: {
     build: { target: 'es2022' },
     server: { fs: { allow: ['..'] } },
+    plugins: [playgroundHeaders],
+    // The playground's imports are only reachable through src/playground/*.ts, so
+    // dev discovers them late and re-optimizes, which 504s already-served modules.
+    optimizeDeps: {
+      include: [
+        '@avsystem/openapi-ng/browser',
+        'codemirror',
+        '@codemirror/state',
+        '@codemirror/lang-json',
+        '@codemirror/lang-yaml',
+        'highlight.js/lib/core',
+        'highlight.js/lib/languages/typescript',
+        'lz-string',
+      ],
+    },
   },
 });
