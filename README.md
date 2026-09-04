@@ -2,6 +2,8 @@
 
 Generate TypeScript models and Angular services from OpenAPI 3.x specs — fast, deterministic, Rust-powered.
 
+Try it without installing anything: [playground](https://docs.openapi-ng.dev/playground/) (paste a spec, see the output) · [StackBlitz demo](https://stackblitz.com/github/AVSystem/openapi-ng/tree/main/stackblitz) (generated client used in an Angular app).
+
 **[Documentation →](https://docs.openapi-ng.dev)** · [Getting started](https://docs.openapi-ng.dev/getting-started/) · [Angular guide](https://docs.openapi-ng.dev/guides/angular/) · [Node API](https://docs.openapi-ng.dev/reference/node-api/) · [Diagnostics](https://docs.openapi-ng.dev/reference/diagnostics/)
 
 ## Why openapi-ng

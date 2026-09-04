@@ -4,18 +4,39 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node scripts/bundle-engine.mjs",
     "dev": "astro dev",
     "start": "astro dev",
+    "prebuild": "node scripts/bundle-engine.mjs",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "check": "astro check",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test": "pnpm test:unit && pnpm test:e2e"
   },
   "dependencies": {
     "@astrojs/starlight": "0.41.7",
+    "@avsystem/openapi-ng": "0.5.1",
+    "@avsystem/openapi-ng-wasm32-wasi": "0.5.1",
+    "@codemirror/lang-javascript": "6.2.5",
+    "@codemirror/lang-json": "6.0.2",
+    "@codemirror/lang-yaml": "6.1.3",
+    "@codemirror/language": "6.12.4",
+    "@codemirror/state": "6.7.2",
+    "@lezer/highlight": "1.2.3",
     "astro": "7.2.4",
-    "sharp": "0.35.3"
+    "codemirror": "6.0.2",
+    "sharp": "0.35.3",
+    "strip-json-comments": "5.0.3"
   },
   "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "@playwright/test": "1.62.1",
+    "esbuild": "0.28.2",
+    "typescript": "6.0.3",
+    "vitest": "5.0.0",
     "wrangler": "4.124.0"
   },
   "packageManager": "pnpm@10.33.3"

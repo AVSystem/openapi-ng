@@ -1,0 +1,44 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import '../playground/playground.css';
+---
+
+<StarlightPage
+  frontmatter={{ title: 'Playground', template: 'splash', tableOfContents: false }}
+>
+  <section class="pg not-content" aria-label="openapi-ng playground">
+    <header class="pg-toolbar">
+      <span id="pg-status" class="pg-status" role="status">Loading generator (about 600 KB)…</span>
+      <span class="pg-actions">
+        <button id="pg-open" type="button">Open file…</button>
+        <input id="pg-file" type="file" accept=".yaml,.yml,.json" hidden />
+        <button id="pg-reset" type="button">Load petstore</button>
+      </span>
+    </header>
+    <div class="pg-panes">
+      <div class="pg-inputs">
+        <div id="pg-editor" class="pg-editor" aria-label="OpenAPI spec"></div>
+        <div class="pg-config-pane">
+          <div class="pg-pane-label">
+            Config <span>openapi-ng.config as JSONC; uncomment an option to change it</span>
+          </div>
+          <div id="pg-config" class="pg-config" aria-label="Generator config"></div>
+        </div>
+      </div>
+      <nav id="pg-tree" class="pg-tree" aria-label="Generated files"></nav>
+      <div class="pg-output">
+        <button id="pg-copy" class="pg-copy" type="button">Copy</button>
+        <div id="pg-code" class="pg-code" aria-label="Generated file"></div>
+      </div>
+    </div>
+    <footer id="pg-console" class="pg-console" aria-label="Generator output">
+      <div id="pg-summary" class="pg-summary"></div>
+      <ul id="pg-diagnostics" class="pg-diagnostics"></ul>
+    </footer>
+  </section>
+</StarlightPage>
+
+<script>
+  import { start } from '../playground/main';
+  start(document);
+</script>

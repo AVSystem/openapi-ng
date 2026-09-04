@@ -3,6 +3,9 @@ title: Getting started
 description: Install openapi-ng and generate your first TypeScript models and Angular services from an OpenAPI spec.
 ---
 
+Want to see the output first? Paste a spec into the
+[playground](/playground/); the generator runs in your browser.
+
 ## Install
 
 ```bash

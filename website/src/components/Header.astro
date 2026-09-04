@@ -1,0 +1,139 @@
+---
+// Starlight's default header plus a Docs / Playground switch next to the title.
+import config from 'virtual:starlight/user-config';
+import LanguageSelect from '@astrojs/starlight/components/LanguageSelect.astro';
+import Search from '@astrojs/starlight/components/Search.astro';
+import SiteTitle from '@astrojs/starlight/components/SiteTitle.astro';
+import SocialIcons from '@astrojs/starlight/components/SocialIcons.astro';
+import ThemeSelect from '@astrojs/starlight/components/ThemeSelect.astro';
+
+const onPlayground = Astro.url.pathname.startsWith('/playground');
+// Site search indexes the docs; the playground has nothing to find in it.
+const shouldRenderSearch =
+  !onPlayground &&
+  (config.pagefind || config.components.Search !== '@astrojs/starlight/components/Search.astro');
+const sections = [
+  { label: 'Docs', href: '/getting-started/', current: !onPlayground },
+  { label: 'Playground', href: '/playground/', current: onPlayground },
+];
+---
+
+<div class="header">
+  <div class="title-wrapper sl-flex">
+    <SiteTitle />
+    <nav class="sections sl-flex" aria-label="Site sections">
+      {sections.map(({ label, href, current }) => (
+        <a {href} aria-current={current ? 'page' : undefined}>{label}</a>
+      ))}
+    </nav>
+  </div>
+  <div class="sl-flex print:hidden">
+    {shouldRenderSearch && <Search />}
+  </div>
+  <div class="sl-hidden md:sl-flex print:hidden right-group">
+    <div class="sl-flex social-icons">
+      <SocialIcons />
+    </div>
+    <ThemeSelect />
+    <LanguageSelect />
+  </div>
+</div>
+
+<style>
+  @layer starlight.core {
+    .header {
+      display: flex;
+      gap: var(--sl-nav-gap);
+      justify-content: space-between;
+      align-items: center;
+      height: 100%;
+    }
+
+    .title-wrapper {
+      align-items: center;
+      gap: 1.5rem;
+      /* Prevent long titles overflowing and covering the search and menu buttons on narrow viewports. */
+      overflow: clip;
+      /* Avoid clipping focus ring around link inside title wrapper. */
+      padding: 0.25rem;
+      margin: -0.25rem;
+      min-width: 0;
+    }
+
+    .sections {
+      gap: 1rem;
+      align-self: stretch;
+      align-items: center;
+    }
+    .sections a {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      padding: 0 0.125rem;
+      border-bottom: 2px solid transparent;
+      color: var(--sl-color-gray-2);
+      font-size: var(--sl-text-sm);
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .sections a:hover {
+      color: var(--sl-color-white);
+    }
+    .sections a[aria-current='page'] {
+      color: var(--sl-color-white);
+      border-bottom-color: var(--sl-color-text-accent);
+    }
+    /* Narrow headers only fit the title and one link, so show the way out. */
+    @media (max-width: 49.99rem) {
+      .title-wrapper {
+        gap: 1rem;
+      }
+      .sections a[aria-current='page'] {
+        display: none;
+      }
+    }
+
+    .right-group,
+    .social-icons {
+      gap: 1rem;
+      align-items: center;
+    }
+    .social-icons::after {
+      content: '';
+      height: 2rem;
+      border-inline-end: 1px solid var(--sl-color-gray-5);
+    }
+
+    @media (min-width: 50rem) {
+      :global(:root[data-has-sidebar]) {
+        --__sidebar-pad: calc(2 * var(--sl-nav-pad-x));
+      }
+      :global(:root:not([data-has-toc])) {
+        --__toc-width: 0rem;
+      }
+      .header {
+        --__sidebar-width: max(0rem, var(--sl-content-inline-start, 0rem) - var(--sl-nav-pad-x));
+        --__main-column-fr: calc(
+          (
+              100% + var(--__sidebar-pad, 0rem) - var(--__toc-width, var(--sl-sidebar-width)) -
+                (2 * var(--__toc-width, var(--sl-nav-pad-x))) - var(--sl-content-inline-start, 0rem) -
+                var(--sl-content-width)
+            ) / 2
+        );
+        display: grid;
+        grid-template-columns:
+          /* 1 (site title and sections): runs up until the main content column's left edge or its own width, whichever is larger. */
+          minmax(
+            calc(var(--__sidebar-width) + max(0rem, var(--__main-column-fr) - var(--sl-nav-gap))),
+            auto
+          )
+          /* 2 (search box): all free space that is available. */
+          1fr
+          /* 3 (right items): use the space that these need. */
+          auto;
+        align-content: center;
+      }
+    }
+  }
+</style>
