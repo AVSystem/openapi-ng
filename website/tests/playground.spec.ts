@@ -33,6 +33,8 @@ const SNAKE_CASE_CONFIG = JSON.stringify({
 async function ready(page: Page): Promise<void> {
   await page.goto('/playground/');
   await expect(page.locator('#pg-status')).toContainText('runs in your browser');
+  // The status lands before the first generation does.
+  await expect(page.locator('.pg')).toHaveAttribute('data-run', /^\d+$/);
 }
 
 async function replaceText(page: Page, selector: string, text: string): Promise<void> {
@@ -179,17 +181,23 @@ test('generates the same files with every default option enabled in the config',
     await row.locator('button').click();
     return `${await row.locator('.size').innerText()}\n${await page.locator('#pg-code .cm-content').innerText()}`;
   };
-  const generated = async (edit: () => Promise<void>) => {
-    const before = await page.locator('.pg').getAttribute('data-run');
-    await edit();
-    await expect(page.locator('.pg')).not.toHaveAttribute('data-run', before ?? '');
+  // Settles after every edit, so the debounce cannot merge or split them.
+  const generated = async (...edits: Array<() => Promise<void>>) => {
+    for (const edit of edits) {
+      const before = await page.locator('.pg').getAttribute('data-run');
+      await edit();
+      await expect(page.locator('.pg')).not.toHaveAttribute('data-run', before ?? '');
+    }
     await expect(page.locator('#pg-diagnostics li.is-error')).toHaveCount(0);
   };
   for (const spec of [null, NO_TAGS_SPEC]) {
-    await generated(async () => {
-      if (spec) await replaceText(page, '#pg-editor', spec);
-      await replaceText(page, '#pg-config', DEFAULT_CONFIG);
-    });
+    // The page loads with the default config; only the second spec needs it restored.
+    if (spec) {
+      await generated(
+        () => replaceText(page, '#pg-editor', spec),
+        () => replaceText(page, '#pg-config', DEFAULT_CONFIG),
+      );
+    }
     const paths = await artifacts();
     const expected = new Map<string, string>();
     for (const path of paths) expected.set(path!, await codeOf(path!));
