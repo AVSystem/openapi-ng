@@ -244,3 +244,4 @@ website/public/playground-engine/
 website/test-results/
 website/playwright-report/
 
+stackblitz/.angular/
