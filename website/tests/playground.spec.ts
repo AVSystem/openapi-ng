@@ -20,7 +20,14 @@ const SNAKE_CASE_CONFIG = JSON.stringify({
   input: './openapi/internal.json',
   output: './libs/openapi-ng',
   emit: ['models', 'angular'],
-  naming: { methodName: { from: '{operationId}', parse: '/^(?<all>.+)$/', format: '{capture.all}', case: 'snake' } },
+  naming: {
+    methodName: {
+      from: '{operationId}',
+      parse: '/^(?<all>.+)$/',
+      format: '{capture.all}',
+      case: 'snake',
+    },
+  },
 });
 
 async function ready(page: Page): Promise<void> {
@@ -38,7 +45,9 @@ test('generates the petstore client in the browser', async ({ page }) => {
   await ready(page);
   expect(await page.evaluate(() => globalThis.crossOriginIsolated)).toBe(true);
   await expect(page.locator('#pg-tree li[data-path]')).toHaveCount(6);
-  const petFile = page.locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button');
+  const petFile = page.locator(
+    '#pg-tree li[data-path="rest/pet.rest.generated.ts"] button',
+  );
   await expect(petFile).toHaveAttribute('title', 'rest/pet.rest.generated.ts');
   await petFile.click();
   await expect(page.locator('#pg-code')).toContainText('listPets');
@@ -47,8 +56,12 @@ test('generates the petstore client in the browser', async ({ page }) => {
 test('shows a typed diagnostic for an unsupported spec', async ({ page }) => {
   await ready(page);
   await replaceText(page, '#pg-editor', INVALID_SPEC);
-  await expect(page.locator('#pg-diagnostics li.is-error')).toContainText('E_POLICY_VIOLATION');
-  await expect(page.locator('#pg-diagnostics li.is-error')).toContainText('missing-operation-id');
+  await expect(page.locator('#pg-diagnostics li.is-error')).toContainText(
+    'E_POLICY_VIOLATION',
+  );
+  await expect(page.locator('#pg-diagnostics li.is-error')).toContainText(
+    'missing-operation-id',
+  );
 });
 
 test('separates warnings from errors and notes by colour', async ({ page }) => {
@@ -80,10 +93,15 @@ test('keeps diagnostic colours readable in both themes', async ({ page }) => {
   await ready(page);
   const contrasts = await page.evaluate(() => {
     const luminance = (colour: string) => {
-      const [r, g, b] = colour.match(/\d+/g)!.map(Number).map(v => {
-        const channel = v / 255;
-        return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-      });
+      const [r, g, b] = colour
+        .match(/\d+/g)!
+        .map(Number)
+        .map(v => {
+          const channel = v / 255;
+          return channel <= 0.03928
+            ? channel / 12.92
+            : ((channel + 0.055) / 1.055) ** 2.4;
+        });
       return 0.2126 * r + 0.7152 * g + 0.0722 * b;
     };
     const ratio = (a: string, b: string) => {
@@ -110,20 +128,30 @@ test('keeps diagnostic colours readable in both themes', async ({ page }) => {
 
 test('applies a pasted project config to the generated names', async ({ page }) => {
   await ready(page);
-  await page.locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button').click();
+  await page
+    .locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button')
+    .click();
   await expect(page.locator('#pg-code')).toContainText('listPets');
   await replaceText(page, '#pg-config', SNAKE_CASE_CONFIG);
   await expect(page.locator('#pg-code')).toContainText('list_pets');
-  await expect(page.locator('#pg-diagnostics li.is-note')).toContainText('input and output are ignored');
+  await expect(page.locator('#pg-diagnostics li.is-note')).toContainText(
+    'input and output are ignored',
+  );
 });
 
-test('reports a broken config in the console and keeps the last output', async ({ page }) => {
+test('reports a broken config in the console and keeps the last output', async ({
+  page,
+}) => {
   await ready(page);
   await replaceText(page, '#pg-config', '{"emit": [');
-  await expect(page.locator('#pg-diagnostics li.is-error')).toContainText('config is not valid JSON');
+  await expect(page.locator('#pg-diagnostics li.is-error')).toContainText(
+    'config is not valid JSON',
+  );
   await expect(page.locator('.pg')).toHaveClass(/is-stale/);
   await replaceText(page, '#pg-config', '{"emit": ["models"], "typo": true}');
-  await expect(page.locator('#pg-diagnostics li.is-error')).toContainText('E_INVALID_OPTION');
+  await expect(page.locator('#pg-diagnostics li.is-error')).toContainText(
+    'E_INVALID_OPTION',
+  );
 });
 
 const NO_TAGS_SPEC = [
@@ -137,10 +165,14 @@ const NO_TAGS_SPEC = [
   '      responses: {"200": {description: ok}}',
 ].join('\n');
 
-test('generates the same files with every default option enabled in the config', async ({ page }) => {
+test('generates the same files with every default option enabled in the config', async ({
+  page,
+}) => {
   await ready(page);
   const artifacts = () =>
-    page.locator('#pg-tree li[data-path]').evaluateAll(els => els.map(el => el.getAttribute('data-path')));
+    page
+      .locator('#pg-tree li[data-path]')
+      .evaluateAll(els => els.map(el => el.getAttribute('data-path')));
   // The editor renders only the viewport, so the tree's byte size covers the rest.
   const codeOf = async (path: string) => {
     const row = page.locator(`#pg-tree li[data-path="${path}"]`);
@@ -161,7 +193,9 @@ test('generates the same files with every default option enabled in the config',
     const paths = await artifacts();
     const expected = new Map<string, string>();
     for (const path of paths) expected.set(path!, await codeOf(path!));
-    await generated(() => replaceText(page, '#pg-config', uncommentConfig(DEFAULT_CONFIG)));
+    await generated(() =>
+      replaceText(page, '#pg-config', uncommentConfig(DEFAULT_CONFIG)),
+    );
     expect(await artifacts()).toEqual(paths);
     for (const [path, code] of expected) expect(await codeOf(path)).toBe(code);
   }
@@ -179,20 +213,29 @@ test('lays the panes out untouched by the prose styles', async ({ page }) => {
   expect(new Set(buttonHeights).size).toBe(1);
   await expect(page.locator('.cm-line').nth(1)).toHaveCSS('margin-top', '0px');
   const [pgWidth, panelWidth] = await page.evaluate(() => {
-    const panel = document.querySelector('main > .content-panel:last-child') as HTMLElement;
+    const panel = document.querySelector(
+      'main > .content-panel:last-child',
+    ) as HTMLElement;
     const panelStyle = getComputedStyle(panel);
     return [
       document.querySelector('.pg')!.getBoundingClientRect().width,
-      panel.clientWidth - parseFloat(panelStyle.paddingLeft) - parseFloat(panelStyle.paddingRight),
+      panel.clientWidth -
+        parseFloat(panelStyle.paddingLeft) -
+        parseFloat(panelStyle.paddingRight),
     ];
   });
   expect(pgWidth).toBeCloseTo(panelWidth, 0);
   const tree = page.locator('#pg-tree');
-  const [treeScrollWidth, treeClientWidth] = await tree.evaluate(el => [el.scrollWidth, el.clientWidth]);
+  const [treeScrollWidth, treeClientWidth] = await tree.evaluate(el => [
+    el.scrollWidth,
+    el.clientWidth,
+  ]);
   expect(treeScrollWidth).toBe(treeClientWidth);
   const console = page.locator('#pg-console');
   await expect(console).toHaveCSS('overflow-y', 'auto');
-  expect(await console.evaluate(el => parseFloat(getComputedStyle(el).maxHeight))).toBeGreaterThan(0);
+  expect(
+    await console.evaluate(el => parseFloat(getComputedStyle(el).maxHeight)),
+  ).toBeGreaterThan(0);
 });
 
 test.describe('on a wide screen', () => {
@@ -200,15 +243,22 @@ test.describe('on a wide screen', () => {
 
   test('fills the width whatever file is selected', async ({ page }) => {
     await ready(page);
-    const widthOf = () => page.locator('.pg').evaluate(el => el.getBoundingClientRect().width);
-    await page.locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button').click();
+    const widthOf = () =>
+      page.locator('.pg').evaluate(el => el.getBoundingClientRect().width);
+    await page
+      .locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button')
+      .click();
     const wide = await widthOf();
     await page.locator('#pg-tree li[data-path="rest.util.ts"] button').click();
     expect(await widthOf()).toBeCloseTo(wide, 0);
     const panelWidth = await page.evaluate(() => {
-      const panel = document.querySelector('main > .content-panel:last-child') as HTMLElement;
+      const panel = document.querySelector(
+        'main > .content-panel:last-child',
+      ) as HTMLElement;
       const style = getComputedStyle(panel);
-      return panel.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      return (
+        panel.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+      );
     });
     expect(wide).toBeCloseTo(panelWidth, 0);
   });
@@ -216,7 +266,9 @@ test.describe('on a wide screen', () => {
 
 test('scrolls inside each pane, never in a nested wrapper', async ({ page }) => {
   await ready(page);
-  await page.locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button').click();
+  await page
+    .locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button')
+    .click();
   // CodeMirror owns its scrolling; an outer scroller would double up and re-measure.
   for (const pane of ['#pg-editor', '#pg-config']) {
     await expect(page.locator(pane)).toHaveCSS('overflow-x', 'hidden');
@@ -241,16 +293,22 @@ test('opens a spec file from disk or by dropping it on the editor', async ({ pag
     buffer: Buffer.from(COOKIE_PARAM_SPEC),
   });
   await expect(page.locator('#pg-editor .cm-content')).toContainText('operationId: getA');
-  await expect(page.locator('#pg-diagnostics li.is-warning')).toContainText('unsupported-parameter-location');
+  await expect(page.locator('#pg-diagnostics li.is-warning')).toContainText(
+    'unsupported-parameter-location',
+  );
   // Dropping a file replaces the document instead of splicing it in at the cursor.
   await page.locator('#pg-editor .cm-content').evaluate((el, spec) => {
     const transfer = new DataTransfer();
     transfer.items.add(new File([spec], 'invalid.yaml', { type: 'application/yaml' }));
-    el.dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }));
+    el.dispatchEvent(
+      new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }),
+    );
   }, INVALID_SPEC);
   await expect(page.locator('#pg-editor .cm-content')).not.toContainText('getA');
   await expect(page.locator('#pg-editor .cm-content')).toContainText('/a: {get:');
-  await expect(page.locator('#pg-diagnostics li.is-error')).toContainText('missing-operation-id');
+  await expect(page.locator('#pg-diagnostics li.is-error')).toContainText(
+    'missing-operation-id',
+  );
 });
 
 test('switches between docs and playground from the header', async ({ page }) => {
@@ -269,12 +327,18 @@ test('switches between docs and playground from the header', async ({ page }) =>
   await expect(page).toHaveURL('/playground/');
 });
 
-test('shows the generated file in a read-only editor with line numbers and search', async ({ page }) => {
+test('shows the generated file in a read-only editor with line numbers and search', async ({
+  page,
+}) => {
   await ready(page);
-  await page.locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button').click();
+  await page
+    .locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button')
+    .click();
   const output = page.locator('#pg-code');
   await expect(output.locator('.cm-content')).toHaveAttribute('contenteditable', 'false');
-  await expect(output.locator('.cm-lineNumbers .cm-gutterElement').nth(1)).toHaveText('1');
+  await expect(output.locator('.cm-lineNumbers .cm-gutterElement').nth(1)).toHaveText(
+    '1',
+  );
   await expect(output.locator('.cm-content .tok-keyword').first()).toBeVisible();
   await output.locator('.cm-content').click();
   await page.keyboard.press('ControlOrMeta+f');
@@ -292,10 +356,16 @@ test('shows the generated file in a read-only editor with line numbers and searc
 test('paints the editors like the docs code blocks in both themes', async ({ page }) => {
   const themed = async (theme: 'light' | 'dark', selector: string) => {
     await page.evaluate(t => (document.documentElement.dataset.theme = t), theme);
-    return page.locator(selector).first().evaluate(el => getComputedStyle(el).backgroundColor);
+    return page
+      .locator(selector)
+      .first()
+      .evaluate(el => getComputedStyle(el).backgroundColor);
   };
   const colourOf = (selector: string) =>
-    page.locator(selector).first().evaluate(el => getComputedStyle(el).color);
+    page
+      .locator(selector)
+      .first()
+      .evaluate(el => getComputedStyle(el).color);
   await page.goto('/getting-started/');
   const snippet: Record<string, { background: string; keyword: string }> = {};
   for (const theme of ['light', 'dark'] as const) {
@@ -306,7 +376,9 @@ test('paints the editors like the docs code blocks in both themes', async ({ pag
   }
   expect(snippet.light.background).not.toBe(snippet.dark.background);
   await ready(page);
-  await page.locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button').click();
+  await page
+    .locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button')
+    .click();
   for (const theme of ['light', 'dark'] as const) {
     for (const pane of ['#pg-editor', '#pg-config', '#pg-code']) {
       expect(await themed(theme, `${pane} .cm-editor`)).toBe(snippet[theme].background);
@@ -318,15 +390,16 @@ test('paints the editors like the docs code blocks in both themes', async ({ pag
 test('shows a themed selection in the config editor', async ({ page }) => {
   await ready(page);
   const selectionBackground = async (theme: 'light' | 'dark') => {
-    await page.evaluate(t => document.documentElement.dataset.theme = t, theme);
+    await page.evaluate(t => (document.documentElement.dataset.theme = t), theme);
     const box = (await page.locator('#pg-config .cm-content').boundingBox())!;
     await page.mouse.move(box.x + 10, box.y + 8);
     await page.mouse.down();
     await page.mouse.move(box.x + 180, box.y + 34, { steps: 8 });
     await page.mouse.up();
-    return page.locator('#pg-config .cm-selectionLayer .cm-selectionBackground').first().evaluate(
-      el => getComputedStyle(el).backgroundColor,
-    );
+    return page
+      .locator('#pg-config .cm-selectionLayer .cm-selectionBackground')
+      .first()
+      .evaluate(el => getComputedStyle(el).backgroundColor);
   };
   const light = await selectionBackground('light');
   const dark = await selectionBackground('dark');

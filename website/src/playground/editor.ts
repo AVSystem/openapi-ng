@@ -35,7 +35,9 @@ export function createEditor(
             if (!file) return false;
             event.preventDefault();
             void file.text().then(text => {
-              view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
+              view.dispatch({
+                changes: { from: 0, to: view.state.doc.length, insert: text },
+              });
             });
             return true;
           },
@@ -46,7 +48,9 @@ export function createEditor(
           const next = detectFormat(value);
           if (!fixedLanguage && next !== format) {
             format = next;
-            view.dispatch({ effects: language.reconfigure(next === 'json' ? json() : yaml()) });
+            view.dispatch({
+              effects: language.reconfigure(next === 'json' ? json() : yaml()),
+            });
           }
           onChange(value);
         }),

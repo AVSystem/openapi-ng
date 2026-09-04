@@ -15,8 +15,9 @@ interface Signup {
   template: `
     <h2>Signal forms: validateRest()</h2>
     <p class="muted">
-      The async validator reuses the generated <code>AccountRest.checkEmail</code> operation, so
-      request and response stay typed. Try <code>taken@example.com</code>.
+      The async validator reuses the generated
+      <code>AccountRest.checkEmail</code> operation, so request and response stay typed.
+      Try <code>taken@example.com</code>.
     </p>
 
     <form (submit)="onSubmit($event)">
@@ -50,19 +51,22 @@ export class SignupForm {
   protected readonly model = signal<Signup>({ name: '', email: '' });
   protected readonly submitted = signal(false);
 
-  protected readonly signup = form(this.model, (path) => {
+  protected readonly signup = form(this.model, path => {
     required(path.name);
     required(path.email);
     email(path.email);
     validateRest(path.email, this.#accountRest.checkEmail, {
       // typed as CheckEmailParams; a typo here is a compile error
-      request: (ctx) => ({ email: ctx.value() }),
+      request: ctx => ({ email: ctx.value() }),
       debounce: 300,
-      when: (ctx) => ctx.value().includes('@'),
-      onSuccess: (result) =>
+      when: ctx => ctx.value().includes('@'),
+      onSuccess: result =>
         result.available
           ? undefined
-          : { kind: 'email-taken', message: `Already taken. How about ${result.suggestion}?` },
+          : {
+              kind: 'email-taken',
+              message: `Already taken. How about ${result.suggestion}?`,
+            },
       onError: () => ({ kind: 'check-failed', message: 'Could not verify the address.' }),
     });
   });

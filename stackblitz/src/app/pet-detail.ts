@@ -25,7 +25,10 @@ import { PetRest } from '../generated/rest/pet.rest.generated';
       </p>
       <p>
         @for (option of statuses; track option) {
-          <button [disabled]="saving() || current.status === option" (click)="setStatus(option)">
+          <button
+            [disabled]="saving() || current.status === option"
+            (click)="setStatus(option)"
+          >
             mark {{ option }}
           </button>
         }
@@ -33,7 +36,9 @@ import { PetRest } from '../generated/rest/pet.rest.generated';
     }
 
     @if (rawRequest(); as raw) {
-      <p class="muted">.request() returns the plain request, if you want to send it yourself:</p>
+      <p class="muted">
+        .request() returns the plain request, if you want to send it yourself:
+      </p>
       <pre>{{ raw | json }}</pre>
     }
   `,
@@ -65,7 +70,7 @@ export class PetDetail {
     this.#petRest.updatePet
       .observable({ petId: current.id, body: { status } }, { observe: 'response' })
       .subscribe({
-        next: (response) => {
+        next: response => {
           const saved = response.body!;
           this.pet.set(saved);
           this.updated.emit(saved);

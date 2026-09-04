@@ -59,7 +59,8 @@ function lowerRule(rule: unknown, path: string): unknown {
 }
 
 function lowerNaming(value: unknown, path: string): unknown {
-  if (Array.isArray(value)) return value.map((item, i) => lowerRule(item, `${path}[${i}]`));
+  if (Array.isArray(value))
+    return value.map((item, i) => lowerRule(item, `${path}[${i}]`));
   return lowerRule(value, path);
 }
 

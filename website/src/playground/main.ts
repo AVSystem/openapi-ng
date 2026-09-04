@@ -24,7 +24,11 @@ function byId<T extends HTMLElement>(doc: Document, id: string): T {
   return el as T;
 }
 
-function describe(item: { code: string; subcode?: string | null; message: string }): string {
+function describe(item: {
+  code: string;
+  subcode?: string | null;
+  message: string;
+}): string {
   return `${item.code}${item.subcode ? ` (${item.subcode})` : ''}: ${item.message}`;
 }
 
@@ -62,7 +66,12 @@ export function start(doc: Document): void {
   const editor = createEditor(byId(doc, 'pg-editor'), petstoreSpec, schedule);
   const output = createOutput(byId(doc, 'pg-code'));
   // The JSON grammar has no comments; the JavaScript one highlights JSONC fine.
-  const configEditor = createEditor(byId(doc, 'pg-config'), DEFAULT_CONFIG, schedule, javascript());
+  const configEditor = createEditor(
+    byId(doc, 'pg-config'),
+    DEFAULT_CONFIG,
+    schedule,
+    javascript(),
+  );
 
   function schedule(): void {
     clearTimeout(timer);
@@ -137,7 +146,11 @@ export function start(doc: Document): void {
       root!.classList.add('is-stale');
       if (err instanceof GenerateError) {
         summaryEl.textContent = 'generation failed';
-        renderConsole({ errors: [describe(err)], warnings: err.warnings, notes: config.notes });
+        renderConsole({
+          errors: [describe(err)],
+          warnings: err.warnings,
+          notes: config.notes,
+        });
       } else {
         summaryEl.textContent = err instanceof Error ? err.message : String(err);
         renderConsole({ notes: config.notes });
@@ -149,7 +162,9 @@ export function start(doc: Document): void {
   }
 
   const fileInput = byId<HTMLInputElement>(doc, 'pg-file');
-  byId<HTMLButtonElement>(doc, 'pg-open').addEventListener('click', () => fileInput.click());
+  byId<HTMLButtonElement>(doc, 'pg-open').addEventListener('click', () =>
+    fileInput.click(),
+  );
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files?.[0];
     // Cleared so picking the same file again still fires `change`.

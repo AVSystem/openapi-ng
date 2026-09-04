@@ -9,4 +9,4 @@ bootstrapApplication(App, {
     provideHttpClient(withInterceptors([mockApiInterceptor])),
     provideOpenapiNg({ basePath: '/api' }),
   ],
-}).catch((error) => console.error(error));
+}).catch(error => console.error(error));

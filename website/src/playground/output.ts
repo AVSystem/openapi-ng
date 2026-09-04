@@ -25,7 +25,9 @@ export function createOutput(parent: HTMLElement): OutputView {
   });
   return {
     setValue: contents =>
-      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: contents } }),
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: contents },
+      }),
   };
 }
 

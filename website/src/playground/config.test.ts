@@ -6,7 +6,9 @@ describe('parseConfig', () => {
   it('passes generator options through', () => {
     const text = JSON.stringify({
       emit: ['models'],
-      mappedTypes: [{ schema: 'GeoJSON', import: 'geojson', type: 'GeoJSON', alias: 'NativeGeoJSON' }],
+      mappedTypes: [
+        { schema: 'GeoJSON', import: 'geojson', type: 'GeoJSON', alias: 'NativeGeoJSON' },
+      ],
       responseTypeMapping: [{ contentType: 'application/pdf', responseType: 'blob' }],
     });
     expect(parseConfig(text)).toEqual({
@@ -17,7 +19,9 @@ describe('parseConfig', () => {
   });
 
   it('drops input and output with a note', () => {
-    const result = parseConfig('{"input": "./spec.yaml", "output": "./out", "emit": ["angular"]}');
+    const result = parseConfig(
+      '{"input": "./spec.yaml", "output": "./out", "emit": ["angular"]}',
+    );
     expect(result).toEqual({
       ok: true,
       options: { emit: ['angular'] },
@@ -56,14 +60,26 @@ describe('parseConfig', () => {
   it('lowers parse inside a group chain and keeps string items', () => {
     const result = parseConfig(
       JSON.stringify({
-        naming: { group: ['{tags[0]}', { from: '{path}', parse: '/^\\/(?<seg>[^/]+)/', format: '{capture.seg}' }] },
+        naming: {
+          group: [
+            '{tags[0]}',
+            { from: '{path}', parse: '/^\\/(?<seg>[^/]+)/', format: '{capture.seg}' },
+          ],
+        },
       }),
     );
     expect(result).toMatchObject({
       ok: true,
       options: {
         naming: {
-          group: ['{tags[0]}', { from: '{path}', parse: { source: '^\\/(?<seg>[^/]+)', flags: '' }, format: '{capture.seg}' }],
+          group: [
+            '{tags[0]}',
+            {
+              from: '{path}',
+              parse: { source: '^\\/(?<seg>[^/]+)', flags: '' },
+              format: '{capture.seg}',
+            },
+          ],
         },
       },
     });
@@ -71,16 +87,22 @@ describe('parseConfig', () => {
 
   it('keeps an explicit {source, flags} parse untouched', () => {
     const result = parseConfig(
-      JSON.stringify({ naming: { methodName: { parse: { source: 'a', flags: 'g' }, format: 'x' } } }),
+      JSON.stringify({
+        naming: { methodName: { parse: { source: 'a', flags: 'g' }, format: 'x' } },
+      }),
     );
     expect(result).toMatchObject({
       ok: true,
-      options: { naming: { methodName: { parse: { source: 'a', flags: 'g' }, format: 'x' } } },
+      options: {
+        naming: { methodName: { parse: { source: 'a', flags: 'g' }, format: 'x' } },
+      },
     });
   });
 
   it('rejects a parse string that is not a regex literal', () => {
-    const result = parseConfig(JSON.stringify({ naming: { methodName: { parse: '^abc$' } } }));
+    const result = parseConfig(
+      JSON.stringify({ naming: { methodName: { parse: '^abc$' } } }),
+    );
     expect(result).toEqual({
       ok: false,
       error: 'naming.methodName.parse: write the regex as a literal, e.g. "/^abc$/i"',
@@ -95,12 +117,22 @@ describe('parseConfig', () => {
 
   it('accepts comments and trailing commas', () => {
     const text = '{\n  // both\n  "emit": ["models", /* inline */ "angular",],\n}\n';
-    expect(parseConfig(text)).toEqual({ ok: true, options: { emit: ['models', 'angular'] }, notes: [] });
+    expect(parseConfig(text)).toEqual({
+      ok: true,
+      options: { emit: ['models', 'angular'] },
+      notes: [],
+    });
   });
 
   it('rejects a non-object document', () => {
-    expect(parseConfig('["models"]')).toEqual({ ok: false, error: 'config must be a JSON object' });
-    expect(parseConfig('null')).toEqual({ ok: false, error: 'config must be a JSON object' });
+    expect(parseConfig('["models"]')).toEqual({
+      ok: false,
+      error: 'config must be a JSON object',
+    });
+    expect(parseConfig('null')).toEqual({
+      ok: false,
+      error: 'config must be a JSON object',
+    });
   });
 
   it('ships a default that parses to the default emit set', () => {

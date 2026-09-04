@@ -18,8 +18,8 @@ import { PetRest } from '../generated/rest/pet.rest.generated';
       @if (pets.isLoading()) {
         loading…
       } @else {
-        {{ pets.value().length }} pets, HTTP {{ pets.statusCode() }},
-        server latency {{ pets.headers()?.get('x-mock-latency') }}
+        {{ pets.value().length }} pets, HTTP {{ pets.statusCode() }}, server latency
+        {{ pets.headers()?.get('x-mock-latency') }}
       }
       <button class="link" (click)="pets.reload()">reload</button>
     </p>
