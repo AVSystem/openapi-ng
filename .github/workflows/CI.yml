@@ -344,6 +344,9 @@ jobs:
       - test-wasm-binding
     steps:
       - uses: actions/checkout@v7
+        with:
+          # release notes need every tag and the commits between them
+          fetch-depth: 0
       - name: setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup node
@@ -395,3 +398,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # `napi prepublish` creates the release with an empty body; fill it with the commits since the previous tag.
+      - name: Write release notes
+        run: |
+          tag="$(git log -1 --pretty=%B | grep -o -m1 "^v\?[0-9]\+\.[0-9]\+\.[0-9]\+[^ ]*" || true)"
+          if [ -z "$tag" ]; then
+            echo "Not a release, skipping release notes"
+            exit 0
+          fi
+          case "$tag" in v*) ;; *) tag="v$tag" ;; esac
+          git fetch --tags --force
+          scripts/release-notes.sh "$tag" > release-notes.md
+          cat release-notes.md
+          gh release edit "$tag" --notes-file release-notes.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
