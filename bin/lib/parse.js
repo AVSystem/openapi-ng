@@ -11,6 +11,7 @@ const path = require('node:path');
 
 const VALID_EMIT_TARGETS = Object.freeze(new Set(['models', 'angular']));
 const DEFAULT_EMIT = Object.freeze(['models', 'angular']);
+const VALID_LAYOUTS = Object.freeze(new Set(['services', 'operations', 'both']));
 
 const VALID_INIT_FORMATS = Object.freeze(new Set(['yaml', 'json', 'ts', 'js']));
 
@@ -59,6 +60,19 @@ function normalizeEmit(value) {
   }
 
   return Array.from(new Set(items));
+}
+
+// Normalize one user-supplied layout (CLI flag or config key). Unknown
+// values fail fast; null means "not set" so the Rust default applies.
+function normalizeLayout(value) {
+  if (value === null || value === undefined) return null;
+  const item = String(value).trim();
+  if (!VALID_LAYOUTS.has(item)) {
+    throw new Error(
+      `Unknown layout: '${item}'. Allowed: 'services', 'operations', 'both'.`,
+    );
+  }
+  return item;
 }
 
 function parseMappedType(value) {
@@ -305,6 +319,8 @@ function mergeConfig(fileConfig, cliFlags) {
 
   merged.naming = cliFlags.naming ?? normalizeNamingFromFile(fileConfig.naming);
 
+  merged.layout = cliFlags.layout ?? normalizeLayout(fileConfig.layout);
+
   return merged;
 }
 
@@ -378,6 +394,7 @@ function parseArgs(argv) {
   let verbose = null;
   const emitTokens = [];
   const mappedTypes = [];
+  let layout = null;
 
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index];
@@ -418,6 +435,12 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (token === '--layout') {
+      layout = normalizeLayout(requireValue(rest, index, '--layout'));
+      index += 1;
+      continue;
+    }
+
     throw new Error(`Unsupported argument: ${token}`);
   }
 
@@ -432,6 +455,7 @@ function parseArgs(argv) {
     verbose,
     emit,
     mappedTypes: mappedTypes.length > 0 ? mappedTypes : null,
+    layout,
     configPath,
   };
 }
@@ -444,6 +468,7 @@ module.exports = {
   normalizeResponseTypeMapping,
   normalizeNamingFromFile,
   normalizeEmit,
+  normalizeLayout,
   mergeConfig,
   parseArgs,
   DEFAULT_EMIT,

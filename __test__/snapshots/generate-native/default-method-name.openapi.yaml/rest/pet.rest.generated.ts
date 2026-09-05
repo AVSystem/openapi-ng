@@ -1,0 +1,15 @@
+import { Injectable } from '@angular/core';
+import { requestFactory } from '../rest.util';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class PetRest {
+
+  readonly default = requestFactory.zeroArg<void>(
+    () => ({
+      method: 'GET',
+      url: `/pets`,
+    }),
+  );
+}

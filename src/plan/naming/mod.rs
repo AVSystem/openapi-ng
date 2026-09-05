@@ -24,7 +24,8 @@ mod template;
 pub use config::NamingConfig;
 pub(crate) use config::{Case, Naming, Rule, RuleEntry};
 pub(crate) use legacy::{
-  error_interface_name, request_interface_name, service_class_name, service_file_stem,
+  error_interface_name, operation_file_stem, request_interface_name, service_class_name,
+  service_file_stem,
 };
 pub(crate) use parse_spec::compile as compile_parse_spec;
 

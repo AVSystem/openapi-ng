@@ -112,7 +112,7 @@ test('GenerateError.subcode is null (never undefined) when absent', t => {
 });
 
 test('public surface is a fixed allow-list', t => {
-  const allowed = new Set(['generate', 'GenerateError', 'EmitTarget']);
+  const allowed = new Set(['generate', 'GenerateError', 'EmitTarget', 'Layout']);
   // Node's CJS-to-ESM interop synthesises two bindings on `import * as`:
   //   - `'module.exports'`: the raw CJS object alongside per-property exports;
   //   - `'default'`: the same CJS object exposed as the default import.

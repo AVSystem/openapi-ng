@@ -836,3 +836,63 @@ const tsNativeAvailable = nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 6)
     });
   },
 );
+
+// ── layout ──────────────────────────────────────────────────────────────────
+
+test('normalizeLayout accepts the three layouts and trims whitespace', t => {
+  t.is(parse.normalizeLayout('services'), 'services');
+  t.is(parse.normalizeLayout(' operations '), 'operations');
+  t.is(parse.normalizeLayout('both'), 'both');
+});
+
+test('normalizeLayout returns null for absent values', t => {
+  t.is(parse.normalizeLayout(undefined), null);
+  t.is(parse.normalizeLayout(null), null);
+});
+
+test('normalizeLayout rejects unknown values', t => {
+  const err = t.throws(() => parse.normalizeLayout('flat'));
+  t.true(err?.message.includes("Unknown layout: 'flat'"));
+  t.true(err?.message.includes("'services', 'operations', 'both'"));
+});
+
+test('parseArgs: --layout sets the layout', t => {
+  const result = parse.parseArgs(['generate', '--layout', 'both']);
+  t.is(result.layout, 'both');
+});
+
+test('parseArgs: layout absent yields null', t => {
+  const result = parse.parseArgs(['generate']);
+  t.is(result.layout, null);
+});
+
+test('parseArgs: --layout rejects unknown values at parse time', t => {
+  const err = t.throws(() => parse.parseArgs(['generate', '--layout', 'flat']));
+  t.true(err?.message.includes("Unknown layout: 'flat'"));
+});
+
+test('parseArgs: --layout errors when next token is another flag', t => {
+  const err = t.throws(() =>
+    parse.parseArgs(['generate', '--layout', '--input', 'spec.yaml']),
+  );
+  t.regex(err!.message, /--layout requires a value/);
+});
+
+test('mergeConfig: cli layout wins over file layout', t => {
+  const merged = parse.mergeConfig({ layout: 'operations' }, { layout: 'both' });
+  t.is(merged.layout, 'both');
+});
+
+test('mergeConfig: file layout fills in when the cli flag is absent', t => {
+  const merged = parse.mergeConfig({ layout: 'operations' }, { layout: null });
+  t.is(merged.layout, 'operations');
+});
+
+test('mergeConfig: layout defaults to null so the generator default applies', t => {
+  t.is(parse.mergeConfig({}, {}).layout, null);
+});
+
+test('mergeConfig: rejects an unknown file-config layout', t => {
+  const err = t.throws(() => parse.mergeConfig({ layout: 'flat' }, {}));
+  t.true(err?.message.includes("Unknown layout: 'flat'"));
+});

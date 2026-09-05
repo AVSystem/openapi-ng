@@ -80,21 +80,31 @@ content = patchInterface(content, 'GenerateErrorPayload', payloadEdits);
 // `isolatedModules` reject `const enum` imports across module boundaries
 // (Vite, esbuild, Bun, TS 5.x defaults); the union+const pair preserves the
 // `EmitTarget.Models` access shape while keeping the surface importable.
-const ENUM_BLOCK_RE =
-  /export declare const enum EmitTarget \{\s*Models = 'models',\s*Angular = 'angular'\s*\}/;
-const ENUM_REPLACEMENT =
-  "export type EmitTarget = 'models' | 'angular';\n" +
-  'export declare const EmitTarget: {\n' +
-  "  readonly Models: 'models';\n" +
-  "  readonly Angular: 'angular';\n" +
-  '};';
-if (ENUM_BLOCK_RE.test(content)) {
-  content = content.replace(ENUM_BLOCK_RE, ENUM_REPLACEMENT);
-} else if (!content.includes("export type EmitTarget = 'models' | 'angular';")) {
+function rewriteConstEnum(source, name, members) {
+  const body = members.map(([key, value]) => `\\s*${key} = '${value}'`).join(',');
+  const blockRe = new RegExp(`export declare const enum ${name} \\{${body}\\s*\\}`);
+  const union = `export type ${name} = ${members.map(([, value]) => `'${value}'`).join(' | ')};`;
+  const replacement =
+    `${union}\n` +
+    `export declare const ${name}: {\n` +
+    members.map(([key, value]) => `  readonly ${key}: '${value}';\n`).join('') +
+    '};';
+  if (blockRe.test(source)) return source.replace(blockRe, replacement);
+  if (source.includes(union)) return source;
   throw new Error(
-    'EmitTarget const-enum block not found and union form not already present',
+    `${name} const-enum block not found and union form not already present`,
   );
 }
+
+content = rewriteConstEnum(content, 'EmitTarget', [
+  ['Models', 'models'],
+  ['Angular', 'angular'],
+]);
+content = rewriteConstEnum(content, 'Layout', [
+  ['Services', 'services'],
+  ['Operations', 'operations'],
+  ['Both', 'both'],
+]);
 
 // Mark `GenerateOptions.emit` optional on the published surface. The JS
 // wrapper in `lib/index.js` defaults the field to `['models', 'angular']`

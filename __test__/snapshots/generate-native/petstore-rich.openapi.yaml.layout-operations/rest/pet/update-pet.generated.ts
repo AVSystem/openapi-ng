@@ -1,0 +1,21 @@
+import { defineOperation, httpParams } from '../../rest.util';
+import type { Pet, PetId, UpdatePetRequest } from '../../model.generated';
+
+export const updatePet = defineOperation<UpdatePetParams, Pet>(
+  'updatePet',
+  (request: UpdatePetParams) => {
+    const { petId, includeHistory, body } = request;
+    return {
+      method: 'POST',
+      url: `/pets/${encodeURIComponent(petId)}`,
+      params: httpParams({ includeHistory }),
+      body: body,
+    };
+  },
+);
+
+export interface UpdatePetParams {
+  petId: PetId;
+  includeHistory?: boolean;
+  body: UpdatePetRequest;
+}

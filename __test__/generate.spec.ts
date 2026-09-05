@@ -1711,3 +1711,154 @@ test('generate is safe to run concurrently across distinct outputs', async t => 
     });
   });
 });
+
+// ── layout ──────────────────────────────────────────────────────────────────
+
+test('generate layout operations emits one file per operation plus a barrel and no class', async t => {
+  const result = await generate({
+    inputPath: fixture('petstore-minimal.openapi.yaml'),
+    emit: [...DEFAULT_EMIT],
+    layout: 'operations',
+  });
+  t.deepEqual(
+    result.artifacts.map(a => a.path),
+    [
+      'model.generated.ts',
+      'rest.model.ts',
+      'rest.util.ts',
+      'rest.validate.ts',
+      'rest/pet/list-pets.generated.ts',
+      'rest/pet.operations.generated.ts',
+    ],
+  );
+  const operation = result.artifacts.find(
+    a => a.path === 'rest/pet/list-pets.generated.ts',
+  )!;
+  t.true(
+    operation.contents.includes('export const listPets = defineOperation.zeroArg<void>('),
+  );
+  t.true(
+    operation.contents.includes("import { defineOperation } from '../../rest.util';"),
+  );
+  const barrel = result.artifacts.find(
+    a => a.path === 'rest/pet.operations.generated.ts',
+  )!;
+  t.true(barrel.contents.endsWith("export * from './pet/list-pets.generated';\n"));
+});
+
+test('generate layout both adds the class built from the barrel', async t => {
+  const result = await generate({
+    inputPath: fixture('petstore-minimal.openapi.yaml'),
+    emit: [...DEFAULT_EMIT],
+    layout: 'both',
+  });
+  const paths = result.artifacts.map(a => a.path);
+  t.true(paths.includes('rest/pet/list-pets.generated.ts'));
+  t.true(paths.includes('rest/pet.operations.generated.ts'));
+  const service = result.artifacts.find(a => a.path === 'rest/pet.rest.generated.ts')!;
+  t.true(service.contents.includes("import * as ops from './pet.operations.generated';"));
+  t.true(service.contents.includes('readonly listPets = ops.listPets.withInjector();'));
+  t.false(service.contents.includes('requestFactory'));
+});
+
+test('generate layout services is the default and matches an explicit services layout', async t => {
+  const implicit = await generate({
+    inputPath: fixture('petstore-minimal.openapi.yaml'),
+    emit: [...DEFAULT_EMIT],
+  });
+  const explicit = await generate({
+    inputPath: fixture('petstore-minimal.openapi.yaml'),
+    emit: [...DEFAULT_EMIT],
+    layout: 'services',
+  });
+  t.deepEqual(explicit.artifacts, implicit.artifacts);
+  t.deepEqual(
+    implicit.artifacts.map(a => a.path),
+    [
+      'model.generated.ts',
+      'rest.model.ts',
+      'rest.util.ts',
+      'rest.validate.ts',
+      'rest/pet.rest.generated.ts',
+    ],
+  );
+});
+
+test('generate rejects a non-default layout without the angular emit target', async t => {
+  const err = await t.throwsAsync(() =>
+    generate({
+      inputPath: fixture('petstore-minimal.openapi.yaml'),
+      emit: ['models'],
+      layout: 'both',
+    }),
+  );
+  t.is((err as any).code, 'E_INVALID_OPTION');
+  t.true(err!.message.includes("layout 'both' requires the 'angular' emit target"));
+});
+
+test('generate rejects an unknown layout value at the wrapper boundary', async t => {
+  const err = await t.throwsAsync(() =>
+    generate({
+      inputPath: fixture('petstore-minimal.openapi.yaml'),
+      emit: [...DEFAULT_EMIT],
+      layout: 'flat' as any,
+    }),
+  );
+  t.is((err as any).code, 'E_INVALID_OPTION');
+  t.is((err as any).subcode, 'shape');
+  t.true(err!.message.includes("got 'flat'"));
+});
+
+test('generate rejects an operation named default under layout operations', async t => {
+  const err = await t.throwsAsync(() =>
+    generate({
+      inputPath: fixture('default-method-name.openapi.yaml'),
+      emit: [...DEFAULT_EMIT],
+      layout: 'operations',
+    }),
+  );
+  t.is((err as any).code, 'E_POLICY_VIOLATION');
+  t.is((err as any).subcode, 'reserved-identifier');
+  t.true(err!.message.includes('naming.methodName'));
+});
+
+test('generate rejects two operations resolving to one method name in a group', async t => {
+  const err = await t.throwsAsync(() =>
+    generate({
+      inputPath: fixture('petstore-rich.openapi.yaml'),
+      emit: [...DEFAULT_EMIT],
+      naming: { methodName: 'same' },
+    }),
+  );
+  t.is((err as any).code, 'E_POLICY_VIOLATION');
+  t.is((err as any).subcode, 'naming-resolution');
+  t.true(err!.message.includes("methodName 'same' resolves for both"));
+});
+
+test.serial(
+  'generate layout both emits standalone operations that type-check in a consumer project',
+  async t => {
+    resetAngularConsumerGeneratedDir();
+
+    await generate({
+      inputPath: fixture('reserved-method-name.openapi.yaml'),
+      outputPath: angularConsumerGeneratedDir,
+      emit: [...DEFAULT_EMIT],
+      layout: 'both',
+    });
+
+    execFileSync(
+      process.execPath,
+      [
+        path.join(__dirname, '..', 'node_modules', 'typescript', 'bin', 'tsc'),
+        '-p',
+        path.join(__dirname, 'angular-consumer', 'tsconfig.standalone.json'),
+      ],
+      {
+        cwd: path.join(__dirname, 'angular-consumer'),
+        stdio: 'pipe',
+      },
+    );
+    t.pass('tsc type-checked the standalone-operation proof successfully');
+  },
+);

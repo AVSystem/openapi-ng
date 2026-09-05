@@ -46,9 +46,7 @@ export default defineConfig({
   input: './petstore.openapi.yaml',
   output: './src/generated',
   emit: ['models', 'angular'],
-  mappedTypes: [
-    { schema: 'DateTime', import: 'dayjs', type: 'Dayjs' },
-  ],
+  mappedTypes: [{ schema: 'DateTime', import: 'dayjs', type: 'Dayjs' }],
   naming: {
     methodName: {
       from: '{operationId}',
@@ -79,7 +77,7 @@ think GeoJSON `Feature`/`FeatureCollection`, recursive AST nodes,
 or types that already live in a well-typed npm package you'd rather
 re-use than re-describe.
 
-Mapped types let you ship a *placeholder* schema in the spec and
+Mapped types let you ship a _placeholder_ schema in the spec and
 swap it for an external TypeScript type at generation time. For
 GeoJSON, instead of trying (and failing) to translate the full
 GeoJSON RFC into nested `oneOf`/discriminator schemas, you declare
@@ -90,7 +88,7 @@ a stub:
 components:
   schemas:
     GeoFeature:
-      type: object   # placeholder — replaced via mapped type
+      type: object # placeholder — replaced via mapped type
 ```
 
 …then point the generator at the real type:
@@ -118,7 +116,7 @@ export type GeoFeature = Feature;
 CLI: `--mapped-type schema:import:type[:alias]`
 
 | Position | Field    | Meaning                                                       |
-|----------|----------|---------------------------------------------------------------|
+| -------- | -------- | ------------------------------------------------------------- |
 | 1        | `schema` | Schema name from `components.schemas` to replace              |
 | 2        | `import` | Module specifier to import from                               |
 | 3        | `type`   | Named export to import                                        |
@@ -128,11 +126,11 @@ The same shape works in JS/TS/YAML/JSON configs:
 
 ```ts
 mappedTypes: [
-  { schema: 'GeoFeature',           import: 'geojson', type: 'Feature' },
+  { schema: 'GeoFeature', import: 'geojson', type: 'Feature' },
   { schema: 'GeoFeatureCollection', import: 'geojson', type: 'FeatureCollection' },
-  { schema: 'DateTime',             import: 'dayjs',   type: 'Dayjs' },
-  { schema: 'BigDecimal',           import: 'decimal.js', type: 'Decimal', alias: 'BigDecimal' },
-]
+  { schema: 'DateTime', import: 'dayjs', type: 'Dayjs' },
+  { schema: 'BigDecimal', import: 'decimal.js', type: 'Decimal', alias: 'BigDecimal' },
+];
 ```
 
 ## Response type mapping
@@ -152,7 +150,7 @@ responseTypeMapping: [
 ```
 
 | Field          | Meaning                                                                                                  |
-|----------------|----------------------------------------------------------------------------------------------------------|
+| -------------- | -------------------------------------------------------------------------------------------------------- |
 | `contentType`  | Response media type to override (matched case-insensitively against the operation's declared responses). |
 | `responseType` | One of `json`, `blob`, `text`, `arrayBuffer` — mirrors Angular's `HttpClient.request({ responseType })`. |
 
@@ -161,12 +159,30 @@ The matched operation is wired through the corresponding
 This option is **not** exposed on the CLI; configure it via a config
 file or the Node API.
 
+## Layout
+
+`layout` picks the shape of the Angular output. Also available as
+`--layout` on the CLI.
+
+| Value                | Emits                                                                                                                  |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `services` (default) | `rest/<group>.rest.generated.ts`: one `@Injectable` class per tag with inlined `requestFactory(...)` properties.       |
+| `operations`         | `rest/<group>/<method>.generated.ts` per operation plus the barrel `rest/<group>.operations.generated.ts`. No classes. |
+| `both`               | The `operations` files plus the classes, each property being `ops.<method>.withInjector()`.                            |
+
+Operation file names are the resolved method name in kebab-case, so
+`naming.methodName` governs them too. `layout` is only meaningful with
+the `angular` emit target; a non-default value with `emit: ['models']`
+is an `E_INVALID_OPTION` error. See
+[Standalone operations](/guides/angular/#standalone-operations) for the
+consumer side.
+
 ## Customizing names
 
 By default, openapi-ng derives names like this:
 
 | Key          | Default chain                                                                     |
-|--------------|-----------------------------------------------------------------------------------|
+| ------------ | --------------------------------------------------------------------------------- |
 | `methodName` | `camelCase(operationId)`, else `camelCase(method + '_' + pathSegments.join('_'))` |
 | `group`      | `pascalCase(tags[0])`, else `pascalCase(pathSegments[0])`, else `'Default'`       |
 
@@ -201,13 +217,13 @@ If every rule in a chain fails, the generator throws
 Both `from` and `format` accept the same tokens:
 
 | Token               | Resolves to                                                                                    |
-|---------------------|------------------------------------------------------------------------------------------------|
+| ------------------- | ---------------------------------------------------------------------------------------------- |
 | `{operationId}`     | The OpenAPI `operationId`. Unbound when missing.                                               |
 | `{method}`          | HTTP method, lowercased (`get`, `post`, …).                                                    |
 | `{path}`            | The full path (e.g. `/users/{id}`).                                                            |
 | `{pathSegments[N]}` | Nth path segment (0-indexed). Brace path params are unwrapped — `/users/{id}` → `users`, `id`. |
 | `{tags[N]}`         | Nth tag.                                                                                       |
-| `{x-<name>}`        | Vendor extension on the operation. *Not yet plumbed through normalize — always unbound today.* |
+| `{x-<name>}`        | Vendor extension on the operation. _Not yet plumbed through normalize — always unbound today._ |
 | `{capture.<name>}`  | Named capture from `parse` (`(?<name>...)`). Only available inside `format`.                   |
 
 Array tokens accept **negative indexes** that count from the tail:
@@ -220,7 +236,7 @@ Five options. The transformer first splits the input into tokens
 transitions), then rejoins:
 
 | Case       | Input `get_someThing` |
-|------------|-----------------------|
+| ---------- | --------------------- |
 | `camel`    | `getSomeThing`        |
 | `pascal`   | `GetSomeThing`        |
 | `snake`    | `get_some_thing`      |

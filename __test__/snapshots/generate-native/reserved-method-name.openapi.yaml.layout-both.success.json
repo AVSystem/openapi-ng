@@ -1,0 +1,40 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/reserved-method-name.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Reserved Method Names",
+    "pathCount": 2,
+    "operationCount": 3,
+    "schemaCount": 3
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.generated.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest.validate.ts"
+    },
+    {
+      "path": "rest/pet/delete.generated.ts"
+    },
+    {
+      "path": "rest/pet/get-pet.generated.ts"
+    },
+    {
+      "path": "rest/pet/list-pets.generated.ts"
+    },
+    {
+      "path": "rest/pet.operations.generated.ts"
+    },
+    {
+      "path": "rest/pet.rest.generated.ts"
+    }
+  ]
+}

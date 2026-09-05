@@ -37,7 +37,7 @@ function printUsage() {
     [
       `${c.bold('Usage:')}`,
       `  openapi-ng generate [--input <path>] [--output <dir>] [--verbose]`,
-      `                     [--emit <targets>] [--config <path>]`,
+      `                     [--emit <targets>] [--layout <kind>] [--config <path>]`,
       `                     [--mapped-type <schemaName:importPath:typeName>]`,
       `  openapi-ng init [--format yaml|json|ts|js]`,
       '',
@@ -49,6 +49,9 @@ function printUsage() {
       `${c.bold('Emit targets:')}`,
       `  --emit models,angular       Comma-separated list (repeatable). Default: 'models,angular'.`,
       `                              'angular' depends on 'models'; it is auto-included.`,
+      '',
+      `${c.bold('Layout:')}`,
+      `  --layout services|operations|both   Angular output shape. Default: 'services'.`,
       '',
       `${c.bold('Supported inputs:')}`,
       '  - Local OpenAPI 3.x JSON or YAML files within the current subset.',
@@ -76,6 +79,8 @@ function printGenerateUsage() {
       `  --emit <targets>            Comma-separated list (repeatable). Default: 'models,angular'.`,
       `                              Valid: 'models', 'angular'.`,
       `                              'angular' depends on 'models'; it is auto-included.`,
+      `  --layout <kind>             Angular output shape: 'services' (per-tag classes, default),`,
+      `                              'operations' (one file per operation), or 'both'.`,
       `  --mapped-type <s:i:t[:a]>   Map schema <s> to imported type <t> from path <i>,`,
       `                              optionally renamed to <a>. Repeatable.`,
       `  --verbose                   Include warnings in the success summary.`,
@@ -147,6 +152,10 @@ emit:
   - models
   - angular
 
+# layout: angular output shape. 'services' (default) emits one class per
+# tag; 'operations' one importable constant per operation; 'both' emits both.
+# layout: services
+
 # mappedTypes:
 #   - schema: DateTime
 #     import: dayjs
@@ -181,6 +190,8 @@ export default defineConfig({
 
   // emit: ['models', 'angular'],
 
+  // layout: 'services', // or 'operations' | 'both'
+
   // mappedTypes: [
   //   { schema: 'DateTime', import: 'dayjs', type: 'Dayjs' },
   // ],
@@ -207,6 +218,7 @@ export default {
   output: './src/generated',
 
   // emit: ['models', 'angular'],
+  // layout: 'services', // or 'operations' | 'both'
 };
 `;
 
@@ -330,6 +342,7 @@ async function main(argv) {
       mappedTypes: merged.mappedTypes ?? undefined,
       responseTypeMapping: merged.responseTypeMapping ?? undefined,
       naming: merged.naming ?? undefined,
+      layout: merged.layout ?? undefined,
     });
     process.stdout.write(`${formatSuccess(result, merged.verbose)}\n`);
   } catch (error) {

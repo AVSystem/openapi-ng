@@ -106,6 +106,37 @@ const successFixtures = [
   'response-blob-via-pdf.openapi.yaml',
   'response-text-via-text-plain.openapi.yaml',
   'response-problem-json.openapi.yaml',
+  'default-method-name.openapi.yaml',
+];
+
+// Option-parameterised success cases; `label` names the snapshot files.
+// Keep in sync with `layoutCases` in __test__/generate.snapshot.spec.ts.
+const layoutCases = [
+  {
+    fixture: 'petstore-rich.openapi.yaml',
+    label: 'petstore-rich.openapi.yaml.layout-operations',
+    options: { layout: 'operations' },
+  },
+  {
+    fixture: 'petstore-rich.openapi.yaml',
+    label: 'petstore-rich.openapi.yaml.layout-both',
+    options: { layout: 'both' },
+  },
+  {
+    fixture: 'header-param.openapi.yaml',
+    label: 'header-param.openapi.yaml.layout-operations',
+    options: { layout: 'operations' },
+  },
+  {
+    fixture: 'reserved-method-name.openapi.yaml',
+    label: 'reserved-method-name.openapi.yaml.layout-both',
+    options: { layout: 'both' },
+  },
+];
+
+const successCases = [
+  ...successFixtures.map(fixture => ({ fixture, label: fixture, options: {} })),
+  ...layoutCases,
 ];
 
 // Failure fixtures: each entry maps a fixture file to the snapshot
@@ -323,16 +354,17 @@ function removeOrphans(dir, live) {
 }
 
 let staticTemplateWritten = false;
-for (const fixture of successFixtures) {
+for (const { fixture, label, options } of successCases) {
   const result = await generate({
     inputPath: path.join('test/fixtures', fixture),
     ...DEFAULT_OPTIONS,
+    ...options,
   });
   if (!staticTemplateWritten) {
     writeStaticTemplate(result);
     staticTemplateWritten = true;
   }
-  writeSuccessSnapshot(fixture, result);
+  writeSuccessSnapshot(label, result);
 }
 
 for (const { fixture, snapshot } of failureFixtures) {
@@ -360,6 +392,11 @@ const parameterisedFailures = [
       mappedTypes: [{ schema: 'MissingSchema', import: '@demo/x', type: 'Missing' }],
     },
     snapshot: 'petstore-rich.openapi.yaml.invalid-mapped-type.failure.json',
+  },
+  {
+    fixture: 'default-method-name.openapi.yaml',
+    options: { layout: 'operations' },
+    snapshot: 'default-method-name.openapi.yaml.layout-operations.failure.json',
   },
 ];
 

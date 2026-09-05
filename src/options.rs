@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use napi_derive::napi;
 
 use crate::{
-  bindings::{EmitTarget, InputFormat, NamingOptions},
+  bindings::{EmitTarget, InputFormat, Layout, NamingOptions},
   error::{Diagnostic, DiagnosticCode, Reporter},
 };
 
@@ -67,6 +67,7 @@ pub struct GenerateConfig {
   pub response_type_mapping: Vec<ResponseTypeMapping>,
   pub naming_options: Option<NamingOptions>,
   pub naming: crate::plan::naming::NamingConfig,
+  pub layout: Layout,
 }
 
 pub(crate) fn validate_generate_config(
@@ -98,6 +99,7 @@ pub(crate) fn validate_generate_config(
   }
 
   validate_emit_targets(&mut config.emit, reporter)?;
+  validate_layout(config, reporter)?;
   validate_mapped_types(&config.mapped_types, reporter)?;
   validate_response_type_mapping(&config.response_type_mapping, reporter)?;
   config.naming = resolve_naming_options(config.naming_options.take(), reporter)?;
@@ -133,6 +135,25 @@ fn validate_emit_targets(
       None,
       "Auto-included 'models' in emit because 'angular' depends on it. Add 'models' to emit to silence this warning.",
     );
+  }
+  Ok(())
+}
+
+// Only the angular emitter reads `layout`; a non-default value with no
+// angular output would be silently ignored otherwise.
+fn validate_layout(config: &GenerateConfig, reporter: &Reporter<'_>) -> Result<(), Diagnostic> {
+  if config.layout != Layout::Services && !config.emit.contains(&EmitTarget::Angular) {
+    return Err(reporter.error(
+      DiagnosticCode::InvalidOption,
+      format!(
+        "layout '{}' requires the 'angular' emit target.",
+        match config.layout {
+          Layout::Services => "services",
+          Layout::Operations => "operations",
+          Layout::Both => "both",
+        }
+      ),
+    ));
   }
   Ok(())
 }
@@ -360,6 +381,7 @@ mod tests {
       response_type_mapping: Vec::new(),
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
+      layout: crate::bindings::Layout::default(),
     }
   }
 

@@ -10,6 +10,12 @@ pub(crate) fn service_file_stem(tag: &str) -> String {
   apply_case(tag, Case::Kebab)
 }
 
+/// Returns the kebab-case file stem for a standalone operation file,
+/// e.g. "listPets" → "list-pets". Input is the resolved `method_name`.
+pub(crate) fn operation_file_stem(method_name: &str) -> String {
+  apply_case(method_name, Case::Kebab)
+}
+
 /// Returns the PascalCase synthesized envelope name for an operation's
 /// path/query/header/body fields, e.g. "listPets" → "ListPetsParams".
 ///

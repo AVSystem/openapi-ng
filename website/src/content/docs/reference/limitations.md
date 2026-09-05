@@ -81,12 +81,24 @@ at codegen with `E_POLICY_VIOLATION` / `field-collision`.
   the TypeScript surface, with each variant's discriminator property
   narrowed to its wire value. When `discriminator.mapping` is set, the
   mapping key becomes the literal value (e.g. `mapping: { feline:
-  '#/.../Cat' }` produces `kind: 'feline'` on the `Cat` variant). When
+'#/.../Cat' }` produces `kind: 'feline'` on the `Cat` variant). When
   no mapping entry matches, the lowercased schema name is used as a
   fallback.
 - **Recursive schemas** are supported.
 - **Nullable** types via OpenAPI 3.0's `nullable: true` are supported,
   emitted as `T | null`.
+
+## Standalone operations
+
+- **An operation cannot be named `default`** under `layout:
+'operations'` or `'both'`: `export *` never forwards a default
+  export, so the barrel would drop it. Rejected with
+  `E_POLICY_VIOLATION` / `reserved-identifier`; adjust
+  `naming.methodName`.
+- **Reserved words such as `delete`** are exported under their real
+  name through a local alias (`const delete_ = …; export { delete_ as
+delete }`). The barrel namespace (`ops.delete`) needs nothing extra;
+  a direct import must alias (`import { delete as deletePet }`).
 
 ## Out of scope
 

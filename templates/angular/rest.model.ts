@@ -1,3 +1,4 @@
+import type { Injector } from '@angular/core';
 import type {
   HttpContext,
   HttpHeaders,
@@ -58,11 +59,19 @@ export type HttpResourceOptionsUnion<TResult, TRaw = TResult> =
   | BaseHttpResourceOptionsWithDefault<TResult, TRaw>
   | BaseHttpResourceOptionsWithDefaultAndParse<TResult, TRaw>;
 
+// Standalone `.request()` reads the base path from `injector` when given and
+// returns the spec-relative URL otherwise.
+export interface OperationRequestOptions {
+  injector?: Injector;
+}
+
 // Omits body/params/headers (generator supplies them) and responseType
 // (fixed per requestFactory variant). Structurally compatible with
 // HttpClient.request(method, url, options) so the runtime spread doesn't
-// need a Parameters<…>[2] cast.
+// need a Parameters<…>[2] cast. `injector` is consumed by the runtime and
+// never reaches HttpClient.
 export type ObservableOptions = {
+  injector?: Injector;
   context?: HttpContext;
   observe?: 'body' | 'response' | 'events';
   reportProgress?: boolean;

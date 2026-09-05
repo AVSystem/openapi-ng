@@ -1,8 +1,10 @@
 mod imports;
+mod operation;
 mod request;
 mod service;
 
-pub(crate) use service::emit_service;
+pub(crate) use operation::{emit_operation, emit_operations_barrel};
+pub(crate) use service::{emit_bound_service, emit_service};
 
 pub(crate) const REST_MODEL_PATH: &str = "rest.model.ts";
 pub(crate) const REST_UTIL_PATH: &str = "rest.util.ts";
@@ -44,6 +46,7 @@ mod tests {
       group_name: "pet".into(),
       class_name: "PetRest".into(),
       artifact_path: "rest/pet.rest.generated.ts".to_string(),
+      operations_barrel_path: None,
       operations: vec![PlannedOperation {
         operation_id: "listPets".to_string(),
         method_name: "listPets".to_string(),
@@ -54,6 +57,7 @@ mod tests {
         errors: &[],
         description: None,
         deprecated: false,
+        artifact_path: None,
       }],
     };
     let content = emit_service(&plan);
@@ -70,6 +74,7 @@ mod tests {
       group_name: "pet".into(),
       class_name: "PetRest".into(),
       artifact_path: "rest/pet.rest.generated.ts".to_string(),
+      operations_barrel_path: None,
       operations: vec![PlannedOperation {
         operation_id: "updatePet".to_string(),
         method_name: "updatePet".to_string(),
@@ -89,6 +94,7 @@ mod tests {
         errors: &[],
         description: None,
         deprecated: false,
+        artifact_path: None,
       }],
     };
     let content = emit_service(&plan);

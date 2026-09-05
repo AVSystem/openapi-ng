@@ -793,3 +793,71 @@ test('cli generate --help describes --input accepting path or url', t => {
   t.is(result.status, 0);
   t.true(result.stdout.includes('path|url'));
 });
+
+test('cli generate --layout both writes operation files, the barrel and the class', t => {
+  withTempDir(outputPath => {
+    const result = runCli([
+      'generate',
+      '--input',
+      fixture('reserved-method-name.openapi.yaml'),
+      '--output',
+      outputPath,
+      '--layout',
+      'both',
+    ]);
+    t.is(result.status, 0);
+    t.is(result.stderr, '');
+    t.true(fs.existsSync(path.join(outputPath, 'rest', 'pet', 'list-pets.generated.ts')));
+    t.true(fs.existsSync(path.join(outputPath, 'rest', 'pet', 'delete.generated.ts')));
+    t.true(fs.existsSync(path.join(outputPath, 'rest', 'pet.operations.generated.ts')));
+    const service = fs.readFileSync(
+      path.join(outputPath, 'rest', 'pet.rest.generated.ts'),
+      'utf8',
+    );
+    t.true(service.includes('ops.delete.withInjector()'));
+  });
+});
+
+test('cli generate --layout operations omits the class file', t => {
+  withTempDir(outputPath => {
+    const result = runCli([
+      'generate',
+      '--input',
+      fixture('petstore-minimal.openapi.yaml'),
+      '--output',
+      outputPath,
+      '--layout',
+      'operations',
+    ]);
+    t.is(result.status, 0);
+    t.true(fs.existsSync(path.join(outputPath, 'rest', 'pet', 'list-pets.generated.ts')));
+    t.false(fs.existsSync(path.join(outputPath, 'rest', 'pet.rest.generated.ts')));
+  });
+});
+
+test('cli generate --layout rejects unknown values', t => {
+  const result = runCli([
+    'generate',
+    '--input',
+    fixture('petstore-minimal.openapi.yaml'),
+    '--layout',
+    'flat',
+  ]);
+  t.not(result.status, 0);
+  t.true(result.stderr.includes("Unknown layout: 'flat'"));
+});
+
+test('cli generate --emit models --layout both fails with E_INVALID_OPTION', t => {
+  const result = runCli([
+    'generate',
+    '--input',
+    fixture('petstore-minimal.openapi.yaml'),
+    '--emit',
+    'models',
+    '--layout',
+    'both',
+  ]);
+  t.not(result.status, 0);
+  t.true(result.stderr.includes('E_INVALID_OPTION'));
+  t.true(result.stderr.includes("requires the 'angular' emit target"));
+});

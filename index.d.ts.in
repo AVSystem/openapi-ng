@@ -48,6 +48,7 @@ export type DiagnosticSubcode =
   | 'operation-cap-exceeded'
   | 'mapping-expansion-exceeded'
   | 'naming-resolution'
+  | 'reserved-identifier'
   | 'multi-content-body'
   | 'unsupported-body-content-type'
   | 'multipart-nested-object'
@@ -131,6 +132,7 @@ export interface Config {
   mappedTypes?: Array<MappedType>;
   responseTypeMapping?: Array<ResponseTypeMapping>;
   naming?: NamingConfig;
+  layout?: Layout;
 }
 
 /**

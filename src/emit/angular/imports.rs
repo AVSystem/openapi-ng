@@ -1,4 +1,5 @@
-use std::collections::{BTreeMap, BTreeSet};
+use crate::wln;
+use std::collections::BTreeSet;
 
 use crate::emit::typescript::{self as ts, Writer};
 use crate::ir::canonical::ResponseContent;
@@ -17,21 +18,44 @@ pub(super) fn render_service_imports(
   helper_import_path: &str,
 ) {
   buffer.line("import { Injectable } from '@angular/core';");
+  let helper_symbols: &[&str] = if uses_http_params(operations) {
+    &["httpParams", "requestFactory"]
+  } else {
+    &["requestFactory"]
+  };
+  write_helper_import(buffer, helper_import_path, helper_symbols);
+  write_model_imports(
+    buffer,
+    &collect_model_type_imports(operations),
+    MODEL_IMPORT_PATH,
+  );
+}
 
-  let uses_http_params = operations.iter().any(|operation| {
+pub(super) fn uses_http_params(operations: &[PlannedOperation<'_>]) -> bool {
+  operations.iter().any(|operation| {
     operation
       .request
       .fields
       .iter()
       .any(|f| f.kind == RequestFieldKind::Query)
-  });
-  let helper_import = if uses_http_params {
-    format!("import {{ httpParams, requestFactory }} from '{helper_import_path}';")
-  } else {
-    format!("import {{ requestFactory }} from '{helper_import_path}';")
-  };
-  buffer.line(&helper_import);
+  })
+}
 
+pub(super) fn write_helper_import(buffer: &mut Writer, path: &str, symbols: &[&str]) {
+  wln!(buffer, "import {{ {} }} from '{path}';", symbols.join(", "));
+}
+
+pub(super) fn write_model_imports(buffer: &mut Writer, imports: &BTreeSet<&str>, path: &str) {
+  if !imports.is_empty() {
+    ts::write_import_line(buffer, imports.iter().map(|name| (*name, None)), path, true);
+  }
+}
+
+/// Every user-declared schema name the operations reference, in sorted
+/// order: request fields, headers, bodies, success and error responses.
+pub(super) fn collect_model_type_imports<'a>(
+  operations: &'a [PlannedOperation<'a>],
+) -> BTreeSet<&'a str> {
   let mut imports: BTreeSet<&str> = BTreeSet::new();
   for operation in operations {
     for field in &operation.request.fields {
@@ -82,11 +106,7 @@ pub(super) fn render_service_imports(
       collect_type_references(&error.body, &mut imports);
     }
   }
-
-  if !imports.is_empty() {
-    let by_path = BTreeMap::from([(MODEL_IMPORT_PATH, imports)]);
-    ts::import_block(buffer, &by_path, true);
-  }
+  imports
 }
 
 #[cfg(test)]

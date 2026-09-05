@@ -10,9 +10,10 @@ use crate::{
 };
 
 use super::{
-  naming::{service_class_name, service_file_stem},
+  naming::{operation_file_stem, service_class_name, service_file_stem},
   services::plan_request_contract,
 };
+use crate::bindings::Layout;
 
 /// `MappedType` after schema-name validation. The `schema` field borrows
 /// from the IR's model symbol that was matched, encoding the validated
@@ -45,6 +46,9 @@ pub(crate) struct ServicePlan<'ir> {
   pub(crate) group_name: String,
   pub(crate) class_name: String,
   pub(crate) artifact_path: String,
+  /// `rest/<group>.operations.generated.ts`; `Some` only for the
+  /// `operations` and `both` layouts.
+  pub(crate) operations_barrel_path: Option<String>,
   pub(crate) operations: Vec<PlannedOperation<'ir>>,
 }
 
@@ -63,6 +67,9 @@ pub(crate) struct PlannedOperation<'ir> {
   pub(crate) errors: &'ir [ErrorResponse],
   pub(crate) description: Option<String>,
   pub(crate) deprecated: bool,
+  /// `rest/<group>/<method>.generated.ts`; `Some` only for the
+  /// `operations` and `both` layouts.
+  pub(crate) artifact_path: Option<String>,
 }
 
 /// Per-field discriminator for `PlannedRequestField` that tells emit code
@@ -191,15 +198,36 @@ pub(crate) fn resolve_service_plans<'ir>(
   ir: &'ir ApiModel,
   resolver: &crate::plan::naming::NamingResolver,
   reporter: &Reporter<'_>,
+  layout: Layout,
 ) -> Result<Vec<ServicePlan<'ir>>, Diagnostic> {
   use super::services::group_operations;
 
+  let standalone = layout != Layout::Services;
   let grouped_operations = group_operations(&ir.operations, resolver, reporter)?;
   let mut services = Vec::with_capacity(grouped_operations.len());
   for (group_name, group_operations) in grouped_operations {
+    let file_stem = service_file_stem(&group_name);
     let mut operations: Vec<PlannedOperation<'ir>> = group_operations
       .iter()
       .map(|(operation, method_name)| {
+        // `export *` never forwards a default export, so the barrel would
+        // silently drop this operation.
+        if standalone && method_name == "default" {
+          return Err(Diagnostic::policy_violation(
+            reporter,
+            "reserved-identifier",
+            format!(
+              "methodName 'default' for operation {} {} (operationId={}) cannot be a standalone operation: `export *` does not forward default exports. Adjust naming.methodName or use layout 'services'.",
+              operation.method, operation.path, operation.operation_id,
+            ),
+          ));
+        }
+        let artifact_path = standalone.then(|| {
+          format!(
+            "rest/{file_stem}/{}.generated.ts",
+            operation_file_stem(method_name)
+          )
+        });
         Ok(PlannedOperation {
           operation_id: operation.operation_id.clone(),
           method_name: method_name.clone(),
@@ -210,17 +238,18 @@ pub(crate) fn resolve_service_plans<'ir>(
           errors: operation.errors.as_slice(),
           description: operation.description.clone(),
           deprecated: operation.deprecated,
+          artifact_path,
         })
       })
       .collect::<Result<Vec<_>, Diagnostic>>()?;
     operations.sort_by(|a, b| a.method_name.cmp(&b.method_name));
 
-    let artifact_path = format!("rest/{}.rest.generated.ts", service_file_stem(&group_name));
-
     services.push(ServicePlan {
       group_name: group_name.clone(),
       class_name: service_class_name(&group_name),
-      artifact_path,
+      artifact_path: format!("rest/{file_stem}.rest.generated.ts"),
+      operations_barrel_path: standalone
+        .then(|| format!("rest/{file_stem}.operations.generated.ts")),
       operations,
     });
   }
@@ -479,6 +508,7 @@ mod tests {
       &ir,
       &crate::plan::naming::NamingResolver::default(),
       &ctx.reporter(),
+      crate::bindings::Layout::Services,
     )
     .expect("service plan resolves");
 
@@ -594,6 +624,7 @@ mod tests {
       &ir,
       &crate::plan::naming::NamingResolver::default(),
       &ctx.reporter(),
+      crate::bindings::Layout::Services,
     )
     .expect("ref body stays nested even when it resolves to an inline object");
     let create_pet = &services[0].operations[0];
@@ -658,6 +689,7 @@ mod tests {
       &ir,
       &crate::plan::naming::NamingResolver::default(),
       &ctx.reporter(),
+      crate::bindings::Layout::Services,
     )
     .expect("plans resolve");
 

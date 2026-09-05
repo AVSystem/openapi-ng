@@ -1,11 +1,13 @@
+use crate::wln;
 use std::fmt::Write as _;
 
-use crate::emit::typescript::{Position, Writer, render_type};
+use crate::emit::typescript::{Position, Writer, jsdoc, render_type, write_type_reexport_line};
 use crate::ir::canonical::ResponseContent;
 use crate::plan::artifact_plan::{PlannedOperation, ServicePlan};
 use crate::plan::naming::{error_interface_name, request_interface_name};
 
 use super::imports::render_service_imports;
+use super::operation::sibling_specifier;
 use super::request::{
   render_error_interface, render_request_interface, render_requestful_builder,
   render_zero_arg_builder,
@@ -77,6 +79,73 @@ pub(crate) fn emit_service(service_plan: &ServicePlan<'_>) -> String {
   buffer.into_string()
 }
 
+/// `both` layout: one `withInjector()` line per operation, plus type
+/// re-exports so `import type { ListPetsParams } from './rest/pet.rest.generated'`
+/// resolves the same way it does under `services`.
+pub(crate) fn emit_bound_service(service_plan: &ServicePlan<'_>) -> String {
+  let barrel = service_plan
+    .operations_barrel_path
+    .as_deref()
+    .expect("operations barrel is planned for the both layout");
+  let specifier = sibling_specifier(barrel);
+  let mut buffer = Writer::with_capacity((service_plan.operations.len() * 96).max(512));
+
+  buffer.line("import { Injectable } from '@angular/core';");
+  wln!(buffer, "import * as ops from '{specifier}';");
+  buffer.blank_line();
+  buffer.line("@Injectable({");
+  buffer.line("  providedIn: 'root',");
+  buffer.line("})");
+  buffer.open_block(&format!("export class {}", service_plan.class_name));
+
+  // One-liners stay contiguous; a blank line separates documented
+  // properties from their neighbours.
+  let mut previous_documented = false;
+  for (index, operation) in service_plan.operations.iter().enumerate() {
+    let documented = is_documented(operation);
+    if index > 0 && (documented || previous_documented) {
+      buffer.blank_line();
+    }
+    jsdoc(
+      &mut buffer,
+      operation.description.as_deref(),
+      operation.deprecated,
+    );
+    let name = &operation.method_name;
+    wln!(buffer, "readonly {name} = ops.{name}.withInjector();");
+    previous_documented = documented;
+  }
+  buffer.close_block("");
+
+  let mut reexports: Vec<String> = Vec::new();
+  for operation in &service_plan.operations {
+    if has_request_interface(operation) {
+      reexports.push(request_interface_name(&operation.method_name));
+    }
+    if !operation.errors.is_empty() {
+      reexports.push(error_interface_name(&operation.method_name));
+    }
+  }
+  if !reexports.is_empty() {
+    buffer.blank_line();
+    write_type_reexport_line(
+      &mut buffer,
+      reexports.iter().map(String::as_str),
+      &specifier,
+    );
+  }
+
+  buffer.into_string()
+}
+
+fn is_documented(operation: &PlannedOperation<'_>) -> bool {
+  operation.deprecated
+    || operation
+      .description
+      .as_deref()
+      .is_some_and(|description| !description.trim_end().is_empty())
+}
+
 fn render_operation_property(
   buffer: &mut Writer,
   operation: &PlannedOperation<'_>,
@@ -84,13 +153,13 @@ fn render_operation_property(
 ) {
   let property_name = &operation.method_name;
 
-  crate::emit::typescript::jsdoc(
+  jsdoc(
     buffer,
     operation.description.as_deref(),
     operation.deprecated,
   );
   write!(buffer, "readonly {property_name} = ").unwrap();
-  write_response_call_site(buffer, operation.response, request_name);
+  write_call_site(buffer, "requestFactory", operation.response, request_name);
   buffer.push("(\n");
   buffer.indent();
   match request_name {
@@ -101,27 +170,29 @@ fn render_operation_property(
   buffer.line(");");
 }
 
-const fn has_request_interface(operation: &PlannedOperation<'_>) -> bool {
+pub(super) const fn has_request_interface(operation: &PlannedOperation<'_>) -> bool {
   !operation.request.fields.is_empty()
     || operation.request.body.is_some()
     || !operation.request.headers.is_empty()
 }
 
-/// Writes the full helper call prefix into `buffer`. The arity of the
-/// operation (does it take a typed `Request`?) and the response variant
-/// pick one of four call shapes — explicit at the generator boundary,
-/// so the runtime no longer needs the `reqFn.length === 0` probe.
+/// Writes the full helper call prefix into `buffer`. `factory` is
+/// `requestFactory` (class property) or `defineOperation` (standalone
+/// constant); the arity of the operation (does it take a typed `Request`?)
+/// and the response variant pick one of four call shapes — explicit at the
+/// generator boundary, so the runtime never probes `reqFn.length`.
 ///
 /// Mapping (see docs/superpowers/specs/2026-05-19-request-factory-variants-design.md):
 ///
-/// |                | Requestful                    | Zero-arg                              |
-/// |----------------|-------------------------------|----------------------------------------|
-/// | JSON / void    | `requestFactory<Req, Res>`    | `requestFactory.zeroArg<Res>`          |
-/// | Blob           | `requestFactory.blob<Req>`    | `requestFactory.zeroArg.blob`          |
-/// | Text           | `requestFactory.text<Req>`    | `requestFactory.zeroArg.text`          |
-/// | ArrayBuffer    | `requestFactory.arrayBuffer<Req>` | `requestFactory.zeroArg.arrayBuffer` |
-fn write_response_call_site(
+/// |                | Requestful               | Zero-arg                     |
+/// |----------------|--------------------------|------------------------------|
+/// | JSON / void    | `<factory><Req, Res>`    | `<factory>.zeroArg<Res>`     |
+/// | Blob           | `<factory>.blob<Req>`    | `<factory>.zeroArg.blob`     |
+/// | Text           | `<factory>.text<Req>`    | `<factory>.zeroArg.text`     |
+/// | ArrayBuffer    | `<factory>.arrayBuffer<Req>` | `<factory>.zeroArg.arrayBuffer` |
+pub(super) fn write_call_site(
   buffer: &mut Writer,
+  factory: &str,
   response: Option<&ResponseContent>,
   request_name: Option<&String>,
 ) {
@@ -134,18 +205,18 @@ fn write_response_call_site(
 
   match (variant, request_name) {
     (Some(kind), Some(request)) => {
-      write!(buffer, "requestFactory.{kind}<{request}>").unwrap();
+      write!(buffer, "{factory}.{kind}<{request}>").unwrap();
     }
     (Some(kind), None) => {
-      write!(buffer, "requestFactory.zeroArg.{kind}").unwrap();
+      write!(buffer, "{factory}.zeroArg.{kind}").unwrap();
     }
     (None, Some(request)) => {
-      write!(buffer, "requestFactory<{request}, ").unwrap();
+      write!(buffer, "{factory}<{request}, ").unwrap();
       write_response_type(buffer, response);
       buffer.push(">");
     }
     (None, None) => {
-      buffer.push("requestFactory.zeroArg<");
+      write!(buffer, "{factory}.zeroArg<").unwrap();
       write_response_type(buffer, response);
       buffer.push(">");
     }
