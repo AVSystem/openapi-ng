@@ -204,8 +204,10 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           architecture: ${{ matrix.settings.architecture }}
+      # macos-latest is arm64; match the optional platform packages to the
+      # x64 Node that setup-node installs above.
       - name: Install dependencies
-        run: bun ci
+        run: bun ci --cpu=${{ matrix.settings.architecture }}
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
