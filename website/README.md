@@ -37,5 +37,10 @@ linked: the JS wrapper validates option keys, so a published wrapper rejects opt
 engine adds. After further Rust or template changes, rebuild the wasm, copy the six files again
 and restart `dev` so `predev` re-bundles the engine.
 
-Before committing, revert `package.json` and the root `pnpm-lock.yaml`. Bump the pins only once
-the new version is on npm.
+Before committing, revert `website/package.json` and the root `pnpm-lock.yaml`:
+
+```bash
+git checkout -- website/package.json pnpm-lock.yaml && pnpm install
+```
+
+Bump the pins only once the new version is on npm.

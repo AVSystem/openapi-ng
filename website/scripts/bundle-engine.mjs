@@ -25,7 +25,12 @@ const loaderSource = fs.readFileSync(
   path.join(pkgDir, 'openapi-ng.wasi-browser.js'),
   'utf8',
 );
-if (!loaderSource.includes(PACKAGE_WORKER_URL)) {
+// `napi artifacts` rewrites the published loader to the bare specifier; a local
+// `napi build` already emits the relative one, so the replace below is a no-op.
+if (
+  !loaderSource.includes(PACKAGE_WORKER_URL) &&
+  !loaderSource.includes(LOCAL_WORKER_URL)
+) {
   throw new Error(
     'bundle-engine: worker URL in the WASI loader changed; update PACKAGE_WORKER_URL',
   );
