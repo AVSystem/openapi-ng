@@ -6,7 +6,7 @@ export default defineConfig({
   use: { baseURL: 'http://localhost:8788' },
   // wrangler dev serves dist/ with the _headers file; astro preview does not.
   webServer: {
-    command: 'pnpm exec wrangler dev --port 8788',
+    command: 'bunx wrangler dev --port 8788',
     url: 'http://localhost:8788/playground/',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

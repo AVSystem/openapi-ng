@@ -2,7 +2,7 @@
 // Regenerate __test__/snapshots/generate-native/*.{success,failure}.json by
 // running each fixture through generate and writing the result.
 //
-// Run with:  pnpm regen-snapshots
+// Run with:  bun run regen-snapshots
 //
 // Storage layout:
 //   - <fixture>.success.json    — summary + diagnostics + a path-only

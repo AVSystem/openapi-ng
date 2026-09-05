@@ -14,7 +14,7 @@
     "/*.cjs",
     "/index.js",
     "index.d.ts",
-    "pnpm-lock.yaml",
+    "bun.lock",
     "/test/fixtures/malformed.yaml",
     "__test__/snapshots/generate-native"
   ]
