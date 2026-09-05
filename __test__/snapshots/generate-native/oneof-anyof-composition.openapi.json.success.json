@@ -18,7 +18,7 @@
   ],
   "artifacts": [
     {
-      "path": "model.generated.ts"
+      "path": "model.ts"
     },
     {
       "path": "rest.model.ts"
@@ -30,10 +30,10 @@
       "path": "rest.validate.ts"
     },
     {
-      "path": "rest/adoption-request.rest.generated.ts"
+      "path": "rest/adoption-request.rest.ts"
     },
     {
-      "path": "rest/pet.rest.generated.ts"
+      "path": "rest/pet.rest.ts"
     }
   ]
 }

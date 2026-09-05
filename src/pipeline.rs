@@ -316,12 +316,9 @@ mod tests {
 
   #[test]
   fn generated_artifact_new_preserves_path_and_contents() {
-    let artifact = GeneratedArtifact::new(
-      "rest/pet.rest.generated.ts".to_string(),
-      "zażółć".to_string(),
-    );
+    let artifact = GeneratedArtifact::new("rest/pet.rest.ts".to_string(), "zażółć".to_string());
 
-    assert_eq!(artifact.path, "rest/pet.rest.generated.ts");
+    assert_eq!(artifact.path, "rest/pet.rest.ts");
     assert_eq!(artifact.contents, "zażółć");
   }
 
@@ -333,7 +330,7 @@ mod tests {
       std::rc::Rc::from("spec.yaml"),
     );
     let artifact = GeneratedArtifact::new(
-      "model.generated.ts".to_string(),
+      "model.ts".to_string(),
       "export interface Pet {}\n".to_string(),
     );
 
@@ -379,11 +376,11 @@ mod tests {
         .map(|artifact| artifact.path.as_str())
         .collect::<Vec<_>>(),
       vec![
-        "model.generated.ts",
+        "model.ts",
         "rest.model.ts",
         "rest.util.ts",
         "rest.validate.ts",
-        "rest/pet.rest.generated.ts",
+        "rest/pet.rest.ts",
       ]
     );
   }
@@ -439,20 +436,17 @@ mod tests {
     })
     .expect("generation succeeds");
 
-    // The artifact list has no `errors.generated.ts` — error interfaces
+    // The artifact list has no `errors.ts` — error interfaces
     // live alongside `*Params` inside the per-tag service file.
     assert!(
-      !result
-        .artifacts
-        .iter()
-        .any(|a| a.path == "errors.generated.ts"),
-      "errors.generated.ts must not be emitted as a standalone artifact",
+      !result.artifacts.iter().any(|a| a.path == "errors.ts"),
+      "errors.ts must not be emitted as a standalone artifact",
     );
 
     let service = result
       .artifacts
       .iter()
-      .find(|a| a.path == "rest/pet.rest.generated.ts")
+      .find(|a| a.path == "rest/pet.rest.ts")
       .expect("pet service emitted");
 
     // Per-status pairs render verbatim; numeric keys; refs to model types
@@ -533,11 +527,11 @@ mod tests {
         .map(|artifact| artifact.path.as_str())
         .collect::<Vec<_>>(),
       vec![
-        "model.generated.ts",
+        "model.ts",
         "rest.model.ts",
         "rest.util.ts",
         "rest.validate.ts",
-        "rest/pet.rest.generated.ts",
+        "rest/pet.rest.ts",
       ]
     );
   }

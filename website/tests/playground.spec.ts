@@ -47,10 +47,8 @@ test('generates the petstore client in the browser', async ({ page }) => {
   await ready(page);
   expect(await page.evaluate(() => globalThis.crossOriginIsolated)).toBe(true);
   await expect(page.locator('#pg-tree li[data-path]')).toHaveCount(6);
-  const petFile = page.locator(
-    '#pg-tree li[data-path="rest/pet.rest.generated.ts"] button',
-  );
-  await expect(petFile).toHaveAttribute('title', 'rest/pet.rest.generated.ts');
+  const petFile = page.locator('#pg-tree li[data-path="rest/pet.rest.ts"] button');
+  await expect(petFile).toHaveAttribute('title', 'rest/pet.rest.ts');
   await petFile.click();
   await expect(page.locator('#pg-code')).toContainText('listPets');
 });
@@ -130,9 +128,7 @@ test('keeps diagnostic colours readable in both themes', async ({ page }) => {
 
 test('applies a pasted project config to the generated names', async ({ page }) => {
   await ready(page);
-  await page
-    .locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button')
-    .click();
+  await page.locator('#pg-tree li[data-path="rest/pet.rest.ts"] button').click();
   await expect(page.locator('#pg-code')).toContainText('listPets');
   await replaceText(page, '#pg-config', SNAKE_CASE_CONFIG);
   await expect(page.locator('#pg-code')).toContainText('list_pets');
@@ -253,9 +249,7 @@ test.describe('on a wide screen', () => {
     await ready(page);
     const widthOf = () =>
       page.locator('.pg').evaluate(el => el.getBoundingClientRect().width);
-    await page
-      .locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button')
-      .click();
+    await page.locator('#pg-tree li[data-path="rest/pet.rest.ts"] button').click();
     const wide = await widthOf();
     await page.locator('#pg-tree li[data-path="rest.util.ts"] button').click();
     expect(await widthOf()).toBeCloseTo(wide, 0);
@@ -274,9 +268,7 @@ test.describe('on a wide screen', () => {
 
 test('scrolls inside each pane, never in a nested wrapper', async ({ page }) => {
   await ready(page);
-  await page
-    .locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button')
-    .click();
+  await page.locator('#pg-tree li[data-path="rest/pet.rest.ts"] button').click();
   // CodeMirror owns its scrolling; an outer scroller would double up and re-measure.
   for (const pane of ['#pg-editor', '#pg-config']) {
     await expect(page.locator(pane)).toHaveCSS('overflow-x', 'hidden');
@@ -339,9 +331,7 @@ test('shows the generated file in a read-only editor with line numbers and searc
   page,
 }) => {
   await ready(page);
-  await page
-    .locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button')
-    .click();
+  await page.locator('#pg-tree li[data-path="rest/pet.rest.ts"] button').click();
   const output = page.locator('#pg-code');
   await expect(output.locator('.cm-content')).toHaveAttribute('contenteditable', 'false');
   await expect(output.locator('.cm-lineNumbers .cm-gutterElement').nth(1)).toHaveText(
@@ -384,9 +374,7 @@ test('paints the editors like the docs code blocks in both themes', async ({ pag
   }
   expect(snippet.light.background).not.toBe(snippet.dark.background);
   await ready(page);
-  await page
-    .locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button')
-    .click();
+  await page.locator('#pg-tree li[data-path="rest/pet.rest.ts"] button').click();
   for (const theme of ['light', 'dark'] as const) {
     for (const pane of ['#pg-editor', '#pg-config', '#pg-code']) {
       expect(await themed(theme, `${pane} .cm-editor`)).toBe(snippet[theme].background);

@@ -6,7 +6,7 @@ pub(crate) mod typescript;
 mod typescript_tests;
 
 /// Public path of the generated TypeScript model artifact.
-pub(crate) const MODEL_ARTIFACT_PATH: &str = "model.generated.ts";
+pub(crate) const MODEL_ARTIFACT_PATH: &str = "model.ts";
 
 /// Compile-time crate version for the do-not-edit banner. Sourced from
 /// Cargo.toml (the same value `package.json:3` mirrors).

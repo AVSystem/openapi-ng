@@ -45,7 +45,7 @@ mod tests {
     let plan = ServicePlan {
       group_name: "pet".into(),
       class_name: "PetRest".into(),
-      artifact_path: "rest/pet.rest.generated.ts".to_string(),
+      artifact_path: "rest/pet.rest.ts".to_string(),
       operations_barrel_path: None,
       operations: vec![PlannedOperation {
         operation_id: "listPets".to_string(),
@@ -73,7 +73,7 @@ mod tests {
     let plan = ServicePlan {
       group_name: "pet".into(),
       class_name: "PetRest".into(),
-      artifact_path: "rest/pet.rest.generated.ts".to_string(),
+      artifact_path: "rest/pet.rest.ts".to_string(),
       operations_barrel_path: None,
       operations: vec![PlannedOperation {
         operation_id: "updatePet".to_string(),

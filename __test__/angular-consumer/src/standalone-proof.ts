@@ -7,22 +7,15 @@ import type { HttpResourceRef } from '@angular/common/http';
 import { Injector, inject } from '@angular/core';
 import { schema } from '@angular/forms/signals';
 import type { Observable } from 'rxjs';
-import type { Pet, PetList, Problem } from '../generated/model.generated';
+import type { Pet, PetList, Problem } from '../generated/model';
 import type { CommonRequest } from '../generated/rest.model';
 import { withInjector, type Operation, type RequestFn } from '../generated/rest.util';
 import { validateRest } from '../generated/rest.validate';
-import * as ops from '../generated/rest/pet.operations.generated';
-import type {
-  GetPetError,
-  GetPetParams,
-  PetRest,
-} from '../generated/rest/pet.rest.generated';
-import {
-  delete as deletePet,
-  type DeleteParams,
-} from '../generated/rest/pet/delete.generated';
-import { getPet } from '../generated/rest/pet/get-pet.generated';
-import { listPets, type ListPetsParams } from '../generated/rest/pet/list-pets.generated';
+import * as ops from '../generated/rest/pet';
+import type { GetPetError, GetPetParams, PetRest } from '../generated/rest/pet.rest';
+import { delete as deletePet, type DeleteParams } from '../generated/rest/pet/delete';
+import { getPet } from '../generated/rest/pet/get-pet';
+import { listPets, type ListPetsParams } from '../generated/rest/pet/list-pets';
 
 declare function expectType<T>(value: T): void;
 declare const injector: Injector;

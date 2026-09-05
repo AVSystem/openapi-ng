@@ -10,7 +10,7 @@
   "diagnostics": [],
   "artifacts": [
     {
-      "path": "model.generated.ts"
+      "path": "model.ts"
     },
     {
       "path": "rest.model.ts"
@@ -22,19 +22,19 @@
       "path": "rest.validate.ts"
     },
     {
-      "path": "rest/pet/get-pet.generated.ts"
+      "path": "rest/pet/get-pet.ts"
     },
     {
-      "path": "rest/pet/list-pets.generated.ts"
+      "path": "rest/pet/list-pets.ts"
     },
     {
-      "path": "rest/pet/update-pet.generated.ts"
+      "path": "rest/pet/update-pet.ts"
     },
     {
-      "path": "rest/pet.operations.generated.ts"
+      "path": "rest/pet/index.ts"
     },
     {
-      "path": "rest/pet.rest.generated.ts"
+      "path": "rest/pet.rest.ts"
     }
   ]
 }

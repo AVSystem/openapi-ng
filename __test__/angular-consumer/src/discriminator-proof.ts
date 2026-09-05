@@ -1,4 +1,4 @@
-import type { Cat, Dog, PetUnion } from '../generated/model.generated';
+import type { Cat, Dog, PetUnion } from '../generated/model';
 
 declare const pet: PetUnion;
 

@@ -7,7 +7,7 @@ import type {
   ContactPhone,
   PetUnion,
   PetUnionList,
-} from '../generated/model.generated';
+} from '../generated/model';
 
 declare const http: HttpClient;
 

@@ -195,8 +195,8 @@ test('OpenAPI deprecated:true is mapped to @deprecated JSDoc on operations and p
     emit: ['models', 'angular'],
   });
 
-  const model = result.artifacts.find(a => a.path === 'model.generated.ts');
-  const service = result.artifacts.find(a => a.path === 'rest/pet.rest.generated.ts');
+  const model = result.artifacts.find(a => a.path === 'model.ts');
+  const service = result.artifacts.find(a => a.path === 'rest/pet.rest.ts');
   t.truthy(model);
   t.truthy(service);
 
@@ -284,11 +284,11 @@ test.serial(
           schemaCount: 6,
         },
         artifacts: [
-          { path: 'model.generated.ts' },
+          { path: 'model.ts' },
           { path: 'rest.model.ts' },
           { path: 'rest.util.ts' },
           { path: 'rest.validate.ts' },
-          { path: 'rest/pet.rest.generated.ts' },
+          { path: 'rest/pet.rest.ts' },
         ],
       });
 
@@ -311,31 +311,23 @@ test.serial(
       t.is(stripBanner(jsonResult.artifacts[0]?.contents), expectedModelSource);
       t.is(stripBanner(yamlResult.artifacts[0]?.contents), expectedModelSource);
       assertRestHelpers(t, jsonResult);
-      assertPetServiceArtifact(
-        t,
-        getArtifact(jsonResult, 'rest/pet.rest.generated.ts')?.contents,
-      );
-      t.true(fs.existsSync(path.join(angularConsumerGeneratedDir, 'model.generated.ts')));
+      assertPetServiceArtifact(t, getArtifact(jsonResult, 'rest/pet.rest.ts')?.contents);
+      t.true(fs.existsSync(path.join(angularConsumerGeneratedDir, 'model.ts')));
       t.true(fs.existsSync(path.join(angularConsumerGeneratedDir, 'rest.model.ts')));
       t.true(fs.existsSync(path.join(angularConsumerGeneratedDir, 'rest.util.ts')));
       t.true(
-        fs.existsSync(
-          path.join(angularConsumerGeneratedDir, 'rest', 'pet.rest.generated.ts'),
-        ),
+        fs.existsSync(path.join(angularConsumerGeneratedDir, 'rest', 'pet.rest.ts')),
       );
       t.is(
         stripBanner(
-          fs.readFileSync(
-            path.join(angularConsumerGeneratedDir, 'model.generated.ts'),
-            'utf8',
-          ),
+          fs.readFileSync(path.join(angularConsumerGeneratedDir, 'model.ts'), 'utf8'),
         ),
         expectedModelSource,
       );
       assertPetServiceArtifact(
         t,
         fs.readFileSync(
-          path.join(angularConsumerGeneratedDir, 'rest', 'pet.rest.generated.ts'),
+          path.join(angularConsumerGeneratedDir, 'rest', 'pet.rest.ts'),
           'utf8',
         ),
       );
@@ -350,11 +342,11 @@ test('generate defaults emit to models+angular when omitted, matching the CLI', 
   const result = await generate({ inputPath: fixture('petstore-minimal.openapi.yaml') });
 
   t.true(
-    result.artifacts.some(a => a.path === 'model.generated.ts'),
+    result.artifacts.some(a => a.path === 'model.ts'),
     'default emit must include the models artifact',
   );
   t.true(
-    result.artifacts.some(a => a.path.endsWith('.rest.generated.ts')),
+    result.artifacts.some(a => a.path.endsWith('.rest.ts')),
     'default emit must include an angular service artifact',
   );
 });
@@ -369,18 +361,15 @@ test('generate produces models+angular when emit lists both targets', async t =>
 
     t.deepEqual(result.diagnostics, []);
     t.deepEqual(artifactPaths(result), [
-      'model.generated.ts',
+      'model.ts',
       'rest.model.ts',
       'rest.util.ts',
       'rest.validate.ts',
-      'rest/pet.rest.generated.ts',
+      'rest/pet.rest.ts',
     ]);
     t.is(stripBanner(result.artifacts[0]?.contents), expectedModelSource);
     assertRestHelpers(t, result);
-    assertPetServiceArtifact(
-      t,
-      getArtifact(result, 'rest/pet.rest.generated.ts')?.contents,
-    );
+    assertPetServiceArtifact(t, getArtifact(result, 'rest/pet.rest.ts')?.contents);
   });
 });
 
@@ -404,7 +393,7 @@ test('generate auto-includes models when emit lists only angular, surfacing a no
   });
 
   // Models artifact is present even though the caller did not list 'models'.
-  t.true(result.artifacts.some(a => a.path === 'model.generated.ts'));
+  t.true(result.artifacts.some(a => a.path === 'model.ts'));
   t.true(result.artifacts.some(a => a.path.startsWith('rest/')));
 
   // The pipeline surfaces the auto-include as an E_INVALID_OPTION warning
@@ -612,10 +601,10 @@ test('generate returns artifact contents and writes the same bytes to disk', asy
       t.true(artifact.contents.length > 0, `${artifact.path} contents must be non-empty`);
     }
     // Files were still written to disk.
-    t.true(fs.existsSync(path.join(outputPath, 'model.generated.ts')));
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    t.true(fs.existsSync(path.join(outputPath, 'model.ts')));
+    const modelArtifact = getArtifact(result, 'model.ts');
     t.is(
-      fs.readFileSync(path.join(outputPath, 'model.generated.ts'), 'utf8'),
+      fs.readFileSync(path.join(outputPath, 'model.ts'), 'utf8'),
       modelArtifact?.contents,
     );
   });
@@ -630,7 +619,7 @@ test('generate exposes flattened request interfaces and operation-object APIs in
     });
 
     t.deepEqual(result.diagnostics, []);
-    const serviceArtifact = getArtifact(result, 'rest/pet.rest.generated.ts');
+    const serviceArtifact = getArtifact(result, 'rest/pet.rest.ts');
 
     t.truthy(serviceArtifact);
     assertPetServiceArtifact(t, serviceArtifact?.contents);
@@ -1077,10 +1066,10 @@ test('generate maps a targeted schema to an imported external type without chang
       ],
     });
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = getArtifact(result, 'model.ts');
 
     t.truthy(modelArtifact);
-    const serviceArtifact = getArtifact(result, 'rest/pet.rest.generated.ts');
+    const serviceArtifact = getArtifact(result, 'rest/pet.rest.ts');
 
     t.truthy(serviceArtifact);
     t.true(
@@ -1092,7 +1081,7 @@ test('generate maps a targeted schema to an imported external type without chang
     t.true(modelArtifact?.contents?.includes('export type PetStatus ='));
     t.true(
       serviceArtifact?.contents?.includes(
-        "import type { Pet, PetId, PetList, UpdatePetRequest } from '../model.generated';",
+        "import type { Pet, PetId, PetList, UpdatePetRequest } from '../model';",
       ),
     );
     t.true(serviceArtifact?.contents?.includes('  petId: PetId;'));
@@ -1114,21 +1103,18 @@ test('generate encodes oneOf/anyOf composition as focused public contract fragme
       [],
     );
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
-    const serviceArtifact = getArtifact(
-      result,
-      'rest/adoption-request.rest.generated.ts',
-    );
+    const modelArtifact = getArtifact(result, 'model.ts');
+    const serviceArtifact = getArtifact(result, 'rest/adoption-request.rest.ts');
 
     t.truthy(modelArtifact);
     t.truthy(serviceArtifact);
     t.deepEqual(artifactPaths(result), [
-      'model.generated.ts',
+      'model.ts',
       'rest.model.ts',
       'rest.util.ts',
       'rest.validate.ts',
-      'rest/adoption-request.rest.generated.ts',
-      'rest/pet.rest.generated.ts',
+      'rest/adoption-request.rest.ts',
+      'rest/pet.rest.ts',
     ]);
     t.true(modelArtifact?.contents?.includes('export type PetUnion = Cat | Dog;'));
     t.true(modelArtifact?.contents?.includes('export type PetUnionList = PetUnion[];'));
@@ -1162,7 +1148,7 @@ test('generate keeps mapped-type assertions explicit alongside composition contr
       ],
     });
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = getArtifact(result, 'model.ts');
 
     t.truthy(modelArtifact);
     t.true(
@@ -1196,7 +1182,7 @@ test('generate emits a re-export for mapped types whose binding name equals the 
       ],
     });
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = getArtifact(result, 'model.ts');
     t.truthy(modelArtifact);
     t.true(
       modelArtifact?.contents?.includes(
@@ -1229,7 +1215,7 @@ test('generate emits a bare re-export when schema name equals imported type name
       ],
     });
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = getArtifact(result, 'model.ts');
     t.truthy(modelArtifact);
     t.true(
       modelArtifact?.contents?.includes(
@@ -1258,17 +1244,17 @@ test('generate encodes allOf composition as an intersection contract with nullab
       [],
     );
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
-    const serviceArtifact = getArtifact(result, 'rest/adopter.rest.generated.ts');
+    const modelArtifact = getArtifact(result, 'model.ts');
+    const serviceArtifact = getArtifact(result, 'rest/adopter.rest.ts');
 
     t.truthy(modelArtifact);
     t.truthy(serviceArtifact);
     t.deepEqual(artifactPaths(result), [
-      'model.generated.ts',
+      'model.ts',
       'rest.model.ts',
       'rest.util.ts',
       'rest.validate.ts',
-      'rest/adopter.rest.generated.ts',
+      'rest/adopter.rest.ts',
     ]);
     t.true(
       modelArtifact?.contents?.includes(
@@ -1298,7 +1284,7 @@ test('generate collapses single-entry oneOf/anyOf/allOf wrappers instead of emit
 
     t.deepEqual(result.diagnostics, []);
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = getArtifact(result, 'model.ts');
 
     t.truthy(modelArtifact);
     t.true(modelArtifact?.contents?.includes('export type AnimalView = AnimalBase;'));
@@ -1321,8 +1307,8 @@ test('generate emits Record-based contracts for typed additionalProperties objec
 
     t.deepEqual(result.diagnostics, []);
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
-    const serviceArtifact = getArtifact(result, 'rest/pet.rest.generated.ts');
+    const modelArtifact = getArtifact(result, 'model.ts');
+    const serviceArtifact = getArtifact(result, 'rest/pet.rest.ts');
 
     t.truthy(modelArtifact);
     t.truthy(serviceArtifact);
@@ -1585,7 +1571,7 @@ test('naming.methodName strips verb prefix end-to-end (posts_listAll → listAll
     },
   });
   const service = result.artifacts.find(
-    (a: { path: string }) => a.path === 'rest/post.rest.generated.ts',
+    (a: { path: string }) => a.path === 'rest/post.rest.ts',
   );
   t.assert(service, 'expected post service artifact');
   t.regex(service!.contents, /\blistAll\b/);
@@ -1693,12 +1679,12 @@ test('generate is safe to run concurrently across distinct outputs', async t => 
         const namesC = c.artifacts.map(art => art.path).sort();
         t.deepEqual(namesA, namesB);
         t.deepEqual(namesA, namesC);
-        t.true(namesA.includes('model.generated.ts'));
+        t.true(namesA.includes('model.ts'));
 
         for (const dir of [dirA, dirB, dirC]) {
           t.true(
-            fs.existsSync(path.join(dir, 'model.generated.ts')),
-            `model.generated.ts must exist in ${dir}`,
+            fs.existsSync(path.join(dir, 'model.ts')),
+            `model.ts must exist in ${dir}`,
           );
         }
 
@@ -1723,27 +1709,23 @@ test('generate layout operations emits one file per operation plus a barrel and 
   t.deepEqual(
     result.artifacts.map(a => a.path),
     [
-      'model.generated.ts',
+      'model.ts',
       'rest.model.ts',
       'rest.util.ts',
       'rest.validate.ts',
-      'rest/pet/list-pets.generated.ts',
-      'rest/pet.operations.generated.ts',
+      'rest/pet/list-pets.ts',
+      'rest/pet/index.ts',
     ],
   );
-  const operation = result.artifacts.find(
-    a => a.path === 'rest/pet/list-pets.generated.ts',
-  )!;
+  const operation = result.artifacts.find(a => a.path === 'rest/pet/list-pets.ts')!;
   t.true(
     operation.contents.includes('export const listPets = defineOperation.zeroArg<void>('),
   );
   t.true(
     operation.contents.includes("import { defineOperation } from '../../rest.util';"),
   );
-  const barrel = result.artifacts.find(
-    a => a.path === 'rest/pet.operations.generated.ts',
-  )!;
-  t.true(barrel.contents.endsWith("export * from './pet/list-pets.generated';\n"));
+  const barrel = result.artifacts.find(a => a.path === 'rest/pet/index.ts')!;
+  t.true(barrel.contents.endsWith("export * from './list-pets';\n"));
 });
 
 test('generate layout both adds the class built from the barrel', async t => {
@@ -1753,10 +1735,10 @@ test('generate layout both adds the class built from the barrel', async t => {
     layout: 'both',
   });
   const paths = result.artifacts.map(a => a.path);
-  t.true(paths.includes('rest/pet/list-pets.generated.ts'));
-  t.true(paths.includes('rest/pet.operations.generated.ts'));
-  const service = result.artifacts.find(a => a.path === 'rest/pet.rest.generated.ts')!;
-  t.true(service.contents.includes("import * as ops from './pet.operations.generated';"));
+  t.true(paths.includes('rest/pet/list-pets.ts'));
+  t.true(paths.includes('rest/pet/index.ts'));
+  const service = result.artifacts.find(a => a.path === 'rest/pet.rest.ts')!;
+  t.true(service.contents.includes("import * as ops from './pet';"));
   t.true(service.contents.includes('readonly listPets = ops.listPets.withInjector();'));
   t.false(service.contents.includes('requestFactory'));
 });
@@ -1774,13 +1756,7 @@ test('generate layout services is the default and matches an explicit services l
   t.deepEqual(explicit.artifacts, implicit.artifacts);
   t.deepEqual(
     implicit.artifacts.map(a => a.path),
-    [
-      'model.generated.ts',
-      'rest.model.ts',
-      'rest.util.ts',
-      'rest.validate.ts',
-      'rest/pet.rest.generated.ts',
-    ],
+    ['model.ts', 'rest.model.ts', 'rest.util.ts', 'rest.validate.ts', 'rest/pet.rest.ts'],
   );
 });
 

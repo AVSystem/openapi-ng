@@ -1,7 +1,7 @@
 import { JsonPipe } from '@angular/common';
 import { Component, computed, inject, input, output, signal } from '@angular/core';
-import type { Pet, PetId, PetStatus } from '../generated/model.generated';
-import { PetRest } from '../generated/rest/pet.rest.generated';
+import type { Pet, PetId, PetStatus } from '../generated/model';
+import { PetRest } from '../generated/rest/pet.rest';
 
 @Component({
   selector: 'app-pet-detail',

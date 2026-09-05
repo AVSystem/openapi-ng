@@ -287,14 +287,14 @@ mod tests {
         std::rc::Rc::from("spec.yaml"),
       )],
       artifacts: vec![GeneratedArtifact::new(
-        "model.generated.ts".to_string(),
+        "model.ts".to_string(),
         "export interface Pet {}\n".to_string(),
       )],
     });
 
     assert_eq!(result.summary.title, "Petstore Minimal");
     assert_eq!(result.artifacts.len(), 1);
-    assert_eq!(result.artifacts[0].path, "model.generated.ts");
+    assert_eq!(result.artifacts[0].path, "model.ts");
     assert_eq!(result.artifacts[0].contents, "export interface Pet {}\n");
     assert_eq!(result.diagnostics.len(), 1);
     assert_eq!(result.diagnostics[0].code, "E_UNSUPPORTED_SEMANTIC");

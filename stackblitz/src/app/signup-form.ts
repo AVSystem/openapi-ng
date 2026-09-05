@@ -1,7 +1,7 @@
 import { JsonPipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { email, form, FormField, required } from '@angular/forms/signals';
-import { AccountRest } from '../generated/rest/account.rest.generated';
+import { AccountRest } from '../generated/rest/account.rest';
 import { validateRest } from '../generated/rest.validate';
 
 interface Signup {

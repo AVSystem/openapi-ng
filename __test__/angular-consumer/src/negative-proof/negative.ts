@@ -6,7 +6,7 @@
 // 'cat', so assigning an object with `kind: 'dog'` to a Cat-typed slot fails.
 // If the union ever degrades to `any`, this assignment would succeed and tsc
 // would exit 0 — causing the negative-compile test to fail and alerting us.
-import type { Cat } from '../../generated/model.generated';
+import type { Cat } from '../../generated/model';
 
 // Construct an object whose `kind` discriminant is 'dog', not 'cat'.
 // This is structurally compatible with Cat except for the literal type on `kind`.

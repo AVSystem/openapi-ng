@@ -9,7 +9,7 @@
 // Expected error: TS2322 — `string` is not assignable to
 // `DebounceTimer<UpdatePetParams | undefined>` (i.e. `number` or a function).
 import { schema } from '@angular/forms/signals';
-import type { PetRest } from '../../generated/rest/pet.rest.generated';
+import type { PetRest } from '../../generated/rest/pet.rest';
 import { validateRest } from '../../generated/rest.validate';
 
 declare const service: PetRest;

@@ -6,16 +6,16 @@ const artifact = (path: string, contents = 'x') => ({ path, contents });
 describe('buildTree', () => {
   it('lists root files alphabetically, then each directory with its files', () => {
     const rows = buildTree([
-      artifact('rest/pet.rest.generated.ts', 'abc'),
+      artifact('rest/pet.rest.ts', 'abc'),
       artifact('rest.util.ts'),
-      artifact('model.generated.ts'),
-      artifact('rest/account.rest.generated.ts'),
+      artifact('model.ts'),
+      artifact('rest/account.rest.ts'),
     ]);
     expect(rows).toEqual([
       {
         kind: 'file',
-        path: 'model.generated.ts',
-        name: 'model.generated.ts',
+        path: 'model.ts',
+        name: 'model.ts',
         depth: 0,
         bytes: 1,
       },
@@ -23,15 +23,15 @@ describe('buildTree', () => {
       { kind: 'dir', name: 'rest', depth: 0 },
       {
         kind: 'file',
-        path: 'rest/account.rest.generated.ts',
-        name: 'account.rest.generated.ts',
+        path: 'rest/account.rest.ts',
+        name: 'account.rest.ts',
         depth: 1,
         bytes: 1,
       },
       {
         kind: 'file',
-        path: 'rest/pet.rest.generated.ts',
-        name: 'pet.rest.generated.ts',
+        path: 'rest/pet.rest.ts',
+        name: 'pet.rest.ts',
         depth: 1,
         bytes: 3,
       },

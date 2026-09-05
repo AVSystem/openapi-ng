@@ -100,7 +100,7 @@ openapi-ng generate \
   --mapped-type GeoFeature:geojson:Feature
 ```
 
-The generated `model.generated.ts` now imports the real type and uses
+The generated `model.ts` now imports the real type and uses
 it everywhere `GeoFeature` was referenced:
 
 ```ts
@@ -164,11 +164,11 @@ file or the Node API.
 `layout` picks the shape of the Angular output. Also available as
 `--layout` on the CLI.
 
-| Value                | Emits                                                                                                                  |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `services` (default) | `rest/<group>.rest.generated.ts`: one `@Injectable` class per tag with inlined `requestFactory(...)` properties.       |
-| `operations`         | `rest/<group>/<method>.generated.ts` per operation plus the barrel `rest/<group>.operations.generated.ts`. No classes. |
-| `both`               | The `operations` files plus the classes, each property being `ops.<method>.withInjector()`.                            |
+| Value                | Emits                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------ |
+| `services` (default) | `rest/<group>.rest.ts`: one `@Injectable` class per tag with inlined `requestFactory(...)` properties. |
+| `operations`         | `rest/<group>/<method>.ts` per operation plus the barrel `rest/<group>/index.ts`. No classes.          |
+| `both`               | The `operations` files plus the classes, each property being `ops.<method>.withInjector()`.            |
 
 Operation file names are the resolved method name in kebab-case, so
 `naming.methodName` governs them too. `layout` is only meaningful with

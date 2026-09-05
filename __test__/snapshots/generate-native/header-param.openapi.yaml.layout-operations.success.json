@@ -19,10 +19,10 @@
       "path": "rest.validate.ts"
     },
     {
-      "path": "rest/pet/list-pets.generated.ts"
+      "path": "rest/pet/list-pets.ts"
     },
     {
-      "path": "rest/pet.operations.generated.ts"
+      "path": "rest/pet/index.ts"
     }
   ]
 }

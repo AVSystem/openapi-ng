@@ -6,11 +6,11 @@ use crate::ir::canonical::ResponseContent;
 use crate::ir::schema::collect_type_references;
 use crate::plan::artifact_plan::{PlannedOperation, PlannedRequestBody, RequestFieldKind};
 
-/// Relative path from a generated service file (`rest/*.rest.generated.ts`)
-/// to the sibling `model.generated.ts` that holds all emitted TypeScript
+/// Relative path from a generated service file (`rest/*.rest.ts`)
+/// to the sibling `model.ts` that holds all emitted TypeScript
 /// types. Fixed by the emit layout — services always live one directory
 /// below the model artifact — so it is a constant rather than a plan field.
-const MODEL_IMPORT_PATH: &str = "../model.generated";
+const MODEL_IMPORT_PATH: &str = "../model";
 
 pub(super) fn render_service_imports(
   buffer: &mut Writer,
@@ -196,7 +196,7 @@ mod tests {
     );
     let out = render(&[op_a, op_b]);
     // The single import line lists `Pet` exactly once.
-    assert!(out.contains("import type { Pet } from '../model.generated';"));
+    assert!(out.contains("import type { Pet } from '../model';"));
     assert_eq!(out.matches("Pet").count(), 1);
   }
 
@@ -213,7 +213,7 @@ mod tests {
       body: None,
     };
     let out = render(&[op_with("createPet", HttpMethod::Get, "/x", request, None)]);
-    assert!(out.contains("import type { IdempotencyKey } from '../model.generated';"));
+    assert!(out.contains("import type { IdempotencyKey } from '../model';"));
   }
 
   // ── Body imports under smart-flatten ──────────────────────────────────────
@@ -227,7 +227,7 @@ mod tests {
       body: Some(nested_body(&payload_ref, false)),
     };
     let out = render(&[op_with("createPet", HttpMethod::Post, "/x", request, None)]);
-    assert!(out.contains("import type { CreatePetPayload } from '../model.generated';"));
+    assert!(out.contains("import type { CreatePetPayload } from '../model';"));
   }
 
   #[test]
@@ -245,7 +245,7 @@ mod tests {
       )),
     };
     let out = render(&[op_with("createPet", HttpMethod::Post, "/x", request, None)]);
-    assert!(out.contains("import type { PetStatus } from '../model.generated';"));
+    assert!(out.contains("import type { PetStatus } from '../model';"));
   }
 
   #[test]
@@ -264,7 +264,7 @@ mod tests {
       request,
       Some(&pet_response),
     )]);
-    assert!(out.contains("import type { Pet } from '../model.generated';"));
+    assert!(out.contains("import type { Pet } from '../model';"));
     assert_eq!(out.matches("Pet").count(), 1);
   }
 
@@ -277,6 +277,6 @@ mod tests {
     assert!(out.contains("requestFactory"));
     assert!(!out.contains("HttpClient"));
     assert!(!out.contains("httpParams"));
-    assert!(!out.contains("../model.generated"));
+    assert!(!out.contains("../model"));
   }
 }

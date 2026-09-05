@@ -80,7 +80,7 @@ pub(crate) fn emit_service(service_plan: &ServicePlan<'_>) -> String {
 }
 
 /// `both` layout: one `withInjector()` line per operation, plus type
-/// re-exports so `import type { ListPetsParams } from './rest/pet.rest.generated'`
+/// re-exports so `import type { ListPetsParams } from './rest/pet.rest'`
 /// resolves the same way it does under `services`.
 pub(crate) fn emit_bound_service(service_plan: &ServicePlan<'_>) -> String {
   let barrel = service_plan

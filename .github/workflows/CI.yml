@@ -360,7 +360,7 @@ jobs:
       - name: Generate (native)
         run: |
           bun bin/openapi-ng.js generate --input test/fixtures/petstore-rich.openapi.yaml --output out-native
-          test -f out-native/model.generated.ts
+          test -f out-native/model.ts
       - name: Generate (WASI forced)
         run: |
           bun bin/openapi-ng.js generate --input test/fixtures/petstore-rich.openapi.yaml --output out-wasi

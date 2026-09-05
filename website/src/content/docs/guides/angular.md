@@ -127,9 +127,9 @@ constant built with `defineOperation`. The builder and the
 class carries; only the wrapper differs, and there are no classes:
 
 ```ts
-// rest/pet/list-pets.generated.ts
+// rest/pet/list-pets.ts
 import { defineOperation, httpParams } from '../../rest.util';
-import type { PetList } from '../../model.generated';
+import type { PetList } from '../../model';
 
 export const listPets = defineOperation<ListPetsParams, PetList>(
   'listPets',
@@ -148,12 +148,12 @@ export interface ListPetsParams {
 }
 ```
 
-`rest/<group>.operations.generated.ts` re-exports every file in the
+`rest/<group>/index.ts` re-exports every file in the
 group. Import it as a namespace and only the members you touch reach
 the bundle:
 
 ```ts
-import * as pets from './rest/pet.operations.generated';
+import * as pets from './rest/pet';
 
 readonly pets = pets.listPets.resource(() => ({ status: 'available' }));
 ```
@@ -224,7 +224,7 @@ property bound from the barrel:
 
 ```ts
 import { Injectable } from '@angular/core';
-import * as ops from './pet.operations.generated';
+import * as ops from './pet';
 
 @Injectable({
   providedIn: 'root',
@@ -234,7 +234,7 @@ export class PetRest {
   readonly listPets = ops.listPets.withInjector();
 }
 
-export type { DeleteParams, ListPetsParams } from './pet.operations.generated';
+export type { DeleteParams, ListPetsParams } from './pet';
 ```
 
 `PetRest.listPets` has the same type under `services` and `both`, and
@@ -250,7 +250,7 @@ under its real name. `ops.delete` works on the namespace import; a
 direct import aliases it:
 
 ```ts
-import { delete as deletePet } from './rest/pet/delete.generated';
+import { delete as deletePet } from './rest/pet/delete';
 ```
 
 The one name that cannot be a standalone operation is `default`:
@@ -315,8 +315,8 @@ typed as the spec's response type**, so `parse` becomes an honest
 transformation rather than a runtime cast.
 
 ```ts
-import { PetRest } from './generated/rest/pet.rest.generated';
-import type { Pet } from './generated/model.generated';
+import { PetRest } from './generated/rest/pet.rest';
+import type { Pet } from './generated/model';
 
 @Component({/* ... */})
 export class PetList {

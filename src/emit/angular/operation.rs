@@ -15,10 +15,10 @@ use super::request::{
 };
 use super::service::{has_request_interface, write_call_site};
 
-// Operation files live at `rest/<group>/<method>.generated.ts`, one level
+// Operation files live at `rest/<group>/<method>.ts`, one level
 // below the service files.
 const HELPER_IMPORT_PATH: &str = "../../rest.util";
-const MODEL_IMPORT_PATH: &str = "../../model.generated";
+const MODEL_IMPORT_PATH: &str = "../../model";
 
 // Names that cannot be declared with `export const` in a module: ES
 // reserved words, strict-mode reserved words, and the two identifiers
@@ -142,25 +142,33 @@ fn needs_alias(name: &str, helper_symbols: &[&str], model_imports: &BTreeSet<&st
     || model_imports.contains(name)
 }
 
-/// `rest/<group>.operations.generated.ts`: re-exports every operation file
-/// so a namespace import of the barrel keeps only the members it touches.
+/// `rest/<group>/index.ts`: re-exports every operation file in its
+/// directory so a namespace import of the barrel keeps only the members
+/// it touches.
 pub(crate) fn emit_operations_barrel(service_plan: &ServicePlan<'_>) -> String {
-  let mut buffer = Writer::with_capacity(service_plan.operations.len() * 64 + 16);
+  let mut buffer = Writer::with_capacity(service_plan.operations.len() * 48 + 16);
   for operation in &service_plan.operations {
     let path = operation
       .artifact_path
       .as_deref()
       .expect("operation artifact paths are planned for this layout");
-    wln!(buffer, "export * from '{}';", sibling_specifier(path));
+    let file_stem = path
+      .rsplit('/')
+      .next()
+      .and_then(|name| name.strip_suffix(".ts"))
+      .expect("operation artifact paths end in <stem>.ts");
+    wln!(buffer, "export * from './{file_stem}';");
   }
   buffer.into_string()
 }
 
-/// Module specifier by which a file under `rest/` imports another artifact
-/// under `rest/`: `rest/pet/list-pets.generated.ts` → `./pet/list-pets.generated`.
+/// Module specifier by which a file directly under `rest/` imports another
+/// artifact under `rest/`. A directory barrel is imported by its directory:
+/// `rest/pet/index.ts` → `./pet`, `rest/pet/list-pets.ts` → `./pet/list-pets`.
 pub(super) fn sibling_specifier(artifact_path: &str) -> String {
   let relative = artifact_path.strip_prefix("rest/").unwrap_or(artifact_path);
   let relative = relative.strip_suffix(".ts").unwrap_or(relative);
+  let relative = relative.strip_suffix("/index").unwrap_or(relative);
   format!("./{relative}")
 }
 
@@ -179,7 +187,7 @@ mod tests {
   ) -> PlannedOperation<'a> {
     let mut operation = op_with(method_name, HttpMethod::Get, "/x/{id}", request, response);
     operation.artifact_path = Some(format!(
-      "rest/pet/{}.generated.ts",
+      "rest/pet/{}.ts",
       crate::plan::naming::operation_file_stem(method_name)
     ));
     operation
@@ -287,7 +295,7 @@ mod tests {
     let out = emit_operation(&operation);
 
     assert!(out.contains("import { defineOperation, httpParams } from '../../rest.util';"));
-    assert!(out.contains("import type { Pet } from '../../model.generated';"));
+    assert!(out.contains("import type { Pet } from '../../model';"));
   }
 
   #[test]
@@ -333,7 +341,7 @@ mod tests {
     let json = ResponseContent::Json(Some(pet));
     let out = emit_operation(&zero_arg("Pet", &json));
 
-    assert!(out.contains("import type { Pet } from '../../model.generated';"));
+    assert!(out.contains("import type { Pet } from '../../model';"));
     assert!(out.contains("const Pet_ = defineOperation.zeroArg<Pet>("));
     assert!(out.contains("export { Pet_ as Pet };"));
   }
@@ -343,11 +351,11 @@ mod tests {
     let body = SchemaType::Ref("Problem".into());
     let errors = [ErrorResponse { status: 404, body }];
     let mut operation = crate::test_support::op_with_errors("getPet", &errors);
-    operation.artifact_path = Some("rest/pet/get-pet.generated.ts".to_string());
+    operation.artifact_path = Some("rest/pet/get-pet.ts".to_string());
     let out = emit_operation(&operation);
 
     assert!(out.contains("export interface GetPetError {"));
-    assert!(out.contains("import type { Problem } from '../../model.generated';"));
+    assert!(out.contains("import type { Problem } from '../../model';"));
   }
 
   #[test]
@@ -357,8 +365,8 @@ mod tests {
     let plan = ServicePlan {
       group_name: "pet".into(),
       class_name: "PetRest".into(),
-      artifact_path: "rest/pet.rest.generated.ts".to_string(),
-      operations_barrel_path: Some("rest/pet.operations.generated.ts".to_string()),
+      artifact_path: "rest/pet.rest.ts".to_string(),
+      operations_barrel_path: Some("rest/pet/index.ts".to_string()),
       operations: vec![
         requestful("delete", &str_ty, &void),
         zero_arg("listPets", &void),
@@ -366,19 +374,16 @@ mod tests {
     };
     assert_eq!(
       emit_operations_barrel(&plan),
-      "export * from './pet/delete.generated';\nexport * from './pet/list-pets.generated';\n"
+      "export * from './delete';\nexport * from './list-pets';\n"
     );
   }
 
   #[test]
-  fn sibling_specifier_strips_rest_prefix_and_extension() {
+  fn sibling_specifier_strips_rest_prefix_extension_and_index() {
+    assert_eq!(sibling_specifier("rest/pet/index.ts"), "./pet");
     assert_eq!(
-      sibling_specifier("rest/pet.operations.generated.ts"),
-      "./pet.operations.generated"
-    );
-    assert_eq!(
-      sibling_specifier("rest/pet-order/list-pets.generated.ts"),
-      "./pet-order/list-pets.generated"
+      sibling_specifier("rest/pet-order/list-pets.ts"),
+      "./pet-order/list-pets"
     );
   }
 }

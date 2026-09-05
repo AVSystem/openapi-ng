@@ -5,11 +5,7 @@ import {
   HttpResponse,
 } from '@angular/common/http';
 import { delay, mergeMap, of, throwError } from 'rxjs';
-import type {
-  EmailAvailability,
-  Pet,
-  UpdatePetRequest,
-} from '../generated/model.generated';
+import type { EmailAvailability, Pet, UpdatePetRequest } from '../generated/model';
 
 // In-memory stand-in for the Petstore backend, so the demo runs with no server.
 const pets: Pet[] = [

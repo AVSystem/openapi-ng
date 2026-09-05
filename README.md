@@ -32,18 +32,18 @@ openapi-ng generate --input petstore.openapi.yaml --output ./generated
 ✓ Generated 5 files from Petstore (3.0.3)
   1 path · 1 operation · 1 schema
 
-  model.generated.ts
+  model.ts
   rest.model.ts
   rest.util.ts
   rest.validate.ts
-  rest/pet.rest.generated.ts
+  rest/pet.rest.ts
 ```
 
 Wire a generated service into a component:
 
 ```ts
 import { Component, inject } from '@angular/core';
-import { PetRest } from './generated/rest/pet.rest.generated';
+import { PetRest } from './generated/rest/pet.rest';
 
 @Component({/* ... */})
 export class PetList {

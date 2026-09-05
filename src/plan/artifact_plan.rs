@@ -46,8 +46,7 @@ pub(crate) struct ServicePlan<'ir> {
   pub(crate) group_name: String,
   pub(crate) class_name: String,
   pub(crate) artifact_path: String,
-  /// `rest/<group>.operations.generated.ts`; `Some` only for the
-  /// `operations` and `both` layouts.
+  /// `rest/<group>/index.ts`; `Some` only for the `operations` and `both` layouts.
   pub(crate) operations_barrel_path: Option<String>,
   pub(crate) operations: Vec<PlannedOperation<'ir>>,
 }
@@ -67,8 +66,7 @@ pub(crate) struct PlannedOperation<'ir> {
   pub(crate) errors: &'ir [ErrorResponse],
   pub(crate) description: Option<String>,
   pub(crate) deprecated: bool,
-  /// `rest/<group>/<method>.generated.ts`; `Some` only for the
-  /// `operations` and `both` layouts.
+  /// `rest/<group>/<method>.ts`; `Some` only for the `operations` and `both` layouts.
   pub(crate) artifact_path: Option<String>,
 }
 
@@ -224,7 +222,7 @@ pub(crate) fn resolve_service_plans<'ir>(
         }
         let artifact_path = standalone.then(|| {
           format!(
-            "rest/{file_stem}/{}.generated.ts",
+            "rest/{file_stem}/{}.ts",
             operation_file_stem(method_name)
           )
         });
@@ -247,9 +245,8 @@ pub(crate) fn resolve_service_plans<'ir>(
     services.push(ServicePlan {
       group_name: group_name.clone(),
       class_name: service_class_name(&group_name),
-      artifact_path: format!("rest/{file_stem}.rest.generated.ts"),
-      operations_barrel_path: standalone
-        .then(|| format!("rest/{file_stem}.operations.generated.ts")),
+      artifact_path: format!("rest/{file_stem}.rest.ts"),
+      operations_barrel_path: standalone.then(|| format!("rest/{file_stem}/index.ts")),
       operations,
     });
   }
@@ -525,7 +522,7 @@ mod tests {
 
     let pet_service = &services[1];
     assert_eq!(pet_service.class_name, "PetRest");
-    assert_eq!(pet_service.artifact_path, "rest/pet.rest.generated.ts");
+    assert_eq!(pet_service.artifact_path, "rest/pet.rest.ts");
     assert_eq!(
       pet_service
         .operations
