@@ -17,6 +17,10 @@
   "bin": {
     "openapi-ng": "bin/openapi-ng.js"
   },
+  "workspaces": [
+    "website",
+    "__test__/angular-consumer"
+  ],
   "files": [
     "bin/openapi-ng.js",
     "bin/lib/parse.js",
@@ -61,17 +65,17 @@
   },
   "scripts": {
     "artifacts": "napi artifacts",
-    "bench": "node --import @oxc-node/core/register benchmark/bench.ts",
+    "bench": "bun benchmark/bench.ts",
     "build": "napi build --platform --release --js native.js",
-    "postbuild": "node scripts/patch-types.mjs",
+    "postbuild": "bun scripts/patch-types.mjs",
     "build:debug": "napi build --platform --js native.js",
     "format": "run-p format:oxfmt format:rs format:toml",
     "format:oxfmt": "oxfmt . --write",
     "format:toml": "taplo format",
     "format:rs": "cargo fmt",
     "lint": "oxlint",
-    "prepublishOnly": "node scripts/check-version-not-placeholder.mjs && napi prepublish -t npm",
-    "regen-snapshots": "node scripts/regen-snapshots.mjs",
+    "prepublishOnly": "bun scripts/check-version-not-placeholder.mjs && napi prepublish -t npm",
+    "regen-snapshots": "bun scripts/regen-snapshots.mjs",
     "test": "ava",
     "version": "napi version"
   },
@@ -120,6 +124,13 @@
       "optional": true
     }
   },
+  "overrides": {
+    "@emnapi/core": "1.11.3",
+    "@emnapi/runtime": "1.11.3",
+    "emnapi": "1.11.3",
+    "glob": "13.0.6",
+    "tar": "7.5.15"
+  },
   "lint-staged": {
     "*.@(js|ts|tsx)": [
       "oxlint --fix"
@@ -146,14 +157,14 @@
     ]
   },
   "ava": {
-    "files": [
-      "__test__/**/*.spec.ts"
-    ],
     "environmentVariables": {
       "TS_NODE_PROJECT": "./tsconfig.json"
     },
     "extensions": [
       "ts"
+    ],
+    "files": [
+      "__test__/**/*.spec.ts"
     ],
     "nodeArguments": [
       "--import",
@@ -165,5 +176,10 @@
   "engines": {
     "node": ">=22.12.0"
   },
-  "packageManager": "pnpm@10.33.3"
+  "packageManager": "bun@1.4.2",
+  "trustedDependencies": [
+    "esbuild",
+    "sharp",
+    "workerd"
+  ]
 }

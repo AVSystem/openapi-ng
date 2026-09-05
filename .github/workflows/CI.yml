@@ -31,21 +31,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: setup pnpm
-        uses: pnpm/action-setup@v6
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
       - name: Setup node
         uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: 'pnpm'
       - name: Install
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
       - name: Install dependencies
-        run: pnpm install
+        run: bun ci
       - name: ESLint
-        run: pnpm lint
+        run: bun run lint
       - name: Cargo fmt
         run: cargo fmt -- --check
       - name: Clippy
@@ -83,42 +84,43 @@ jobs:
         settings:
           - host: macos-latest
             target: x86_64-apple-darwin
-            build: pnpm build --target x86_64-apple-darwin
+            build: bun run build --target x86_64-apple-darwin
           - host: windows-latest
-            build: pnpm build --target x86_64-pc-windows-msvc
+            build: bun run build --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            build: pnpm build --target x86_64-unknown-linux-gnu --use-napi-cross
+            build: bun run build --target x86_64-unknown-linux-gnu --use-napi-cross
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
-            build: pnpm build --target x86_64-unknown-linux-musl -x
+            build: bun run build --target x86_64-unknown-linux-musl -x
           - host: macos-latest
             target: aarch64-apple-darwin
-            build: pnpm build --target aarch64-apple-darwin
+            build: bun run build --target aarch64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            build: pnpm build --target aarch64-unknown-linux-gnu --use-napi-cross
+            build: bun run build --target aarch64-unknown-linux-gnu --use-napi-cross
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
-            build: pnpm build --target aarch64-unknown-linux-musl -x
+            build: bun run build --target aarch64-unknown-linux-musl -x
           - host: windows-latest
             target: aarch64-pc-windows-msvc
-            build: pnpm build --target aarch64-pc-windows-msvc
+            build: bun run build --target aarch64-pc-windows-msvc
           - host: ubuntu-latest
             target: wasm32-wasip1-threads
-            build: pnpm build --target wasm32-wasip1-threads
+            build: bun run build --target wasm32-wasip1-threads
     name: stable - ${{ matrix.settings.target }}
     runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v7
-      - name: setup pnpm
-        uses: pnpm/action-setup@v6
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
       - name: Setup node
         uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: pnpm
       - name: Install
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -151,7 +153,7 @@ jobs:
         if: ${{ matrix.settings.setup }}
         shell: bash
       - name: Install dependencies
-        run: pnpm install
+        run: bun ci
       - name: Build
         run: ${{ matrix.settings.build }}
         shell: bash
@@ -193,16 +195,19 @@ jobs:
     runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v7
-      - name: setup pnpm
-        uses: pnpm/action-setup@v6
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
       - name: Setup node
         uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
-          cache: pnpm
           architecture: ${{ matrix.settings.architecture }}
+      # macos-latest is arm64; match the optional platform packages to the
+      # x64 Node that setup-node installs above.
       - name: Install dependencies
-        run: pnpm install
+        run: bun ci --cpu=${{ matrix.settings.architecture }}
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
@@ -212,7 +217,7 @@ jobs:
         run: ls -R .
         shell: bash
       - name: Test bindings
-        run: pnpm test
+        run: bun run test
   test-linux-binding:
     name: Test ${{ matrix.target }} - node@${{ matrix.node }}
     needs:
@@ -232,13 +237,10 @@ jobs:
     runs-on: ${{ contains(matrix.target, 'aarch64') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
-      - name: setup pnpm
-        uses: pnpm/action-setup@v6
       - name: Setup node
         uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
-          cache: pnpm
       - name: Output docker params
         id: docker
         run: |
@@ -258,10 +260,6 @@ jobs:
               console.log('IMAGE=node:${{ matrix.node }}-slim')
             }
           " >> $GITHUB_OUTPUT
-          echo "PNPM_STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
-      # use --force to download the all platform/arch dependencies
-      - name: Install dependencies
-        run: pnpm install --force
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
@@ -282,8 +280,10 @@ jobs:
         with:
           image: ${{ steps.docker.outputs.IMAGE }}
           name: test-binding
-          options: -v ${{ steps.docker.outputs.PNPM_STORE_PATH }}:${{ steps.docker.outputs.PNPM_STORE_PATH }} -v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform ${{ steps.docker.outputs.PLATFORM }}
-          args: npm run test
+          options: -v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform ${{ steps.docker.outputs.PLATFORM }}
+          # node images ship without bun; installing inside the container gives
+          # musl images their own platform binaries (oxc-node, oxlint).
+          args: sh -c "npx -y bun@1.4.2 ci && npm run test"
   test-wasm-binding:
     name: Test wasm32-wasi binding - node@${{ matrix.node }}
     needs:
@@ -297,15 +297,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: setup pnpm
-        uses: pnpm/action-setup@v6
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
       - name: Setup node
         uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
-          cache: pnpm
       - name: Install dependencies
-        run: pnpm install
+        run: bun ci
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
@@ -320,7 +321,7 @@ jobs:
         run: ls -R .
         shell: bash
       - name: Test bindings (WASI forced)
-        run: pnpm test
+        run: bun run test
         env:
           # The generated loader only honours the literal strings 'true' and
           # 'error'; 'error' would also force @oxc-node/core (ava's TS loader)
@@ -329,10 +330,43 @@ jobs:
           # Node prints "ExperimentalWarning: WASI" on stderr, which CLI tests compare.
           NODE_OPTIONS: --no-warnings
       - name: Test bindings (native, WASI cross-check)
-        run: pnpm test
+        run: bun run test
         env:
           OPENAPI_NG_EXPECT_WASI_BINDING: '1'
           NODE_OPTIONS: --no-warnings
+  smoke-bun-runtime:
+    name: CLI under bun runtime
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - name: Install dependencies
+        run: bun ci
+      - name: Download native artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: bindings-x86_64-unknown-linux-gnu
+          path: .
+      - name: Download wasm artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: bindings-wasm32-wasip1-threads
+          path: .
+      - name: Generate (native)
+        run: |
+          bun bin/openapi-ng.js generate --input test/fixtures/petstore-rich.openapi.yaml --output out-native
+          test -f out-native/model.generated.ts
+      - name: Generate (WASI forced)
+        run: |
+          bun bin/openapi-ng.js generate --input test/fixtures/petstore-rich.openapi.yaml --output out-wasi
+          diff -r out-native out-wasi
+        env:
+          NAPI_RS_FORCE_WASI: 'true'
   publish:
     name: Publish
     runs-on: ubuntu-latest
@@ -342,28 +376,30 @@ jobs:
       - test-macOS-windows-binding
       - test-linux-binding
       - test-wasm-binding
+      - smoke-bun-runtime
     steps:
       - uses: actions/checkout@v7
         with:
           # release notes need every tag and the commits between them
           fetch-depth: 0
-      - name: setup pnpm
-        uses: pnpm/action-setup@v6
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
       - name: Setup node
         uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: pnpm
       - name: Install dependencies
-        run: pnpm install
+        run: bun ci
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
           path: artifacts
       - name: create npm dirs
-        run: pnpm napi create-npm-dirs
+        run: bunx napi create-npm-dirs
       - name: Move artifacts
-        run: pnpm artifacts
+        run: bun run artifacts
       # With a WASI target, `napi artifacts` treats native.js and browser.js as
       # managed root entries: it rewrites browser.js as an ESM stub and deletes
       # native.js. The committed files are the real entries.

@@ -45,9 +45,7 @@ Wire a generated service into a component:
 import { Component, inject } from '@angular/core';
 import { PetRest } from './generated/rest/pet.rest.generated';
 
-@Component({
-  /* ... */
-})
+@Component({/* ... */})
 export class PetList {
   readonly #pets = inject(PetRest);
 
@@ -64,7 +62,7 @@ A `validateRest(path, restMethod, opts)` helper wraps Angular signal-forms `vali
 import { validateRest } from './generated/rest.validate';
 
 validateRest(emailPath, accountRest.checkEmail, {
-  request: (ctx) => ({ email: ctx.value() }),
+  request: ctx => ({ email: ctx.value() }),
   onError: () => ({ kind: 'email-taken' }),
 });
 ```
@@ -76,16 +74,16 @@ Full walkthrough on [docs.openapi-ng.dev/getting-started](https://docs.openapi-n
 ## Development
 
 ```bash
-pnpm install
-pnpm build         # release build (Rust + NAPI)
-pnpm build:debug   # debug build (faster compile)
-pnpm test          # Node integration tests (AVA)
-cargo test         # Rust unit tests
-pnpm lint          # oxlint
-pnpm format        # oxfmt + rustfmt + taplo
+bun install
+bun run build         # release build (Rust + NAPI)
+bun run build:debug   # debug build (faster compile)
+bun run test          # Node integration tests (AVA)
+cargo test            # Rust unit tests
+bun run lint          # oxlint
+bun run format        # oxfmt + rustfmt + taplo
 ```
 
-Rust changes require a rebuild (`pnpm build` or `pnpm build:debug`) before tests reflect them.
+Rust changes require a rebuild (`bun run build` or `bun run build:debug`) before tests reflect them.
 
 Bug reports and PRs welcome at [github.com/AVSystem/openapi-ng](https://github.com/AVSystem/openapi-ng).
 

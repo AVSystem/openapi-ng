@@ -4,17 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node scripts/bundle-engine.mjs",
+    "predev": "bun scripts/bundle-engine.mjs",
     "dev": "astro dev",
     "start": "astro dev",
-    "prebuild": "node scripts/bundle-engine.mjs",
+    "prebuild": "bun scripts/bundle-engine.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
     "check": "astro check",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
-    "test": "pnpm test:unit && pnpm test:e2e"
+    "test": "bun run test:unit && bun run test:e2e"
   },
   "dependencies": {
     "@astrojs/starlight": "0.41.7",
@@ -39,5 +39,5 @@
     "vitest": "5.0.0",
     "wrangler": "4.124.0"
   },
-  "packageManager": "pnpm@10.33.3"
+  "packageManager": "bun@1.4.2"
 }

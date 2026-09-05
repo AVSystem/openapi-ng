@@ -4,10 +4,10 @@ Astro Starlight site behind [docs.openapi-ng.dev](https://docs.openapi-ng.dev/):
 documentation under `src/content/docs/` and the browser playground under `src/playground/`.
 
 ```bash
-pnpm install
-pnpm --filter @avsystem/openapi-ng-website dev      # local dev server
-pnpm --filter @avsystem/openapi-ng-website build    # production build
-pnpm --filter @avsystem/openapi-ng-website test     # vitest + playwright
+bun install
+bun run --filter @avsystem/openapi-ng-website dev      # local dev server
+bun run --filter @avsystem/openapi-ng-website build    # production build
+bun run --filter @avsystem/openapi-ng-website test     # vitest + playwright
 ```
 
 ## Running the playground against the local build
@@ -18,9 +18,9 @@ packages in `package.json`, and `scripts/bundle-engine.mjs` copies the wasm load
 link both packages to the local build. From the repo root:
 
 ```bash
-pnpm build --target wasm32-wasip1-threads   # wasm engine; writes openapi-ng.wasi* and *.wasm at the root
+bun run build --target wasm32-wasip1-threads   # wasm engine; writes openapi-ng.wasi* and *.wasm at the root
 git checkout native.js                      # the build rewrites the committed entry file
-pnpm napi create-npm-dirs                   # npm/<target>/package.json for every target (gitignored)
+bunx napi create-npm-dirs                      # npm/<target>/package.json for every target (gitignored)
 cp openapi-ng.wasm32-wasi.wasm openapi-ng.wasi.cjs openapi-ng.wasi.d.cts \
    openapi-ng.wasi-browser.js wasi-worker.mjs wasi-worker-browser.mjs npm/wasm32-wasi/
 ```
@@ -32,15 +32,15 @@ Then in `website/package.json` set
 "@avsystem/openapi-ng-wasm32-wasi": "link:../npm/wasm32-wasi"
 ```
 
-and run `pnpm install && pnpm --filter @avsystem/openapi-ng-website dev`. Both packages must be
+and run `bun install && bun run --filter @avsystem/openapi-ng-website dev`. Both packages must be
 linked: the JS wrapper validates option keys, so a published wrapper rejects options the local
 engine adds. After further Rust or template changes, rebuild the wasm, copy the six files again
 and restart `dev` so `predev` re-bundles the engine.
 
-Before committing, revert `website/package.json` and the root `pnpm-lock.yaml`:
+Before committing, revert `website/package.json` and the root `bun.lock`:
 
 ```bash
-git checkout -- website/package.json pnpm-lock.yaml && pnpm install
+git checkout -- website/package.json bun.lock && bun install
 ```
 
 Bump the pins only once the new version is on npm.
