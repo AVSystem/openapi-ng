@@ -195,19 +195,20 @@ main > .content-panel:first-child {
   margin: 0;
   padding: 0.5rem 0;
 }
-.pg-tree li.is-dir {
-  padding: 0.25rem 0.75rem;
-  font-family: var(--__sl-font-mono);
-  font-size: 0.75rem;
-  color: var(--sl-color-gray-3);
+.pg-tree ul ul {
+  padding: 0 0 0 1rem;
 }
-.pg-tree li.is-selected {
+.pg-tree li.is-collapsed > ul {
+  display: none;
+}
+.pg-tree li.is-selected > button {
   background: var(--sl-color-gray-6);
 }
 .pg .pg-tree button {
   all: unset;
   box-sizing: border-box;
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   width: 100%;
@@ -218,12 +219,29 @@ main > .content-panel:first-child {
   text-align: left;
   white-space: nowrap;
 }
-.pg-tree li[data-depth='1'] button {
-  padding-left: 1.75rem;
-}
 .pg .pg-tree button:focus-visible {
   outline: 2px solid var(--sl-color-accent);
   outline-offset: -2px;
+}
+.pg-tree li.is-dir > button {
+  justify-content: flex-start;
+  gap: 0.5rem;
+  color: var(--sl-color-gray-3);
+}
+.pg-tree li.is-dir > button::before {
+  content: '';
+  flex-shrink: 0;
+  width: 0.4em;
+  height: 0.4em;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+.pg-tree li.is-collapsed > button::before {
+  transform: rotate(-45deg);
+}
+.pg-tree li.is-dir > button .name::after {
+  content: '/';
 }
 .pg-tree .name {
   min-width: 0;

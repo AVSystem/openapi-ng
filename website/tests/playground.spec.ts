@@ -53,6 +53,45 @@ test('generates the petstore client in the browser', async ({ page }) => {
   await expect(page.locator('#pg-code')).toContainText('listPets');
 });
 
+test('nests the operations layout in collapsible directories', async ({ page }) => {
+  await ready(page);
+  await replaceText(
+    page,
+    '#pg-config',
+    '{"emit": ["models", "angular"], "layout": "both"}',
+  );
+  const tree = page.locator('#pg-tree');
+  await expect(tree.locator('li[data-path]')).toHaveCount(12);
+  const rest = tree.locator('li[data-dir="rest"]');
+  const pet = rest.locator('li[data-dir="rest/pet"]');
+  await expect(pet.locator('> button')).toHaveAttribute('aria-expanded', 'true');
+  const index = pet.locator('li[data-path="rest/pet/index.ts"] button');
+  await expect(index).toHaveAttribute('title', 'rest/pet/index.ts');
+  await index.click();
+  await expect(page.locator('#pg-code')).toContainText('list-pets');
+  await pet.locator('> button').click();
+  await expect(pet.locator('> button')).toHaveAttribute('aria-expanded', 'false');
+  await expect(index).toBeHidden();
+  await expect(rest.locator('li[data-path="rest/pet.rest.ts"]')).toBeVisible();
+  // A regeneration keeps the fold.
+  await replaceText(
+    page,
+    '#pg-config',
+    '{"emit": ["models", "angular"], "layout": "operations"}',
+  );
+  await expect(tree.locator('li[data-path]')).toHaveCount(10);
+  await expect(pet.locator('> button')).toHaveAttribute('aria-expanded', 'false');
+  await expect(index).toBeHidden();
+  await pet.locator('> button').click();
+  await expect(index).toBeVisible();
+  // The tree never scrolls sideways, however deep the files sit.
+  const [scrollWidth, clientWidth] = await tree.evaluate(el => [
+    el.scrollWidth,
+    el.clientWidth,
+  ]);
+  expect(scrollWidth).toBe(clientWidth);
+});
+
 test('shows a typed diagnostic for an unsupported spec', async ({ page }) => {
   await ready(page);
   await replaceText(page, '#pg-editor', INVALID_SPEC);
