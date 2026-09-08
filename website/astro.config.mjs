@@ -1,5 +1,9 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import { fileURLToPath } from 'node:url';
+
+// Forward slashes: Vite module ids and the picomatch glob below use them on every OS.
+const repoRoot = fileURLToPath(new URL('..', import.meta.url)).replace(/\\/g, '/');
 
 // `astro dev` ignores public/_headers; mirror its COOP/COEP scope so the
 // playground page is cross-origin isolated and its wasm worker inherits COEP.
@@ -77,13 +81,23 @@ export default defineConfig({
     }),
   ],
   vite: {
-    build: { target: 'es2022' },
+    // The playground runs the checkout's own wrapper (CommonJS under lib/),
+    // not a published package; see scripts/bundle-engine.mjs for the engine.
+    resolve: {
+      alias: { '@avsystem/openapi-ng/browser': `${repoRoot}lib/browser.js` },
+    },
+    build: {
+      target: 'es2022',
+      commonjsOptions: { include: [/node_modules/, `${repoRoot}lib/*.js`] },
+    },
     server: { fs: { allow: ['..'] } },
     plugins: [playgroundHeaders],
     // The playground's imports are only reachable through src/playground/*.ts, so
     // dev discovers them late and re-optimizes, which 504s already-served modules.
     optimizeDeps: {
       include: [
+        // Resolved through the alias above; pre-bundling is what turns the
+        // CommonJS wrapper into ESM in dev, so this entry stays.
         '@avsystem/openapi-ng/browser',
         'codemirror',
         '@codemirror/state',
