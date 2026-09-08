@@ -61,7 +61,7 @@ fn plan_form_fields<'ir>(fields: &'ir [BodyField]) -> Vec<PlannedFormField<'ir>>
       ty: &field.ty,
     })
     .collect();
-  out.sort_by(|a, b| a.name.cmp(&b.name));
+  out.sort_by(|left, right| left.name.cmp(&right.name));
   out
 }
 
@@ -80,9 +80,10 @@ pub(super) fn check_body_field_collisions(
     return Ok(());
   }
   let body_names: Vec<&str> = match body {
-    Some(PlannedRequestBody::FlatJson { properties, .. }) => {
-      properties.iter().map(|p| p.name.as_ref()).collect()
-    }
+    Some(PlannedRequestBody::FlatJson { properties, .. }) => properties
+      .iter()
+      .map(|property| property.name.as_ref())
+      .collect(),
     Some(PlannedRequestBody::Multipart { fields } | PlannedRequestBody::UrlEncoded { fields }) => {
       fields.iter().map(|field| field.name.as_str()).collect()
     }
@@ -90,7 +91,7 @@ pub(super) fn check_body_field_collisions(
   };
   let colliding: Vec<&str> = body_names
     .into_iter()
-    .filter(|n| path_query_names.contains(n))
+    .filter(|name| path_query_names.contains(name))
     .collect();
   if colliding.is_empty() {
     return Ok(());
@@ -343,7 +344,7 @@ mod tests {
       let op = &services[0].operations[0];
       match &op.request.body {
         Some(PlannedRequestBody::Multipart { fields }) => {
-          assert!(fields.iter().any(|f| f.name.as_str() == "avatar"));
+          assert!(fields.iter().any(|field| field.name.as_str() == "avatar"));
         }
         other => panic!("expected multipart body, got {other:?}"),
       }
@@ -360,7 +361,7 @@ mod tests {
       else {
         panic!("expected multipart body");
       };
-      let names: Vec<&str> = fields.iter().map(|f| f.name.as_str()).collect();
+      let names: Vec<&str> = fields.iter().map(|field| field.name.as_str()).collect();
       let mut sorted = names.clone();
       sorted.sort_unstable();
       assert_eq!(names, sorted);

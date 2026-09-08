@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use crate::error::{Context, Diagnostic, Reporter, bail_policy};
 use crate::ident::Ident;
 use crate::ir::canonical::{BodyField, BodyFieldType};
-use crate::ir::schema::{SchemaScalar, SchemaType};
+use crate::ir::schema::{SchemaProperty, SchemaScalar, SchemaType};
 use crate::parse::openapi_model::{AdditionalProperties, MediaType, Schema};
 
 use super::super::schema::normalize_schema;
@@ -149,30 +149,47 @@ pub(super) fn normalize_form_body_fields(
 
   let raw_property_lookup = collect_raw_property_formats(raw_schema);
 
-  let mut fields: Vec<BodyField> = Vec::with_capacity(properties.len());
-  for prop in properties.iter() {
-    let Some(name) = Ident::parse(prop.name.as_ref()) else {
-      bail_policy!(
-        reporter,
-        "invalid-form-field-name",
-        "body field '{name}' in {method} {path}: name is not a valid JavaScript identifier. Rename the field or split this body into a non-generated client.",
-        name = prop.name.as_ref(),
-      );
-    };
-    let raw_format = raw_property_lookup
-      .get(prop.name.as_ref())
-      .copied()
-      .unwrap_or(RawPropertyFormat::default());
-    let ty = classify_body_field_type(&prop.ty, raw_format, prop.name.as_ref(), body)?;
-    fields.push(BodyField {
-      name,
-      required: prop.required,
-      ty,
-    });
-  }
+  let mut fields = properties
+    .iter()
+    .map(|property| {
+      let raw_format = raw_property_lookup
+        .get(property.name.as_ref())
+        .copied()
+        .unwrap_or_default();
+      body_field(property, raw_format, body)
+    })
+    .collect::<Result<Vec<BodyField>, Diagnostic>>()?;
 
-  fields.sort_by(|a, b| a.name.cmp(&b.name));
+  fields.sort_by(|left, right| left.name.cmp(&right.name));
   Ok((body_ref, fields))
+}
+
+/// Lowers one body property.
+fn body_field(
+  property: &SchemaProperty,
+  raw_format: RawPropertyFormat<'_>,
+  body: FormBody<'_>,
+) -> Result<BodyField, Diagnostic> {
+  let FormBody {
+    method,
+    path,
+    reporter,
+    ..
+  } = body;
+  let Some(name) = Ident::parse(property.name.as_ref()) else {
+    bail_policy!(
+      reporter,
+      "invalid-form-field-name",
+      "body field '{name}' in {method} {path}: name is not a valid JavaScript identifier. Rename the field or split this body into a non-generated client.",
+      name = property.name.as_ref(),
+    );
+  };
+
+  Ok(BodyField {
+    name,
+    required: property.required,
+    ty: classify_body_field_type(&property.ty, raw_format, property.name.as_ref(), body)?,
+  })
 }
 
 /// One body property's raw `format` hints: `own` from the property
@@ -186,19 +203,21 @@ struct RawPropertyFormat<'a> {
 /// Collects the per-property `format` hints `SchemaType` does not carry.
 /// Empty when the body is a top-level `$ref`.
 fn collect_raw_property_formats(raw_schema: &Schema) -> BTreeMap<&str, RawPropertyFormat<'_>> {
-  let mut lookup = BTreeMap::new();
-  let Some(properties) = &raw_schema.properties else {
-    return lookup;
-  };
-  for (name, schema) in properties.iter() {
-    let own = schema.format.as_deref();
-    let items = schema
-      .items
-      .as_deref()
-      .and_then(|item_schema| item_schema.format.as_deref());
-    lookup.insert(name.as_str(), RawPropertyFormat { own, items });
-  }
-  lookup
+  raw_schema
+    .properties
+    .iter()
+    .flat_map(|properties| properties.iter())
+    .map(|(name, schema)| {
+      let format = RawPropertyFormat {
+        own: schema.format.as_deref(),
+        items: schema
+          .items
+          .as_deref()
+          .and_then(|item_schema| item_schema.format.as_deref()),
+      };
+      (name.as_str(), format)
+    })
+    .collect()
 }
 
 /// Classifies one form-body property. Accepts a scalar, a binary, or an
@@ -323,12 +342,18 @@ content:
     match result.content {
       BodyContent::Multipart { body_ref, fields } => {
         assert_eq!(body_ref, None);
-        let names: Vec<&str> = fields.iter().map(|f| f.name.as_str()).collect();
+        let names: Vec<&str> = fields.iter().map(|field| field.name.as_str()).collect();
         assert_eq!(names, vec!["avatar", "nickname", "status", "tagIds"]);
-        let avatar = fields.iter().find(|f| f.name.as_str() == "avatar").unwrap();
+        let avatar = fields
+          .iter()
+          .find(|field| field.name.as_str() == "avatar")
+          .unwrap();
         assert_eq!(avatar.ty, BodyFieldType::Binary);
         assert!(avatar.required);
-        let status = fields.iter().find(|f| f.name.as_str() == "status").unwrap();
+        let status = fields
+          .iter()
+          .find(|field| field.name.as_str() == "status")
+          .unwrap();
         assert!(matches!(
           status.ty,
           BodyFieldType::Scalar(SchemaScalar::String)
@@ -336,10 +361,13 @@ content:
         assert!(status.required);
         let nickname = fields
           .iter()
-          .find(|f| f.name.as_str() == "nickname")
+          .find(|field| field.name.as_str() == "nickname")
           .unwrap();
         assert!(!nickname.required);
-        let tag_ids = fields.iter().find(|f| f.name.as_str() == "tagIds").unwrap();
+        let tag_ids = fields
+          .iter()
+          .find(|field| field.name.as_str() == "tagIds")
+          .unwrap();
         assert!(matches!(
           tag_ids.ty,
           BodyFieldType::ArrayOfScalar(SchemaScalar::Number)
@@ -503,7 +531,10 @@ content:
     match result.content {
       BodyContent::UrlEncoded { fields, .. } => {
         assert_eq!(
-          fields.iter().map(|f| f.name.as_str()).collect::<Vec<_>>(),
+          fields
+            .iter()
+            .map(|field| field.name.as_str())
+            .collect::<Vec<_>>(),
           vec!["status", "tagIds"]
         );
       }

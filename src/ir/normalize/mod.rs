@@ -30,8 +30,10 @@ pub(crate) fn normalize_api_model(
   reporter: &Reporter,
 ) -> Result<ApiModel, Diagnostic> {
   let schemas = normalize_schemas(&document.components.schemas, reporter)?;
-  let schema_index: BTreeMap<&str, &SchemaType> =
-    schemas.iter().map(|m| (m.name.as_ref(), &m.body)).collect();
+  let schema_index: BTreeMap<&str, &SchemaType> = schemas
+    .iter()
+    .map(|symbol| (symbol.name.as_ref(), &symbol.body))
+    .collect();
   let operations = normalize_operations(
     &document.paths,
     &schema_index,

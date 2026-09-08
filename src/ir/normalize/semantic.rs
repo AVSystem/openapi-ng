@@ -4,7 +4,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::error::{Diagnostic, DiagnosticCode, Reporter, bail, bail_policy};
-use crate::ir::canonical::{ApiModel, BodyContent, ModelSymbol, ResponseContent};
+use crate::ir::canonical::{ApiModel, BodyContent, ModelSymbol, OperationDef, ResponseContent};
 use crate::ir::schema::{SchemaProperty, SchemaScalar, SchemaType, collect_type_references};
 
 /// Sorts the schemas by name, narrows the discriminator properties, and
@@ -109,6 +109,37 @@ fn narrow_discriminator_properties(
   Ok(())
 }
 
+/// Every schema-typed position an operation declares.
+fn operation_types(operation: &OperationDef) -> impl Iterator<Item = &SchemaType> {
+  let body = operation
+    .request
+    .body
+    .as_ref()
+    .and_then(|body| match &body.content {
+      BodyContent::Json(ty) => Some(ty),
+      BodyContent::Multipart { .. } | BodyContent::UrlEncoded { .. } => None,
+    });
+  let response = operation
+    .response
+    .as_ref()
+    .and_then(|response| match response {
+      ResponseContent::Json(Some(ty)) => Some(ty),
+      ResponseContent::Json(None)
+      | ResponseContent::Blob
+      | ResponseContent::Text
+      | ResponseContent::ArrayBuffer => None,
+    });
+
+  operation
+    .request
+    .inputs
+    .iter()
+    .map(|input| &input.ty)
+    .chain(operation.request.headers.iter().map(|header| &header.ty))
+    .chain(body)
+    .chain(response)
+}
+
 /// Finds a property by name through the shapes that can carry one: an
 /// inline object, an `allOf` part, a `$ref` target, or a nullable wrapper.
 fn find_property<'a>(
@@ -157,14 +188,9 @@ fn narrow_property_in_body(body: &mut SchemaType, name: &str, literal_value: &st
       }
       false
     }
-    SchemaType::Intersection(parts) => {
-      for part in parts {
-        if narrow_property_in_body(part, name, literal_value) {
-          return true;
-        }
-      }
-      false
-    }
+    SchemaType::Intersection(parts) => parts
+      .iter_mut()
+      .any(|part| narrow_property_in_body(part, name, literal_value)),
     SchemaType::Nullable(inner) => narrow_property_in_body(inner, name, literal_value),
     _ => false,
   }
@@ -176,46 +202,22 @@ fn validate_references(document: &ApiModel, reporter: &Reporter) -> Result<(), D
     .iter()
     .map(|symbol| symbol.name.as_ref())
     .collect();
-  let mut refs: BTreeSet<&str> = BTreeSet::new();
+  let refs: BTreeSet<&str> = document
+    .schemas
+    .iter()
+    .map(|symbol| &symbol.body)
+    .chain(document.operations.iter().flat_map(operation_types))
+    .fold(BTreeSet::new(), |mut refs, ty| {
+      collect_type_references(ty, &mut refs);
+      refs
+    });
 
-  for symbol in &document.schemas {
-    collect_type_references(&symbol.body, &mut refs);
-  }
-
-  for operation in &document.operations {
-    for input in &operation.request.inputs {
-      collect_type_references(&input.ty, &mut refs);
-    }
-    for header in &operation.request.headers {
-      collect_type_references(&header.ty, &mut refs);
-    }
-    if let Some(body) = &operation.request.body {
-      match &body.content {
-        BodyContent::Json(ty) => collect_type_references(ty, &mut refs),
-        // `BodyFieldType` carries no schema reference; `body_ref` was
-        // resolved at lowering time.
-        BodyContent::Multipart { .. } | BodyContent::UrlEncoded { .. } => {}
-      }
-    }
-    if let Some(response) = &operation.response {
-      match response {
-        ResponseContent::Json(Some(ty)) => collect_type_references(ty, &mut refs),
-        ResponseContent::Json(None)
-        | ResponseContent::Blob
-        | ResponseContent::Text
-        | ResponseContent::ArrayBuffer => {}
-      }
-    }
-  }
-
-  for name in refs {
-    if !symbol_index.contains(name) {
-      bail!(
-        reporter,
-        DiagnosticCode::InvalidReference,
-        "Failed to validate spec: unresolved schema reference {name}. Check for typos in the $ref and confirm that components.schemas defines a top-level entry named '{name}'."
-      );
-    }
+  if let Some(name) = refs.into_iter().find(|name| !symbol_index.contains(name)) {
+    bail!(
+      reporter,
+      DiagnosticCode::InvalidReference,
+      "Failed to validate spec: unresolved schema reference {name}. Check for typos in the $ref and confirm that components.schemas defines a top-level entry named '{name}'."
+    );
   }
 
   Ok(())
@@ -252,7 +254,7 @@ mod tests {
     SchemaType::Union {
       members: members
         .into_iter()
-        .map(|n| SchemaType::Ref(n.into()))
+        .map(|name| SchemaType::Ref(name.into()))
         .collect(),
       discriminator: Some(Discriminator {
         property_name: "kind".into(),

@@ -153,7 +153,7 @@ fn classify_response_kind(
 
   if let Some(m) = user_mapping
     .iter()
-    .find(|m| m.content_type.eq_ignore_ascii_case(&normalized))
+    .find(|mapping| mapping.content_type.eq_ignore_ascii_case(&normalized))
   {
     return match m.response_type {
       ResponseType::Json => ResponseKind::Json,
@@ -357,7 +357,7 @@ mod tests {
       normalize_error_responses(Some(&responses), test_cx(&[], &ctx)).expect("normalize ok");
 
     assert_eq!(
-      errors.iter().map(|e| e.status).collect::<Vec<_>>(),
+      errors.iter().map(|error| error.status).collect::<Vec<_>>(),
       vec![400, 404, 500]
     );
   }
@@ -398,7 +398,7 @@ mod tests {
       normalize_error_responses(Some(&responses), test_cx(&[], &ctx)).expect("normalize ok");
 
     assert_eq!(
-      errors.iter().map(|e| e.status).collect::<Vec<_>>(),
+      errors.iter().map(|error| error.status).collect::<Vec<_>>(),
       vec![400]
     );
   }
@@ -418,7 +418,7 @@ mod tests {
 
     // Only 400 survives — `default` is intentionally not surfaced.
     assert_eq!(
-      errors.iter().map(|e| e.status).collect::<Vec<_>>(),
+      errors.iter().map(|error| error.status).collect::<Vec<_>>(),
       vec![400]
     );
   }

@@ -20,21 +20,17 @@ pub(crate) enum CompileError {
 /// Every other flag fails, `g`, `y` and `u` included: Rust's engine has
 /// no equivalent, and ignoring one would silently change the match.
 pub(crate) fn compile(source: &str, flags: &str) -> Result<CompiledParseSpec, CompileError> {
-  let mut builder = RegexBuilder::new(source);
-  for ch in flags.chars() {
-    match ch {
-      'i' => {
-        builder.case_insensitive(true);
-      }
-      'm' => {
-        builder.multi_line(true);
-      }
-      's' => {
-        builder.dot_matches_new_line(true);
-      }
-      other => return Err(CompileError::UnsupportedFlag(other)),
-    }
-  }
+  let builder = flags
+    .chars()
+    .try_fold(RegexBuilder::new(source), |mut builder, flag| {
+      match flag {
+        'i' => builder.case_insensitive(true),
+        'm' => builder.multi_line(true),
+        's' => builder.dot_matches_new_line(true),
+        unsupported => return Err(CompileError::UnsupportedFlag(unsupported)),
+      };
+      Ok(builder)
+    })?;
   let regex = builder
     .build()
     .map_err(|err| CompileError::InvalidPattern(err.to_string()))?;

@@ -1,8 +1,11 @@
-use crate::emit::ts::{Position, Render, Writer, property_declaration, w, wln};
+use crate::emit::ts::{
+  Doc, Member, Position, Render, Writer, interface_block, property_declaration, w, wln,
+};
 use crate::ident::TypeName;
 use crate::ir::canonical::BodyFieldType;
 use crate::plan::artifact_plan::{
-  PlannedFormField, PlannedHeader, PlannedOperation, PlannedRequestBody, RequestFieldKind,
+  PlannedFormField, PlannedHeader, PlannedOperation, PlannedRequestBody, PlannedRequestContract,
+  PlannedRequestField, RequestFieldKind,
 };
 
 /// Which runtime constructor the form-body IIFE builds.
@@ -19,25 +22,10 @@ pub(super) fn render_requestful_builder(
 ) {
   buffer.open_block(&format!("(request: {interface_name}) =>"));
 
-  let mut destructured: Vec<&str> = operation
-    .request
-    .fields
-    .iter()
-    .map(|f| f.name.as_ref())
+  let headers = HeaderObject(&operation.request.headers);
+  let destructured: Vec<&str> = request_members(&operation.request, &headers)
+    .map(|member| member.name)
     .collect();
-  match &operation.request.body {
-    None => {}
-    Some(PlannedRequestBody::Nested { .. }) => destructured.push("body"),
-    Some(PlannedRequestBody::FlatJson { properties, .. }) => {
-      destructured.extend(properties.iter().map(|p| p.name.as_ref()));
-    }
-    Some(PlannedRequestBody::Multipart { fields } | PlannedRequestBody::UrlEncoded { fields }) => {
-      destructured.extend(fields.iter().map(|field| field.name.as_str()));
-    }
-  }
-  if !operation.request.headers.is_empty() {
-    destructured.push("headers");
-  }
   if !destructured.is_empty() {
     wln!(buffer, "const {{ {} }} = request;", destructured.join(", "));
   }
@@ -76,39 +64,73 @@ pub(super) fn render_request_interface(
   operation: &PlannedOperation<'_>,
   request_name: &TypeName,
 ) {
-  // Member order: path → query → body → headers.
-  buffer.open_block(&format!("export interface {request_name}"));
+  let headers = HeaderObject(&operation.request.headers);
+  interface_block(
+    buffer,
+    request_name.as_str(),
+    Doc::default(),
+    request_members(&operation.request, &headers),
+    true,
+  );
+}
 
-  for field in &operation.request.fields {
-    property_declaration(buffer, field.name.as_ref(), field.optional, field.ty);
-    buffer.push(";\n");
+/// The interface's members, in emitted order: fields, body, `headers`.
+fn request_members<'a>(
+  request: &'a PlannedRequestContract<'a>,
+  headers: &'a HeaderObject<'a>,
+) -> impl Iterator<Item = Member<'a>> {
+  request
+    .fields
+    .iter()
+    .map(field_member)
+    .chain(body_members(request.body.as_ref()))
+    .chain(headers.member())
+}
+
+fn field_member<'a>(field: &'a PlannedRequestField<'a>) -> Member<'a> {
+  Member {
+    name: field.name.as_ref(),
+    optional: field.optional,
+    ty: field.ty,
+    doc: Doc::default(),
   }
+}
 
-  match &operation.request.body {
-    None => {}
-    Some(PlannedRequestBody::Nested { ty, optional }) => {
-      property_declaration(buffer, "body", *optional, ty);
-      buffer.push(";\n");
-    }
-    Some(PlannedRequestBody::FlatJson { properties, .. }) => {
-      for prop in properties {
-        property_declaration(buffer, prop.name.as_ref(), prop.optional, prop.ty);
-        buffer.push(";\n");
-      }
-    }
-    Some(PlannedRequestBody::Multipart { fields } | PlannedRequestBody::UrlEncoded { fields }) => {
-      for form in fields {
-        property_declaration(buffer, form.name.as_str(), form.optional, form.ty);
-        buffer.push(";\n");
-      }
-    }
+fn form_member<'a>(field: &'a PlannedFormField<'a>) -> Member<'a> {
+  Member {
+    name: field.name.as_str(),
+    optional: field.optional,
+    ty: field.ty,
+    doc: Doc::default(),
   }
+}
 
-  if !operation.request.headers.is_empty() {
-    render_headers_member(buffer, &operation.request.headers);
-  }
+/// The members a body contributes; at most one arm is non-empty.
+fn body_members<'a>(body: Option<&'a PlannedRequestBody<'a>>) -> impl Iterator<Item = Member<'a>> {
+  let nested = body.and_then(|body| match body {
+    PlannedRequestBody::Nested { ty, optional } => Some(Member {
+      name: "body",
+      optional: *optional,
+      ty: *ty,
+      doc: Doc::default(),
+    }),
+    _ => None,
+  });
+  let hoisted_json = body.and_then(|body| match body {
+    PlannedRequestBody::FlatJson { properties, .. } => Some(properties.iter().map(field_member)),
+    _ => None,
+  });
+  let hoisted_form = body.and_then(|body| match body {
+    PlannedRequestBody::Multipart { fields } | PlannedRequestBody::UrlEncoded { fields } => {
+      Some(fields.iter().map(form_member))
+    }
+    _ => None,
+  });
 
-  buffer.close_block("");
+  nested
+    .into_iter()
+    .chain(hoisted_json.into_iter().flatten())
+    .chain(hoisted_form.into_iter().flatten())
 }
 
 /// Emits an operation's error interface: its body types keyed by status.
@@ -125,31 +147,39 @@ pub(super) fn render_error_interface(
   error_name: &TypeName,
 ) {
   buffer.open_block(&format!("export interface {error_name}"));
-  for error in operation.errors {
-    buffer.push(&error.status.to_string());
-    buffer.push(": ");
+  operation.errors.iter().for_each(|error| {
+    w!(buffer, "{}: ", error.status);
     error.body.render(buffer, Position::Standalone);
     buffer.push(";\n");
-  }
+  });
   buffer.close_block("");
 }
 
-/// Emits the synthetic `headers` member: an inline object over the
-/// operation's `in: header` parameters, optional when every one of them
-/// is. No member carries JSDoc.
-fn render_headers_member(buffer: &mut Writer, headers: &[PlannedHeader<'_>]) {
-  buffer.push("headers");
-  if headers.iter().all(|header| header.optional) {
-    buffer.push("?");
+/// The synthetic `headers` member's inline object type.
+struct HeaderObject<'a>(&'a [PlannedHeader<'a>]);
+
+impl<'a> HeaderObject<'a> {
+  fn member(&'a self) -> Option<Member<'a>> {
+    (!self.0.is_empty()).then(|| Member {
+      name: "headers",
+      optional: self.0.iter().all(|header| header.optional),
+      ty: self,
+      doc: Doc::default(),
+    })
   }
-  buffer.push(": {\n");
-  buffer.indent();
-  for header in headers {
-    property_declaration(buffer, header.name.as_ref(), header.optional, header.ty);
-    buffer.push(";\n");
+}
+
+impl Render for HeaderObject<'_> {
+  fn render(&self, out: &mut Writer, _at: Position) {
+    out.push("{\n");
+    out.indent();
+    self.0.iter().for_each(|header| {
+      property_declaration(out, header.name.as_ref(), header.optional, &header.ty);
+      out.push(";\n");
+    });
+    out.dedent();
+    out.push("}");
   }
-  buffer.dedent();
-  buffer.push("};\n");
 }
 
 /// Writes `params: httpParams({ … }),` when the operation declares query

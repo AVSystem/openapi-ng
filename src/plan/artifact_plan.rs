@@ -645,7 +645,7 @@ mod tests {
       let ids: Vec<&str> = service
         .operations
         .iter()
-        .map(|op| op.operation_id.as_str())
+        .map(|operation| operation.operation_id.as_str())
         .collect();
       let mut sorted = ids.clone();
       sorted.sort_unstable();
@@ -660,7 +660,7 @@ mod tests {
       adoption
         .operations
         .iter()
-        .map(|op| op.operation_id.as_str())
+        .map(|operation| operation.operation_id.as_str())
         .collect::<Vec<_>>(),
       vec!["abandonPet", "adoptPet"]
     );

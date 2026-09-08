@@ -42,8 +42,8 @@ pub(crate) enum Case {
 }
 
 impl Case {
-  pub(crate) fn parse(s: &str) -> Option<Self> {
-    match s {
+  pub(crate) fn parse(value: &str) -> Option<Self> {
+    match value {
       "camel" => Some(Self::Camel),
       "pascal" => Some(Self::Pascal),
       "snake" => Some(Self::Snake),

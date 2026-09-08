@@ -9,17 +9,23 @@ use crate::ident::is_ident;
 pub(crate) fn escape_into(out: &mut String, value: &str) {
   out.reserve(value.len() + 2);
   out.push('\'');
-  for ch in value.chars() {
-    match ch {
-      '\\' => out.push_str("\\\\"),
-      '\'' => out.push_str("\\'"),
-      '\n' => out.push_str("\\n"),
-      '\r' => out.push_str("\\r"),
-      '\t' => out.push_str("\\t"),
-      _ => out.push(ch),
-    }
-  }
+  value.chars().for_each(|ch| match escape_sequence(ch) {
+    Some(sequence) => out.push_str(sequence),
+    None => out.push(ch),
+  });
   out.push('\'');
+}
+
+/// The escape `ch` needs, or `None` when it stands for itself.
+const fn escape_sequence(ch: char) -> Option<&'static str> {
+  match ch {
+    '\\' => Some("\\\\"),
+    '\'' => Some("\\'"),
+    '\n' => Some("\\n"),
+    '\r' => Some("\\r"),
+    '\t' => Some("\\t"),
+    _ => None,
+  }
 }
 
 /// `value` as a single-quoted TypeScript string literal.

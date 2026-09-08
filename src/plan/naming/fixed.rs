@@ -80,7 +80,6 @@ mod tests {
     );
   }
 
-
   use proptest::prelude::*;
 
   /// ASCII-only TS identifier shape, matching `ident::is_ident`.
@@ -98,26 +97,13 @@ mod tests {
   /// Kebab-case ASCII: no leading, trailing or repeated hyphen. The empty
   /// string passes.
   fn is_kebab_case_ascii(value: &str) -> bool {
-    if value.is_empty() {
-      return true;
-    }
-    if value.starts_with('-') || value.ends_with('-') {
-      return false;
-    }
-    let mut prev_hyphen = false;
-    for ch in value.chars() {
-      match ch {
-        'a'..='z' | '0'..='9' => prev_hyphen = false,
-        '-' => {
-          if prev_hyphen {
-            return false;
-          }
-          prev_hyphen = true;
-        }
-        _ => return false,
-      }
-    }
-    true
+    value.is_empty()
+      || (!value.starts_with('-')
+        && !value.ends_with('-')
+        && !value.contains("--")
+        && value
+          .chars()
+          .all(|ch| matches!(ch, 'a'..='z' | '0'..='9' | '-')))
   }
 
   proptest! {

@@ -1,6 +1,6 @@
 //! Grouping operations into services.
 
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 use crate::{
   error::{Diagnostic, Reporter},
@@ -20,25 +20,22 @@ pub(crate) fn group_operations<'a>(
   resolver: &crate::plan::naming::NamingResolver,
   reporter: &Reporter,
 ) -> Result<GroupedOperations<'a>, Diagnostic> {
-  let mut groups: GroupedOperations<'a> = Vec::new();
-  let mut group_indexes = HashMap::<String, usize>::new();
-
-  for operation in operations {
-    let group_name = resolver.group(operation, reporter)?;
-    let method_name = resolver.method_name(operation, reporter)?;
-
-    let group_index = group_indexes.get(&group_name).copied().unwrap_or_else(|| {
-      let index = groups.len();
-      let key = group_name.clone();
-      groups.push((group_name, Vec::new()));
-      group_indexes.insert(key, index);
-      index
-    });
-
-    groups[group_index].1.push((operation, method_name));
-  }
-
-  Ok(groups)
+  // `IndexMap` keeps the groups in discovery order.
+  operations
+    .iter()
+    .try_fold(
+      IndexMap::<String, Vec<(&'a OperationDef, MethodName)>>::new(),
+      |mut groups, operation| {
+        let group_name = resolver.group(operation, reporter)?;
+        let method_name = resolver.method_name(operation, reporter)?;
+        groups
+          .entry(group_name)
+          .or_default()
+          .push((operation, method_name));
+        Ok(groups)
+      },
+    )
+    .map(|groups| groups.into_iter().collect())
 }
 
 #[cfg(test)]

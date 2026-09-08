@@ -68,14 +68,12 @@ fn walk_refs<'ir>(ty: &'ir SchemaType, refs: &mut BTreeSet<&'ir str>) {
       refs.insert(name.as_ref());
     }
     SchemaType::Union { members, .. } | SchemaType::Intersection(members) => {
-      for member in members {
-        walk_refs(member, refs);
-      }
+      members.iter().for_each(|member| walk_refs(member, refs));
     }
     SchemaType::InlineObject { properties } => {
-      for property in properties {
-        walk_refs(&property.ty, refs);
-      }
+      properties
+        .iter()
+        .for_each(|property| walk_refs(&property.ty, refs));
     }
   }
 }

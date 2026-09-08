@@ -27,13 +27,13 @@ fn check_path_query_collisions(
 ) -> Result<(), Diagnostic> {
   let path_set: BTreeSet<&str> = fields
     .iter()
-    .filter(|f| f.kind == RequestFieldKind::Path)
-    .map(|f| f.name.as_ref())
+    .filter(|field| field.kind == RequestFieldKind::Path)
+    .map(|field| field.name.as_ref())
     .collect();
   let colliding: Vec<&str> = fields
     .iter()
-    .filter(|f| f.kind == RequestFieldKind::Query && path_set.contains(f.name.as_ref()))
-    .map(|f| f.name.as_ref())
+    .filter(|field| field.kind == RequestFieldKind::Query && path_set.contains(field.name.as_ref()))
+    .map(|field| field.name.as_ref())
     .collect();
   if !colliding.is_empty() {
     let names = colliding.join(", ");
@@ -138,8 +138,8 @@ mod tests {
       let path_fields: Vec<&str> = request
         .fields
         .iter()
-        .filter(|f| f.kind == RequestFieldKind::Path)
-        .map(|f| f.name.as_ref())
+        .filter(|field| field.kind == RequestFieldKind::Path)
+        .map(|field| field.name.as_ref())
         .collect();
       assert_eq!(path_fields, vec!["petId"]);
       match &request.body {
@@ -209,11 +209,11 @@ mod tests {
       assert_eq!(
         properties
           .iter()
-          .map(|p| p.name.as_ref())
+          .map(|property| property.name.as_ref())
           .collect::<Vec<_>>(),
         vec!["csvImportId", "doImport"]
       );
-      assert!(properties.iter().all(|p| !p.optional));
+      assert!(properties.iter().all(|property| !property.optional));
     }
 
     #[test]

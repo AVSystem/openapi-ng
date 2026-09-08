@@ -30,7 +30,7 @@ fn write_artifact(
   let artifact_rel = std::path::Path::new(&artifact.path);
   if artifact_rel
     .components()
-    .any(|c| matches!(c, std::path::Component::ParentDir))
+    .any(|component| matches!(component, std::path::Component::ParentDir))
   {
     bail!(
       reporter,

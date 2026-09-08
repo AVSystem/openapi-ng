@@ -104,23 +104,30 @@ fn is_self_alias(mapped: &ResolvedMappedType<'_>) -> bool {
 /// Emits the mapped types' import block: regular imports first, grouped by
 /// path, then the re-exports.
 fn emit_mapped_imports(mapped_types: &[ResolvedMappedType<'_>], out: &mut Writer) {
-  let mut imports = BTreeMap::<&str, BTreeSet<(&str, Option<&str>)>>::new();
-  let mut reexports = BTreeMap::<&str, BTreeSet<(&str, &str)>>::new();
+  let (self_aliased, aliased): (Vec<_>, Vec<_>) = mapped_types
+    .iter()
+    .partition(|mapped| is_self_alias(mapped));
 
-  for mapped in mapped_types {
-    let path = mapped.import.as_ref();
-    if is_self_alias(mapped) {
-      reexports
-        .entry(path)
-        .or_default()
-        .insert((mapped.ty.as_ref(), mapped.schema));
-    } else {
-      imports
-        .entry(path)
+  let imports = aliased.iter().fold(
+    BTreeMap::<&str, BTreeSet<(&str, Option<&str>)>>::new(),
+    |mut grouped, mapped| {
+      grouped
+        .entry(mapped.import.as_ref())
         .or_default()
         .insert((mapped.ty.as_ref(), mapped.alias.as_deref()));
-    }
-  }
+      grouped
+    },
+  );
+  let reexports = self_aliased.iter().fold(
+    BTreeMap::<&str, BTreeSet<(&str, &str)>>::new(),
+    |mut grouped, mapped| {
+      grouped
+        .entry(mapped.import.as_ref())
+        .or_default()
+        .insert((mapped.ty.as_ref(), mapped.schema));
+      grouped
+    },
+  );
 
   for (path, bindings) in &imports {
     let bindings = bindings

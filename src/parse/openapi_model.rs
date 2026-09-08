@@ -81,12 +81,12 @@ impl Operation {
         .summary
         .as_deref()
         .map(str::trim)
-        .filter(|s| !s.is_empty()),
+        .filter(|text| !text.is_empty()),
       self
         .description
         .as_deref()
         .map(str::trim)
-        .filter(|s| !s.is_empty()),
+        .filter(|text| !text.is_empty()),
     ) {
       (None, None) => None,
       (Some(s), None) => Some(s.to_string()),

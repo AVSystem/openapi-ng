@@ -31,20 +31,22 @@ pub(crate) fn evaluate_chain(
     Naming::Chain(entries) => entries.as_slice(),
   };
   let mut failures = Vec::with_capacity(entries.len());
-  for entry in entries {
-    match evaluate_entry(entry, ctx) {
-      Ok(s) => return Ok(s),
-      Err(f) => failures.push(f),
-    }
-  }
-  Err(failures)
+  entries
+    .iter()
+    .find_map(|entry| match evaluate_entry(entry, ctx) {
+      Ok(name) => Some(name),
+      Err(failure) => {
+        failures.push(failure);
+        None
+      }
+    })
+    .ok_or(failures)
 }
 
 fn evaluate_entry(entry: &RuleEntry, ctx: &OperationContext<'_>) -> Result<String, RuleFailure> {
   match entry {
     RuleEntry::Shorthand(format_template) => {
-      let s = expand(format_template, ctx, &HashMap::new()).map_err(map_template_error)?;
-      Ok(s)
+      expand(format_template, ctx, &HashMap::new()).map_err(map_template_error)
     }
     RuleEntry::Rule(rule) => evaluate_rule(rule, ctx),
   }
@@ -72,7 +74,7 @@ fn evaluate_rule(rule: &Rule, ctx: &OperationContext<'_>) -> Result<String, Rule
         .filter_map(|name| {
           captures
             .name(name)
-            .map(|m| (name.to_string(), m.as_str().to_string()))
+            .map(|matched| (name.to_string(), matched.as_str().to_string()))
         })
         .collect()
     }

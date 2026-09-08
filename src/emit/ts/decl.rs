@@ -1,9 +1,7 @@
 //! Declaration-level emit: JSDoc, interfaces, type aliases, literal unions.
 
-use crate::ir::schema::SchemaType;
-
 use super::literal::quoted;
-use super::types::property_declaration;
+use super::types::{Render, property_declaration};
 use super::writer::{Writer, wln};
 
 /// Width below which a top-level literal union stays on one line. Counts
@@ -68,7 +66,7 @@ pub(crate) fn jsdoc(out: &mut Writer, doc: Doc<'_>) {
 pub(crate) struct Member<'a> {
   pub(crate) name: &'a str,
   pub(crate) optional: bool,
-  pub(crate) ty: &'a SchemaType,
+  pub(crate) ty: &'a dyn Render,
   pub(crate) doc: Doc<'a>,
 }
 
@@ -87,11 +85,11 @@ pub(crate) fn interface_block<'a>(
     "interface "
   };
   out.open_block(&format!("{keyword}{name}"));
-  for member in members {
+  members.into_iter().for_each(|member| {
     jsdoc(out, member.doc);
-    property_declaration(out, member.name, member.optional, member.ty);
+    property_declaration(out, member.name, member.optional, &member.ty);
     out.push(";\n");
-  }
+  });
   out.close_block("");
 }
 

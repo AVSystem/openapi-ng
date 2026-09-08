@@ -125,49 +125,59 @@ fn validate_emit_targets(
   Ok(())
 }
 
+/// The first key that repeats, in iteration order.
+fn first_duplicate<K: Ord + Clone>(keys: impl IntoIterator<Item = K>) -> Option<K> {
+  let mut seen = std::collections::BTreeSet::new();
+  keys.into_iter().find(|key| !seen.insert(key.clone()))
+}
+
 fn validate_mapped_types(
   mapped_types: &[MappedType],
   reporter: &Reporter,
 ) -> Result<(), Diagnostic> {
-  let mut seen = std::collections::BTreeSet::<&str>::new();
-  for mapped_type in mapped_types {
-    if mapped_type.schema.trim().is_empty()
-      || mapped_type.import.trim().is_empty()
-      || mapped_type.ty.trim().is_empty()
-    {
-      return Err(reporter.error(
-        DiagnosticCode::InvalidOption,
-        "Failed to resolve generation options: mapped type entries require schema, import, and type.",
-      ));
-    }
+  mapped_types
+    .iter()
+    .try_for_each(|mapped_type| validate_mapped_type(mapped_type, reporter))?;
 
-    if !is_ident(&mapped_type.ty) {
-      bail!(
-        reporter,
-        DiagnosticCode::InvalidOption,
-        "Failed to resolve generation options: mapped type type '{}' is not a valid TypeScript identifier (expected /^[A-Za-z_$][A-Za-z0-9_$]*$/).",
-        mapped_type.ty,
-      );
-    }
+  if let Some(schema) = first_duplicate(mapped_types.iter().map(|entry| entry.schema.as_str())) {
+    bail!(
+      reporter,
+      DiagnosticCode::InvalidOption,
+      "Failed to resolve generation options: mapped type schema '{schema}' is duplicated; each schema must appear at most once.",
+    );
+  }
 
-    if let Some(alias) = mapped_type.alias.as_deref()
-      && !is_ident(alias)
-    {
-      bail!(
-        reporter,
-        DiagnosticCode::InvalidOption,
-        "Failed to resolve generation options: mapped type alias '{alias}' is not a valid TypeScript identifier."
-      );
-    }
+  Ok(())
+}
 
-    if !seen.insert(mapped_type.schema.as_str()) {
-      bail!(
-        reporter,
-        DiagnosticCode::InvalidOption,
-        "Failed to resolve generation options: mapped type schema '{}' is duplicated; each schema must appear at most once.",
-        mapped_type.schema,
-      );
-    }
+fn validate_mapped_type(mapped_type: &MappedType, reporter: &Reporter) -> Result<(), Diagnostic> {
+  if mapped_type.schema.trim().is_empty()
+    || mapped_type.import.trim().is_empty()
+    || mapped_type.ty.trim().is_empty()
+  {
+    return Err(reporter.error(
+      DiagnosticCode::InvalidOption,
+      "Failed to resolve generation options: mapped type entries require schema, import, and type.",
+    ));
+  }
+
+  if !is_ident(&mapped_type.ty) {
+    bail!(
+      reporter,
+      DiagnosticCode::InvalidOption,
+      "Failed to resolve generation options: mapped type type '{}' is not a valid TypeScript identifier (expected /^[A-Za-z_$][A-Za-z0-9_$]*$/).",
+      mapped_type.ty,
+    );
+  }
+
+  if let Some(alias) = mapped_type.alias.as_deref()
+    && !is_ident(alias)
+  {
+    bail!(
+      reporter,
+      DiagnosticCode::InvalidOption,
+      "Failed to resolve generation options: mapped type alias '{alias}' is not a valid TypeScript identifier."
+    );
   }
 
   Ok(())
@@ -177,29 +187,38 @@ fn validate_response_type_mapping(
   mappings: &[ResponseTypeMapping],
   reporter: &Reporter,
 ) -> Result<(), Diagnostic> {
-  let mut seen = std::collections::BTreeSet::<String>::new();
-  for m in mappings {
-    let lc = m.content_type.to_ascii_lowercase();
-    if lc.is_empty() {
-      return Err(reporter.error(
-        DiagnosticCode::InvalidOption,
-        "responseTypeMapping.contentType must be non-empty.",
-      ));
-    }
-    if !lc.contains('/') {
-      bail!(
-        reporter,
-        DiagnosticCode::InvalidOption,
-        "responseTypeMapping.contentType {lc:?} must contain '/'."
-      );
-    }
-    if !seen.insert(lc.clone()) {
-      bail!(
-        reporter,
-        DiagnosticCode::InvalidOption,
-        "responseTypeMapping has duplicate contentType {lc:?} (case-insensitive)."
-      );
-    }
+  let content_types: Vec<String> = mappings
+    .iter()
+    .map(|mapping| mapping.content_type.to_ascii_lowercase())
+    .collect();
+
+  content_types
+    .iter()
+    .try_for_each(|content_type| validate_content_type(content_type, reporter))?;
+
+  if let Some(duplicate) = first_duplicate(content_types) {
+    bail!(
+      reporter,
+      DiagnosticCode::InvalidOption,
+      "responseTypeMapping has duplicate contentType {duplicate:?} (case-insensitive)."
+    );
+  }
+  Ok(())
+}
+
+fn validate_content_type(content_type: &str, reporter: &Reporter) -> Result<(), Diagnostic> {
+  if content_type.is_empty() {
+    return Err(reporter.error(
+      DiagnosticCode::InvalidOption,
+      "responseTypeMapping.contentType must be non-empty.",
+    ));
+  }
+  if !content_type.contains('/') {
+    bail!(
+      reporter,
+      DiagnosticCode::InvalidOption,
+      "responseTypeMapping.contentType {content_type:?} must contain '/'."
+    );
   }
   Ok(())
 }

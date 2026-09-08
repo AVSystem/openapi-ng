@@ -420,11 +420,11 @@ mod tests {
   fn jsdoc_escapes_close_comment_sequence() {
     let mut out = Writer::with_capacity(4096);
     jsdoc(&mut out, Doc::new(Some("Crafted */ injection /*"), false));
-    let s = out.into_string();
+    let rendered = out.into_string();
     // The only allowed `*/` is the trailing JSDoc closer on its own line.
     // Strip exactly the opener and closer lines, then assert no `*/` remains
     // in the body of the comment — i.e. the description was escaped.
-    let body = s
+    let body = rendered
       .strip_prefix("/**\n")
       .and_then(|rest| rest.strip_suffix(" */\n"))
       .expect("jsdoc output should be wrapped in /** ... */");
@@ -433,8 +433,8 @@ mod tests {
       "raw */ leaked into JSDoc body: {body}"
     );
     assert!(
-      s.contains("*\\/"),
-      "expected escaped *\\/ in output, got: {s}"
+      rendered.contains("*\\/"),
+      "expected escaped *\\/ in output, got: {rendered}"
     );
   }
 }

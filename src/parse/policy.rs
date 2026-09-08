@@ -54,38 +54,44 @@ pub(crate) fn validate_generation_policy(
   }
 
   // Each operationId, against the first operation that declared it.
-  let mut seen_operation_ids: BTreeMap<&str, (&'static str, &str)> = BTreeMap::new();
+  document
+    .paths
+    .iter()
+    .flat_map(|(path, path_item)| {
+      path_item
+        .operations()
+        .map(move |(method, operation)| (path.as_str(), method, operation))
+    })
+    .try_fold(
+      BTreeMap::<&str, (&'static str, &str)>::new(),
+      |mut declared, (path, method, operation)| {
+        let Some(operation_id) = operation.operation_id.as_deref() else {
+          bail_policy!(
+            reporter,
+            "missing-operation-id",
+            "Failed to plan services: operation {} {} must define operationId when service generation is enabled.",
+            method.to_ascii_uppercase(),
+            path
+          );
+        };
 
-  for (path, path_item) in document.paths.iter() {
-    for (method, operation) in path_item.operations() {
-      if operation.operation_id.is_none() {
-        bail_policy!(
-          reporter,
-          "missing-operation-id",
-          "Failed to plan services: operation {} {} must define operationId when service generation is enabled.",
-          method.to_ascii_uppercase(),
-          path
-        );
-      }
-
-      if let Some(ref op_id) = operation.operation_id {
-        if let Some(&(prev_method, prev_path)) = seen_operation_ids.get(op_id.as_str()) {
+        if let Some(&(first_method, first_path)) = declared.get(operation_id) {
           bail_policy!(
             reporter,
             "duplicate-operation-id",
             "Failed to plan services: operationId '{}' is defined on both {} {} and {} {}. \
                operationIds must be globally unique.",
-            op_id,
-            prev_method.to_ascii_uppercase(),
-            prev_path,
+            operation_id,
+            first_method.to_ascii_uppercase(),
+            first_path,
             method.to_ascii_uppercase(),
             path,
           );
         }
-        seen_operation_ids.insert(op_id.as_str(), (method, path.as_str()));
-      }
-    }
-  }
+        declared.insert(operation_id, (method, path));
+        Ok(declared)
+      },
+    )?;
 
   Ok(())
 }

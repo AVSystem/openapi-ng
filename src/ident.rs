@@ -71,6 +71,10 @@ impl TypeName {
   pub(crate) const fn new(name: String) -> Self {
     Self(name)
   }
+
+  pub(crate) fn as_str(&self) -> &str {
+    &self.0
+  }
 }
 
 impl std::fmt::Display for TypeName {

@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::emit::ts::{Writer, type_import_block};
 use crate::ir::canonical::ResponseContent;
-use crate::ir::schema::collect_type_references;
+use crate::ir::schema::{SchemaType, collect_type_references};
 use crate::plan::artifact_plan::{PlannedOperation, PlannedRequestBody, RequestFieldKind};
 
 /// Path from a generated service file to the model artifact, one
@@ -21,7 +21,7 @@ pub(super) fn render_service_imports(
       .request
       .fields
       .iter()
-      .any(|f| f.kind == RequestFieldKind::Query)
+      .any(|field| field.kind == RequestFieldKind::Query)
   });
   let helper_import = if uses_http_params {
     format!("import {{ httpParams, requestFactory }} from '{helper_import_path}';")
@@ -30,48 +30,54 @@ pub(super) fn render_service_imports(
   };
   buffer.line(&helper_import);
 
-  let mut imports: BTreeSet<&str> = BTreeSet::new();
-  for operation in operations {
-    for field in &operation.request.fields {
-      collect_type_references(field.ty, &mut imports);
-    }
-    for header in &operation.request.headers {
-      collect_type_references(header.ty, &mut imports);
-    }
-    // A form body's fields are typed by `BodyFieldType`, which names no
-    // user-declared schema.
-    match &operation.request.body {
-      Some(PlannedRequestBody::Nested { ty, .. }) => {
+  let imports: BTreeSet<&str> =
+    operations
+      .iter()
+      .flat_map(operation_types)
+      .fold(BTreeSet::new(), |mut imports, ty| {
         collect_type_references(ty, &mut imports);
-      }
-      Some(PlannedRequestBody::FlatJson { properties, .. }) => {
-        for prop in properties {
-          collect_type_references(prop.ty, &mut imports);
-        }
-      }
-      Some(PlannedRequestBody::Multipart { .. } | PlannedRequestBody::UrlEncoded { .. }) | None => {
-      }
-    }
-    if let Some(response) = &operation.response {
-      match response {
-        ResponseContent::Json(Some(ty)) => {
-          collect_type_references(ty, &mut imports);
-        }
-        // Every other variant renders to a built-in type.
-        ResponseContent::Json(None)
-        | ResponseContent::Blob
-        | ResponseContent::Text
-        | ResponseContent::ArrayBuffer => {}
-      }
-    }
-    for error in operation.errors {
-      collect_type_references(&error.body, &mut imports);
-    }
-  }
+        imports
+      });
 
   if !imports.is_empty() {
     type_import_block(buffer, &BTreeMap::from([(MODEL_IMPORT_PATH, imports)]));
   }
+}
+
+/// Every model type an operation names. A form body and a non-JSON
+/// response name none.
+fn operation_types<'a>(
+  operation: &'a PlannedOperation<'a>,
+) -> impl Iterator<Item = &'a SchemaType> {
+  let body: Box<dyn Iterator<Item = &'a SchemaType>> = match &operation.request.body {
+    Some(PlannedRequestBody::Nested { ty, .. }) => Box::new(std::iter::once(*ty)),
+    Some(PlannedRequestBody::FlatJson { properties, .. }) => {
+      Box::new(properties.iter().map(|property| property.ty))
+    }
+    Some(PlannedRequestBody::Multipart { .. } | PlannedRequestBody::UrlEncoded { .. }) | None => {
+      Box::new(std::iter::empty())
+    }
+  };
+  let response = operation
+    .response
+    .as_ref()
+    .and_then(|response| match response {
+      ResponseContent::Json(Some(ty)) => Some(ty),
+      ResponseContent::Json(None)
+      | ResponseContent::Blob
+      | ResponseContent::Text
+      | ResponseContent::ArrayBuffer => None,
+    });
+
+  operation
+    .request
+    .fields
+    .iter()
+    .map(|field| field.ty)
+    .chain(operation.request.headers.iter().map(|header| header.ty))
+    .chain(body)
+    .chain(response)
+    .chain(operation.errors.iter().map(|error| &error.body))
 }
 
 #[cfg(test)]

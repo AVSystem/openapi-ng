@@ -295,7 +295,6 @@ components:
     assert_eq!(err.subcode, Some("duplicate-schema-name"));
   }
 
-
   #[test]
   fn rejects_input_larger_than_cap() {
     let nanos = SystemTime::now()

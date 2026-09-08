@@ -317,7 +317,7 @@ mod tests {
     let util_artifact = result
       .artifacts
       .iter()
-      .find(|a| a.path == "rest.util.ts")
+      .find(|artifact| artifact.path == "rest.util.ts")
       .expect("rest.util.ts present");
     assert_eq!(util_artifact.path, "rest.util.ts");
     assert!(
@@ -351,14 +351,14 @@ mod tests {
       !result
         .artifacts
         .iter()
-        .any(|a| a.path == "errors.generated.ts"),
+        .any(|artifact| artifact.path == "errors.generated.ts"),
       "errors.generated.ts must not be emitted as a standalone artifact",
     );
 
     let service = result
       .artifacts
       .iter()
-      .find(|a| a.path == "rest/pet.rest.generated.ts")
+      .find(|artifact| artifact.path == "rest/pet.rest.generated.ts")
       .expect("pet service emitted");
 
     assert!(service.contents.contains("export interface UpdatePetError"));

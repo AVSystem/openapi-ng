@@ -128,7 +128,7 @@ pub struct GenerateOutcome {
 pub(crate) fn map_panic(panic: Box<dyn std::any::Any + Send>) -> GenerateErrorPayload {
   let message = panic
     .downcast_ref::<&'static str>()
-    .map(|s| (*s).to_string())
+    .map(|target| (*target).to_string())
     .or_else(|| panic.downcast_ref::<String>().cloned())
     .unwrap_or_else(|| "openapi-ng: unexpected panic in native binding".to_string());
   let fatal = Diagnostic {

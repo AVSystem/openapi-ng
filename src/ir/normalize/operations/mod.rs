@@ -114,12 +114,12 @@ fn normalize_operation(
     .clone()
     .unwrap_or_else(|| format!("{declared_method}_{}", path.replace(['/', '{', '}'], "_")));
 
-  let cx = OperationCx::new(method.as_str(), path, schemas, response_types, reporter);
+  let context = OperationCx::new(method.as_str(), path, schemas, response_types, reporter);
 
   Ok(OperationDef {
-    request: normalize_request(operation, &operation_id, cx)?,
-    response: normalize_success_response(operation.responses.as_deref(), cx)?,
-    errors: normalize_error_responses(operation.responses.as_deref(), cx)?,
+    request: normalize_request(operation, &operation_id, context)?,
+    response: normalize_success_response(operation.responses.as_deref(), context)?,
+    errors: normalize_error_responses(operation.responses.as_deref(), context)?,
     operation_id,
     tags: operation.tags.clone(),
     method,

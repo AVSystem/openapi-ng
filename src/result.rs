@@ -22,7 +22,11 @@ impl GenerateSummary {
   /// the generator emits rather than what the document declared.
   pub(crate) fn from_ir(normalized_source_path: String, ir: &ApiModel) -> Self {
     // One path carries an operation per method, so the list repeats.
-    let mut paths: Vec<&str> = ir.operations.iter().map(|op| op.path.as_str()).collect();
+    let mut paths: Vec<&str> = ir
+      .operations
+      .iter()
+      .map(|operation| operation.path.as_str())
+      .collect();
     paths.sort_unstable();
     paths.dedup();
     // The caps in `crate::parse::limits` keep every count far below
@@ -40,9 +44,12 @@ impl GenerateSummary {
 
 const U32_MAX_AS_USIZE: usize = u32::MAX as usize;
 
-fn clamp_count(n: usize) -> u32 {
-  debug_assert!(n <= U32_MAX_AS_USIZE, "IR count exceeded u32::MAX: {n}");
-  u32::try_from(usize::min(n, U32_MAX_AS_USIZE)).unwrap_or(u32::MAX)
+fn clamp_count(count: usize) -> u32 {
+  debug_assert!(
+    count <= U32_MAX_AS_USIZE,
+    "IR count exceeded u32::MAX: {count}"
+  );
+  u32::try_from(usize::min(count, U32_MAX_AS_USIZE)).unwrap_or(u32::MAX)
 }
 
 /// One generated artifact. `contents` carries the emitted source whether
