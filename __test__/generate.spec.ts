@@ -1395,9 +1395,9 @@ test('generate produces byte-identical output across repeated calls (determinism
   // including banner).
   const fixtures = ['petstore-rich.openapi.yaml', 'bench-large.openapi.yaml'];
   for (const name of fixtures) {
-    const first = await generate({ inputPath: fixture(name), emit: [...DEFAULT_EMIT] });
-    const second = await generate({ inputPath: fixture(name), emit: [...DEFAULT_EMIT] });
-    const third = await generate({ inputPath: fixture(name), emit: [...DEFAULT_EMIT] });
+    const [first, second, third] = await Promise.all(
+      [0, 1, 2].map(() => generate({ inputPath: fixture(name), emit: [...DEFAULT_EMIT] })),
+    );
     t.deepEqual(first, second, `${name}: run 1 vs run 2 must be byte-identical`);
     t.deepEqual(second, third, `${name}: run 2 vs run 3 must be byte-identical`);
   }
