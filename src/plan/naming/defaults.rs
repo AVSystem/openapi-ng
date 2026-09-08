@@ -1,56 +1,49 @@
-//! Hardcoded defaults — applied when the user did not configure a
-//! `Naming` for a given key. The spec says these are NOT expressed as
-//! `Rule` chains, so they live as plain Rust here.
-//!
-//! Defaults:
-//! * methodName: camelCase(operationId), else camelCase(method + '_' + path segments joined by `_`).
-//!   Errors if both fail.
-//! * group: pascalCase(tags[0]), else pascalCase(pathSegments[0]), else "Default".
+//! The naming applied when the caller configured no rule for a key.
 
 use crate::plan::naming::{case::apply as apply_case, config::Case, context::OperationContext};
 
+/// The method name has no source: neither an `operationId` nor a usable
+/// path segment.
 #[derive(Debug)]
-pub(crate) enum DefaultMethodNameFailure {
-  /// Neither operationId nor a usable path-segment fallback was available.
-  NoSource,
-}
+pub(crate) struct NoMethodNameSource;
 
+/// camelCase of `operationId`; failing that, camelCase of the method joined
+/// with the path segments.
 pub(crate) fn default_method_name(
   ctx: &OperationContext<'_>,
-) -> Result<String, DefaultMethodNameFailure> {
-  if let Some(id) = ctx.operation_id
-    && !id.is_empty()
-  {
+) -> Result<String, NoMethodNameSource> {
+  if let Some(id) = ctx.operation_id() {
     return Ok(apply_case(id, Case::Camel));
   }
-  if !ctx.path_segments.is_empty() {
-    let suffix = ctx.path_segments.join("_");
-    return Ok(apply_case(
-      &format!("{}_{}", ctx.method, suffix),
-      Case::Camel,
-    ));
+  let segments = ctx.path_segments_joined();
+  if segments.is_empty() {
+    return Err(NoMethodNameSource);
   }
-  Err(DefaultMethodNameFailure::NoSource)
+  Ok(apply_case(
+    &format!("{}_{segments}", ctx.method()),
+    Case::Camel,
+  ))
 }
 
+/// PascalCase of the first tag; failing that, of the first path segment;
+/// failing that, `Default`.
 pub(crate) fn default_group(ctx: &OperationContext<'_>) -> String {
-  if let Some(tag) = ctx.tags.first()
-    && !tag.is_empty()
-  {
-    return apply_case(tag, Case::Pascal);
-  }
-  if let Some(segment) = ctx.path_segments.first()
-    && !segment.is_empty()
-  {
-    return apply_case(segment, Case::Pascal);
-  }
-  "Default".to_string()
+  ctx
+    .tags()
+    .first()
+    .map(String::as_str)
+    .or_else(|| ctx.lookup_indexed("pathSegments", 0))
+    .filter(|source| !source.is_empty())
+    .map_or_else(
+      || "Default".to_string(),
+      |source| apply_case(source, Case::Pascal),
+    )
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::ir::{
+  use crate::api_model::{
     canonical::{HttpMethod, OperationDef, RequestDef, ResponseContent},
     schema::{SchemaScalar, SchemaType},
   };
@@ -58,7 +51,7 @@ mod tests {
   fn op(id: &str, method: HttpMethod, path: &str, tags: &[&str]) -> OperationDef {
     OperationDef {
       operation_id: id.to_string(),
-      tags: tags.iter().map(|s| s.to_string()).collect(),
+      tags: tags.iter().map(ToString::to_string).collect(),
       method,
       path: path.to_string(),
       request: RequestDef::default(),
@@ -89,10 +82,7 @@ mod tests {
   fn default_method_name_errors_when_no_operation_id_and_path_is_empty() {
     let operation = op("", HttpMethod::Get, "/", &[]);
     let ctx = OperationContext::from_operation(&operation);
-    assert!(matches!(
-      default_method_name(&ctx),
-      Err(DefaultMethodNameFailure::NoSource)
-    ));
+    assert!(matches!(default_method_name(&ctx), Err(NoMethodNameSource)));
   }
 
   #[test]

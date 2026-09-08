@@ -1,14 +1,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::emit::typescript::{self as ts, Writer};
-use crate::ir::canonical::ResponseContent;
-use crate::ir::schema::collect_type_references;
+use crate::api_model::canonical::ResponseContent;
+use crate::api_model::schema::{SchemaType, collect_type_references};
+use crate::emit::ts::{Writer, type_import_block};
 use crate::plan::artifact_plan::{PlannedOperation, PlannedRequestBody, RequestFieldKind};
 
-/// Relative path from a generated service file (`rest/*.rest.generated.ts`)
-/// to the sibling `model.generated.ts` that holds all emitted TypeScript
-/// types. Fixed by the emit layout — services always live one directory
-/// below the model artifact — so it is a constant rather than a plan field.
+/// Path from a generated service file to the model artifact, one
+/// directory above it.
 const MODEL_IMPORT_PATH: &str = "../model.generated";
 
 pub(super) fn render_service_imports(
@@ -23,7 +21,7 @@ pub(super) fn render_service_imports(
       .request
       .fields
       .iter()
-      .any(|f| f.kind == RequestFieldKind::Query)
+      .any(|field| field.kind == RequestFieldKind::Query)
   });
   let helper_import = if uses_http_params {
     format!("import {{ httpParams, requestFactory }} from '{helper_import_path}';")
@@ -32,68 +30,61 @@ pub(super) fn render_service_imports(
   };
   buffer.line(&helper_import);
 
-  let mut imports: BTreeSet<&str> = BTreeSet::new();
-  for operation in operations {
-    for field in &operation.request.fields {
-      collect_type_references(field.ty, &mut imports);
-    }
-    for header in &operation.request.headers {
-      collect_type_references(header.ty, &mut imports);
-    }
-    // Body types contribute imports according to the body's layout. A
-    // `Nested` body's ty (named ref or any other `SchemaType`) imports
-    // straight from the type printer. A `FlatJson` body hoists each
-    // property's `SchemaType` to a top-level field, so each property
-    // contributes the same way path/query/header types do. Form bodies
-    // type their fields via `BodyFieldType`, which never references
-    // user-declared schemas — they add nothing.
-    match &operation.request.body {
-      Some(PlannedRequestBody::Nested { ty, .. }) => {
-        collect_type_references(ty, &mut imports);
-      }
-      Some(PlannedRequestBody::FlatJson { properties, .. }) => {
-        for prop in properties {
-          collect_type_references(prop.ty, &mut imports);
-        }
-      }
-      Some(PlannedRequestBody::Multipart { .. } | PlannedRequestBody::UrlEncoded { .. }) | None => {
-      }
-    }
-    if let Some(response) = &operation.response {
-      match response {
-        ResponseContent::Json(Some(ty)) => {
-          collect_type_references(ty, &mut imports);
-        }
-        // `Json(None)` and non-JSON variants render to fixed TS surfaces
-        // (`void` / `Blob` / `string` / `ArrayBuffer`) that never reference
-        // user-declared schemas, so they contribute nothing to the import
-        // set. Non-JSON variants are not yet produced by normalize but the
-        // match is exhaustive so a future addition forces a compile error.
-        ResponseContent::Json(None)
-        | ResponseContent::Blob
-        | ResponseContent::Text
-        | ResponseContent::ArrayBuffer => {}
-      }
-    }
-    // Error-response body types contribute imports the same way as the
-    // success response: they appear by name in the per-operation
-    // `{Pascal}Error` interface emitted alongside `{Pascal}Params`.
-    for error in operation.errors {
-      collect_type_references(&error.body, &mut imports);
-    }
-  }
+  let imports: BTreeSet<&str> =
+    operations
+      .iter()
+      .flat_map(operation_types)
+      .fold(BTreeSet::new(), |mut imports, schema| {
+        collect_type_references(schema, &mut imports);
+        imports
+      });
 
   if !imports.is_empty() {
-    let by_path = BTreeMap::from([(MODEL_IMPORT_PATH, imports)]);
-    ts::import_block(buffer, &by_path, true);
+    type_import_block(buffer, &BTreeMap::from([(MODEL_IMPORT_PATH, imports)]));
   }
+}
+
+/// Every model type an operation names. A form body and a non-JSON
+/// response name none.
+fn operation_types<'a>(
+  operation: &'a PlannedOperation<'a>,
+) -> impl Iterator<Item = &'a SchemaType> {
+  let body: Box<dyn Iterator<Item = &'a SchemaType>> = match &operation.request.body {
+    Some(PlannedRequestBody::Nested { schema, .. }) => Box::new(std::iter::once(*schema)),
+    Some(PlannedRequestBody::FlatJson { properties, .. }) => {
+      Box::new(properties.iter().map(|property| property.schema))
+    }
+    Some(PlannedRequestBody::Multipart { .. } | PlannedRequestBody::UrlEncoded { .. }) | None => {
+      Box::new(std::iter::empty())
+    }
+  };
+  let response = operation
+    .response
+    .as_ref()
+    .and_then(|response| match response {
+      ResponseContent::Json(Some(schema)) => Some(schema),
+      ResponseContent::Json(None)
+      | ResponseContent::Blob
+      | ResponseContent::Text
+      | ResponseContent::ArrayBuffer => None,
+    });
+
+  operation
+    .request
+    .fields
+    .iter()
+    .map(|field| field.schema)
+    .chain(operation.request.headers.iter().map(|header| header.schema))
+    .chain(body)
+    .chain(response)
+    .chain(operation.errors.iter().map(|error| &error.body))
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::ir::canonical::HttpMethod;
-  use crate::ir::schema::{SchemaScalar, SchemaType};
+  use crate::api_model::canonical::HttpMethod;
+  use crate::api_model::schema::{SchemaScalar, SchemaType};
   use crate::plan::artifact_plan::{
     PlannedHeader, PlannedRequestContract, PlannedRequestField, RequestFieldKind,
   };
@@ -104,8 +95,6 @@ mod tests {
     render_service_imports(&mut buf, operations, "../rest.util");
     buf.into_string()
   }
-
-  // ── Fixed-position imports (HttpClient, Angular core, helpers) ─────────────
 
   #[test]
   fn always_imports_injectable() {
@@ -135,12 +124,12 @@ mod tests {
 
   #[test]
   fn helper_import_includes_http_params_when_any_operation_has_query_fields() {
-    let limit_ty = SchemaType::Scalar(SchemaScalar::Number);
+    let limit_schema = SchemaType::Scalar(SchemaScalar::Number);
     let request = PlannedRequestContract {
       fields: vec![PlannedRequestField {
         name: "limit".into(),
         optional: true,
-        ty: &limit_ty,
+        schema: &limit_schema,
         kind: RequestFieldKind::Query,
       }],
       headers: vec![],
@@ -149,8 +138,6 @@ mod tests {
     let out = render(&[op_with("listPets", HttpMethod::Get, "/x", request, None)]);
     assert!(out.contains("import { httpParams, requestFactory } from '../rest.util';"));
   }
-
-  // ── Model-ref import dedup ────────────────────────────────────────────────
 
   #[test]
   fn model_refs_are_deduplicated_across_operations() {
@@ -182,21 +169,19 @@ mod tests {
 
   #[test]
   fn model_refs_from_headers_are_imported() {
-    let key_ty = SchemaType::Ref("IdempotencyKey".into());
+    let key_schema = SchemaType::Ref("IdempotencyKey".into());
     let request = PlannedRequestContract {
       fields: vec![],
       headers: vec![PlannedHeader {
         name: "X-Idempotency-Key".into(),
         optional: false,
-        ty: &key_ty,
+        schema: &key_schema,
       }],
       body: None,
     };
     let out = render(&[op_with("createPet", HttpMethod::Get, "/x", request, None)]);
     assert!(out.contains("import type { IdempotencyKey } from '../model.generated';"));
   }
-
-  // ── Body imports under smart-flatten ──────────────────────────────────────
 
   #[test]
   fn nested_body_named_ref_is_imported() {
@@ -247,8 +232,6 @@ mod tests {
     assert!(out.contains("import type { Pet } from '../model.generated';"));
     assert_eq!(out.matches("Pet").count(), 1);
   }
-
-  // ── empty operation set ───────────────────────────────────────────────────
 
   #[test]
   fn empty_operation_set_emits_only_fixed_imports() {

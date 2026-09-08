@@ -1,95 +1,98 @@
-//! `OperationContext` — the read-only bag of values a `Rule.from` /
-//! `Rule.format` template can reference for one operation. Fields map
-//! 1:1 to the spec's "Context fields" table.
+//! The read-only values a naming rule's template can reference for one
+//! operation.
 
 use std::collections::BTreeMap;
 
-use crate::ir::canonical::OperationDef;
+use crate::api_model::canonical::OperationDef;
 
 #[derive(Debug)]
 pub(crate) struct OperationContext<'a> {
-  pub(crate) operation_id: Option<&'a str>,
-  pub(crate) method: String, // lowercased
-  pub(crate) path: &'a str,
-  pub(crate) path_segments: Vec<String>,
-  pub(crate) tags: &'a [String],
-  pub(crate) extensions: BTreeMap<String, String>, // x-<name> → string
-                                                   // contentType / statusCode are unbound here
-                                                   // until those carriers exist on OperationDef.
+  operation_id: Option<&'a str>,
+  /// Lower-case method name, as the spec writes it.
+  method: &'static str,
+  path: &'a str,
+  /// Path split on `/`, empty segments dropped, `{name}` unwrapped to
+  /// `name`.
+  path_segments: Vec<&'a str>,
+  tags: &'a [String],
+  /// `x-<name>` vendor extensions. Empty, since `OperationDef` does not
+  /// carry them: an `{x-foo}` reference stays unbound.
+  extensions: BTreeMap<String, String>,
 }
 
 impl<'a> OperationContext<'a> {
   pub(crate) fn from_operation(operation: &'a OperationDef) -> Self {
     Self {
-      operation_id: if operation.operation_id.is_empty() {
-        None
-      } else {
-        Some(operation.operation_id.as_str())
-      },
-      method: operation.method.as_str().to_ascii_lowercase(),
+      operation_id: Some(operation.operation_id.as_str()).filter(|id| !id.is_empty()),
+      method: operation.method.as_lowercase(),
       path: operation.path.as_str(),
       path_segments: clean_path_segments(operation.path.as_str()),
       tags: operation.tags.as_slice(),
-      // `vendor_extensions` does not yet exist on `OperationDef`; an
-      // empty map keeps `{x-foo}` references unbound (triggering
-      // fallback) and the carrier can be plumbed through normalize
-      // later without touching the engine.
       extensions: BTreeMap::new(),
     }
   }
 
-  /// Lookup by template name. Returns `None` for unbound names — the
-  /// caller turns that into a rule failure.
-  pub(crate) fn lookup(&self, name: &str) -> Option<String> {
+  /// Looks up a bare field name. `None` means unbound, which the caller
+  /// turns into a rule failure.
+  pub(crate) fn lookup(&self, name: &str) -> Option<&str> {
     match name {
-      "operationId" => self.operation_id.map(str::to_string),
-      "method" => Some(self.method.clone()),
-      "path" => Some(self.path.to_string()),
-      _ if name.starts_with("x-") => self.extensions.get(name).cloned(),
+      "operationId" => self.operation_id,
+      "method" => Some(self.method),
+      "path" => Some(self.path),
+      _ if name.starts_with("x-") => self.extensions.get(name).map(String::as_str),
       _ => None,
     }
   }
 
-  /// Lookup with array indexing: `pathSegments[0]`, `tags[-1]`, etc.
-  /// Negative indexes count from the tail. Out-of-bounds is unbound.
-  pub(crate) fn lookup_indexed(&self, array_name: &str, index: i32) -> Option<String> {
-    let slice: Vec<&str> = match array_name {
-      "pathSegments" => self.path_segments.iter().map(String::as_str).collect(),
-      "tags" => self.tags.iter().map(String::as_str).collect(),
-      _ => return None,
-    };
-    resolve_index(slice.len(), index).map(|i| slice[i].to_string())
-  }
-}
-
-const fn resolve_index(len: usize, index: i32) -> Option<usize> {
-  if index >= 0 {
-    let i = index as usize;
-    if i < len { Some(i) } else { None }
-  } else {
-    let from_tail = (-index) as usize;
-    if from_tail == 0 || from_tail > len {
-      None
-    } else {
-      Some(len - from_tail)
+  /// Looks up an array element: `pathSegments[0]`, `tags[-1]`. A negative
+  /// index counts from the tail; out of bounds is unbound.
+  pub(crate) fn lookup_indexed(&self, array: &str, index: i32) -> Option<&str> {
+    match array {
+      "pathSegments" => element(&self.path_segments, index).copied(),
+      "tags" => element(self.tags, index).map(String::as_str),
+      _ => None,
     }
   }
+
+  /// Path segments joined with `_`, for the default method name.
+  pub(crate) fn path_segments_joined(&self) -> String {
+    self.path_segments.join("_")
+  }
+
+  pub(crate) const fn tags(&self) -> &'a [String] {
+    self.tags
+  }
+
+  pub(crate) const fn method(&self) -> &'static str {
+    self.method
+  }
+
+  pub(crate) const fn operation_id(&self) -> Option<&'a str> {
+    self.operation_id
+  }
 }
 
-/// Clean a path per spec:
-/// * drop leading empty segment (leading `/`)
-/// * drop trailing empty segment (trailing `/`)
-/// * unwrap `{name}` → `name` (literal content between braces)
-fn clean_path_segments(path: &str) -> Vec<String> {
+/// Resolves a possibly-negative index against `items`.
+fn element<T>(items: &[T], index: i32) -> Option<&T> {
+  if index >= 0 {
+    return items.get(usize::try_from(index).ok()?);
+  }
+  let from_tail = usize::try_from(-index).ok()?;
+  items
+    .len()
+    .checked_sub(from_tail)
+    .and_then(|i| items.get(i))
+}
+
+fn clean_path_segments(path: &str) -> Vec<&str> {
   path
     .split('/')
-    .filter(|s| !s.is_empty())
-    .map(|s| {
-      if s.starts_with('{') && s.ends_with('}') && s.len() >= 2 {
-        s[1..s.len() - 1].to_string()
-      } else {
-        s.to_string()
-      }
+    .filter(|segment| !segment.is_empty())
+    .map(|segment| {
+      segment
+        .strip_prefix('{')
+        .and_then(|inner| inner.strip_suffix('}'))
+        .unwrap_or(segment)
     })
     .collect()
 }
@@ -97,7 +100,7 @@ fn clean_path_segments(path: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::ir::{
+  use crate::api_model::{
     canonical::{HttpMethod, OperationDef, RequestDef, ResponseContent},
     schema::{SchemaScalar, SchemaType},
   };
@@ -105,7 +108,7 @@ mod tests {
   fn op(operation_id: &str, method: HttpMethod, path: &str, tags: &[&str]) -> OperationDef {
     OperationDef {
       operation_id: operation_id.to_string(),
-      tags: tags.iter().map(|s| s.to_string()).collect(),
+      tags: tags.iter().map(ToString::to_string).collect(),
       method,
       path: path.to_string(),
       request: RequestDef::default(),
@@ -138,9 +141,9 @@ mod tests {
   fn lookup_returns_operation_id_method_and_path() {
     let operation = op("listPets", HttpMethod::Get, "/pets", &["Pet"]);
     let ctx = OperationContext::from_operation(&operation);
-    assert_eq!(ctx.lookup("operationId").as_deref(), Some("listPets"));
-    assert_eq!(ctx.lookup("method").as_deref(), Some("get"));
-    assert_eq!(ctx.lookup("path").as_deref(), Some("/pets"));
+    assert_eq!(ctx.lookup("operationId"), Some("listPets"));
+    assert_eq!(ctx.lookup("method"), Some("get"));
+    assert_eq!(ctx.lookup("path"), Some("/pets"));
   }
 
   #[test]
@@ -154,14 +157,8 @@ mod tests {
   fn lookup_indexed_supports_positive_and_negative_path_indexes() {
     let operation = op("x", HttpMethod::Get, "/users/{id}/posts", &[]);
     let ctx = OperationContext::from_operation(&operation);
-    assert_eq!(
-      ctx.lookup_indexed("pathSegments", 0).as_deref(),
-      Some("users")
-    );
-    assert_eq!(
-      ctx.lookup_indexed("pathSegments", -1).as_deref(),
-      Some("posts")
-    );
+    assert_eq!(ctx.lookup_indexed("pathSegments", 0), Some("users"));
+    assert_eq!(ctx.lookup_indexed("pathSegments", -1), Some("posts"));
     assert_eq!(ctx.lookup_indexed("pathSegments", 5), None);
   }
 

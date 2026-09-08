@@ -1,17 +1,14 @@
 #!/usr/bin/env node
 
-// Resolve through the wrapper so caught errors are `GenerateError`
-// instances (the CLI formatter doesn't depend on `instanceof`, but
-// consumers debugging via `node --inspect` see a consistent shape).
-// NOTE: do NOT require('../lib/index.js') at module top — that would load
-// the native binding on every invocation, including --help and --version.
-// Use loadLibrary() inside the generate handler instead.
+// Loaded inside the generate handler, not at module top: requiring the
+// wrapper loads the native binding, which --help and --version must not.
 function loadLibrary() {
   return require('../lib/index.js');
 }
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { field } = require('../lib/diagnostic.js');
 const {
   CONFIG_FILENAMES,
   discoverConfigPath,
@@ -20,9 +17,11 @@ const {
   parseArgs,
 } = require('./lib/parse.js');
 
-// Minimal ANSI styler — emit colour only when stdout is a TTY and NO_COLOR is unset
+// Colour only when stdout is a TTY and NO_COLOR is unset.
 const USE_COLOR = process.stdout.isTTY === true && !process.env.NO_COLOR;
-const wrap = code => (USE_COLOR ? s => `\x1b[${code}m${s}\x1b[0m` : s => String(s));
+/** @param {number} code @returns {(text: unknown) => string} */
+const wrap = code =>
+  USE_COLOR ? text => `\x1b[${code}m${text}\x1b[0m` : text => String(text);
 const c = {
   bold: wrap(1),
   dim: wrap(2),
@@ -108,6 +107,11 @@ function printInitUsage() {
   process.stdout.write('\n');
 }
 
+/**
+ * @param {import('../index.js').GenerateResult} result
+ * @param {boolean} verbose Include the warning list.
+ * @returns {string}
+ */
 function formatSuccess(result, verbose) {
   const { summary, artifacts, diagnostics } = result;
   const count = artifacts.length;
@@ -120,7 +124,7 @@ function formatSuccess(result, verbose) {
     lines.push(`  ${c.cyan(artifact.path)}`);
   }
   if (verbose) {
-    const warnings = diagnostics.filter(d => d.severity === 'warning');
+    const warnings = diagnostics.filter(entry => entry.severity === 'warning');
     if (warnings.length > 0) {
       lines.push('', c.bold(c.yellow(`Warnings (${warnings.length}):`)));
       for (const w of warnings) {
@@ -210,6 +214,7 @@ export default {
 };
 `;
 
+/** @param {string} format One of `yaml`, `json`, `ts`, `js`. */
 function runInit(format) {
   const cwd = process.cwd();
   const existing = CONFIG_FILENAMES.find(name => fs.existsSync(path.join(cwd, name)));
@@ -252,6 +257,7 @@ function runInit(format) {
 
 // ── Main ────────────────────────────────────────────────────────────────────
 
+/** @param {readonly string[]} argv */
 async function main(argv) {
   let parsed;
 
@@ -271,8 +277,7 @@ async function main(argv) {
     } else {
       printUsage();
     }
-    // Bare `openapi-ng` (no subcommand) is a usage error — exit 2 so CI
-    // scripts can catch a missing command. Explicit `--help` keeps exit 0.
+    // Bare `openapi-ng` exits 2; an explicit `--help` exits 0.
     if (parsed.explicit === false) {
       process.exitCode = 2;
     }
@@ -290,7 +295,6 @@ async function main(argv) {
     return;
   }
 
-  // Load config file for generate command
   let fileConfig = {};
   try {
     const configFilePath = parsed.configPath ?? discoverConfigPath(process.cwd());
@@ -303,7 +307,6 @@ async function main(argv) {
     return;
   }
 
-  // Generate command
   let merged;
   try {
     merged = mergeConfig(fileConfig, parsed);
@@ -318,9 +321,7 @@ async function main(argv) {
 
   try {
     const { generate } = loadLibrary();
-    // Pass the user-provided inputPath verbatim. Relativisation of
-    // absolute paths inside CWD (for the generated-artifact banner) is
-    // owned by the Rust side in `render_generated_banner`, so the CLI
+    // Verbatim: `render_generated_banner` owns relativisation, so the CLI
     // and programmatic consumers (`generate({ inputPath: '/abs/...' })`)
     // get the same banner-path hygiene without duplicated logic.
     const result = await generate({
@@ -338,31 +339,46 @@ async function main(argv) {
   }
 }
 
+/**
+ * @param {unknown} error
+ * @returns {string}
+ */
 function formatParseFailure(error) {
   // Honour error.code when set (e.g. loadConfigFile tags ENOENT and
   // YAML/JSON parse failures with E_INPUT_INVALID — those are user
   // input problems, not CLI option-parsing problems). Fall back to
   // E_INVALID_OPTION only when no code is set, which is the
   // parseArgs-raised case for genuinely bad flags.
-  const code = typeof error?.code === 'string' ? error.code : 'E_INVALID_OPTION';
-  const message = typeof error?.message === 'string' ? error.message : String(error);
+  const declared = field(error, 'code');
+  const detail = field(error, 'message');
+  const code = typeof declared === 'string' ? declared : 'E_INVALID_OPTION';
+  const message = typeof detail === 'string' ? detail : String(error);
   return `${c.bold(c.red('Error'))} ${c.red(`[${code}]`)}\n  ${message}`;
 }
 
+/**
+ * @param {unknown} error
+ * @returns {string}
+ */
 function formatFailure(error) {
-  if (typeof error?.code === 'string') {
+  const code = field(error, 'code');
+  const message = field(error, 'message');
+
+  if (typeof code === 'string') {
     const lines = [
-      `${c.bold(c.red('Error'))} ${c.red(`[${error.code}]`)}`,
-      `  ${error.message}`,
+      `${c.bold(c.red('Error'))} ${c.red(`[${code}]`)}`,
+      `  ${message}`,
     ];
-    const errorPath = error.path ?? error.warnings?.[0]?.path;
+    const warnings = field(error, 'warnings');
+    const firstWarning = Array.isArray(warnings) ? warnings[0] : undefined;
+    const errorPath = field(error, 'path') ?? field(firstWarning, 'path');
     if (errorPath) {
       lines.push(`  ${c.dim(`in: ${errorPath}`)}`);
     }
     return lines.join('\n');
   }
-  if (typeof error?.message === 'string') {
-    return `${c.bold(c.red('Error'))} ${c.red('[E_UNEXPECTED]')}\n  ${error.message}`;
+  if (typeof message === 'string') {
+    return `${c.bold(c.red('Error'))} ${c.red('[E_UNEXPECTED]')}\n  ${message}`;
   }
   return `${c.bold(c.red('Error'))} ${c.red('[E_UNEXPECTED]')}\n  ${String(error)}`;
 }
@@ -373,6 +389,6 @@ function formatFailure(error) {
 // Rejection]" multi-line stack dump. Today the inner paths all catch
 // their own failures; this is the last-line guard.
 main(process.argv.slice(2)).catch(err => {
-  process.stderr.write(`openapi-ng: ${err?.message ?? err}\n`);
+  process.stderr.write(`openapi-ng: ${field(err, 'message') ?? err}\n`);
   process.exitCode = 1;
 });

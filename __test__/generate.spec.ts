@@ -37,23 +37,11 @@ const fixture = (name: string) => path.join('test', 'fixtures', name);
 //      serially by default but the order between tests in the same
 //      file is implementation-defined — never assume a clean state.
 //
-//   2. The snapshot-suite tsc gate
-//      (`__test__/generate.snapshot.spec.ts`, "snapshot artifacts
-//      type-check under tsc --noEmit") writes into a SIBLING subtree
-//      `__test__/angular-consumer/__snapshot_compile__/` — outside the
-//      shared `generated/` tree — and cleans it on every run. Living
-//      next to `generated/` rather than inside it is deliberate: this
-//      reset helper recursively wipes `generated/`, and under AVA's
-//      per-file parallelism the two files run concurrently. A future
-//      test that needs its own preserved tree across runs should
-//      likewise pick a NEW sibling directory next to `generated/` (e.g.
-//      `__test__/angular-consumer/generated-<purpose>/`) rather than
-//      stash files inside the shared `generated/` tree — the reset
-//      helper wipes the entire shared directory unconditionally and
-//      collisions there are silent and hard to debug. The matching
-//      tsconfig should live next to the existing
-//      `tsconfig.<purpose>.json` files and `include` only the new
-//      sibling subtree.
+//   2. The snapshot-suite tsc gate writes into the sibling subtree
+//      `__test__/angular-consumer/__snapshot_compile__/` and cleans it on
+//      every run. The reset helper below wipes `generated/` whole, and
+//      AVA runs the two files concurrently, so a tree that must survive
+//      belongs in its own sibling directory with its own tsconfig.
 const angularConsumerGeneratedDir = path.join(__dirname, 'angular-consumer', 'generated');
 
 function resetAngularConsumerGeneratedDir() {
@@ -109,10 +97,9 @@ const expectedModelSource = [
   '',
 ].join('\n');
 
-// Paths echoed back by generate() are normalized to forward slash on every
-// platform (src/pipeline.rs ~L80 replaces '\\' → '/'), so assert against the
-// normalized form rather than path.join, which would produce backslashes on
-// Windows.
+// Paths echoed back by generate() are forward-slashed on every platform,
+// which is why these assert against the normalized form and not
+// `path.join`.
 const unsupportedSemanticDiagnostic = {
   code: 'E_UNSUPPORTED_SEMANTIC',
   severity: 'error',
@@ -139,6 +126,15 @@ interface Artifact {
 }
 function getArtifact(result: { artifacts: Artifact[] }, targetPath: string) {
   return result.artifacts.find(artifact => artifact.path === targetPath);
+}
+
+/** Fails naming `targetPath` when the result does not carry it. */
+function requireArtifact(result: { artifacts: Artifact[] }, targetPath: string): Artifact {
+  const artifact = getArtifact(result, targetPath);
+  if (artifact === undefined) {
+    throw new Error(`expected the result to carry ${targetPath}`);
+  }
+  return artifact;
 }
 
 function assertRestHelpers(t: ExecutionContext, result: { artifacts: Artifact[] }) {
@@ -613,10 +609,10 @@ test('generate returns artifact contents and writes the same bytes to disk', asy
     }
     // Files were still written to disk.
     t.true(fs.existsSync(path.join(outputPath, 'model.generated.ts')));
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
     t.is(
       fs.readFileSync(path.join(outputPath, 'model.generated.ts'), 'utf8'),
-      modelArtifact?.contents,
+      modelArtifact.contents,
     );
   });
 });
@@ -1077,7 +1073,7 @@ test('generate maps a targeted schema to an imported external type without chang
       ],
     });
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
 
     t.truthy(modelArtifact);
     const serviceArtifact = getArtifact(result, 'rest/pet.rest.generated.ts');
@@ -1114,7 +1110,7 @@ test('generate encodes oneOf/anyOf composition as focused public contract fragme
       [],
     );
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
     const serviceArtifact = getArtifact(
       result,
       'rest/adoption-request.rest.generated.ts',
@@ -1162,7 +1158,7 @@ test('generate keeps mapped-type assertions explicit alongside composition contr
       ],
     });
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
 
     t.truthy(modelArtifact);
     t.true(
@@ -1196,7 +1192,7 @@ test('generate emits a re-export for mapped types whose binding name equals the 
       ],
     });
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
     t.truthy(modelArtifact);
     t.true(
       modelArtifact?.contents?.includes(
@@ -1229,7 +1225,7 @@ test('generate emits a bare re-export when schema name equals imported type name
       ],
     });
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
     t.truthy(modelArtifact);
     t.true(
       modelArtifact?.contents?.includes(
@@ -1258,7 +1254,7 @@ test('generate encodes allOf composition as an intersection contract with nullab
       [],
     );
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
     const serviceArtifact = getArtifact(result, 'rest/adopter.rest.generated.ts');
 
     t.truthy(modelArtifact);
@@ -1298,7 +1294,7 @@ test('generate collapses single-entry oneOf/anyOf/allOf wrappers instead of emit
 
     t.deepEqual(result.diagnostics, []);
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
 
     t.truthy(modelArtifact);
     t.true(modelArtifact?.contents?.includes('export type AnimalView = AnimalBase;'));
@@ -1321,7 +1317,7 @@ test('generate emits Record-based contracts for typed additionalProperties objec
 
     t.deepEqual(result.diagnostics, []);
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
     const serviceArtifact = getArtifact(result, 'rest/pet.rest.generated.ts');
 
     t.truthy(modelArtifact);
@@ -1399,9 +1395,9 @@ test('generate produces byte-identical output across repeated calls (determinism
   // including banner).
   const fixtures = ['petstore-rich.openapi.yaml', 'bench-large.openapi.yaml'];
   for (const name of fixtures) {
-    const first = await generate({ inputPath: fixture(name), emit: [...DEFAULT_EMIT] });
-    const second = await generate({ inputPath: fixture(name), emit: [...DEFAULT_EMIT] });
-    const third = await generate({ inputPath: fixture(name), emit: [...DEFAULT_EMIT] });
+    const [first, second, third] = await Promise.all(
+      [0, 1, 2].map(() => generate({ inputPath: fixture(name), emit: [...DEFAULT_EMIT] })),
+    );
     t.deepEqual(first, second, `${name}: run 1 vs run 2 must be byte-identical`);
     t.deepEqual(second, third, `${name}: run 2 vs run 3 must be byte-identical`);
   }
@@ -1658,11 +1654,8 @@ test.serial(
   },
 );
 
-// Three concurrent generate() calls against distinct temp dirs, each
-// pointed at the same on-disk spec. Catches mutable-state regressions in
-// `prepareOptions` (the options object is no longer mutated; see the
-// related non-mutation fix in lib/wrapper-core.js) and any future caching
-// layer that might leak across simultaneous invocations.
+// Three concurrent calls against distinct temp dirs and one on-disk
+// spec: catches shared mutable state in `prepareOptions` or below it.
 test('generate is safe to run concurrently across distinct outputs', async t => {
   const baseOptions = {
     inputPath: fixture('petstore-minimal.openapi.yaml'),
@@ -1680,14 +1673,10 @@ test('generate is safe to run concurrently across distinct outputs', async t => 
           generate({ ...baseOptions, outputPath: dirC }),
         ]);
 
-        // The shared `naming` object must be untouched after concurrent
-        // calls — `prepareOptions` builds a normalized naming via spread
-        // instead of writing back to the caller's input.
+        // `prepareOptions` spreads rather than writing back.
         t.is(baseOptions.naming, sharedNaming);
         t.deepEqual(baseOptions.naming, { methodName: '{operationId}' });
 
-        // Every call returns the same artifact set (deterministic) and
-        // every output directory contains the same file list.
         const namesA = a.artifacts.map(art => art.path).sort();
         const namesB = b.artifacts.map(art => art.path).sort();
         const namesC = c.artifacts.map(art => art.path).sort();

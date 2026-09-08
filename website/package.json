@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "bun scripts/bundle-engine.mjs",
+    "predev": "bun scripts/bundle-engine.ts",
     "dev": "astro dev",
     "start": "astro dev",
-    "prebuild": "bun scripts/bundle-engine.mjs",
+    "prebuild": "bun scripts/bundle-engine.ts",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",

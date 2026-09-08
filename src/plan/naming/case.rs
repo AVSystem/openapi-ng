@@ -1,107 +1,67 @@
-//! Tokenizer + case transformations. Tokens are split on any
-//! non-alphanumeric character (covers `_`, `-`, whitespace, punctuation)
-//! and on case transitions. A run of consecutive uppercase letters is
-//! treated as a single token; downstream cases title-case that token,
-//! so `getURLPath` → `getUrlPath` for camelCase.
-//!
-//! This is the single tokenizer used both by the user-facing `case` rule
-//! engine and by the project-fixed legacy helpers (`service_class_name`,
-//! `service_file_stem`, `request_interface_name`, `infer_body_field_name`),
-//! so all naming-side case conversions agree on edge cases.
+//! The name tokenizer and case renderers.
 
 use crate::plan::naming::config::Case;
 
-pub(crate) fn tokenize(s: &str) -> Vec<String> {
-  let mut tokens: Vec<String> = Vec::new();
-  let mut current = String::new();
-  let chars: Vec<char> = s.chars().collect();
-  let mut i = 0;
-  while i < chars.len() {
-    let ch = chars[i];
-    if !ch.is_alphanumeric() {
-      if !current.is_empty() {
-        tokens.push(std::mem::take(&mut current));
-      }
-      i += 1;
-      continue;
-    }
-    // Case transition: lowercase/digit → uppercase starts a new token.
-    if let Some(prev) = current.chars().last() {
-      let prev_lower_or_digit = prev.is_ascii_lowercase() || prev.is_ascii_digit();
-      if prev_lower_or_digit && ch.is_ascii_uppercase() {
-        tokens.push(std::mem::take(&mut current));
-        current.push(ch);
-        i += 1;
-        continue;
-      }
-    }
-    // Uppercase run followed by lowercase: the last uppercase belongs to
-    // the next token. e.g. "URLPath" → ["URL", "Path"]: when reading
-    // 'P' we know 'L' was the last upper, and the next char would be
-    // lower — but we only see the lower one char later. So at lowercase,
-    // if the previous two chars were upper+upper, peel the trailing
-    // upper into a new token.
-    if ch.is_ascii_lowercase() && current.len() >= 2 {
-      let last_two: Vec<char> = current.chars().rev().take(2).collect();
-      if last_two[0].is_ascii_uppercase() && last_two[1].is_ascii_uppercase() {
-        let peeled = current.pop().unwrap();
-        tokens.push(std::mem::take(&mut current));
-        current.push(peeled);
-      }
-    }
-    current.push(ch);
-    i += 1;
-  }
-  if !current.is_empty() {
-    tokens.push(current);
-  }
-  tokens
+/// Splits `name` into its casing tokens, each borrowed from `name`.
+pub(crate) const fn tokenize(name: &str) -> Tokens<'_> {
+  Tokens { rest: name }
 }
 
-pub(crate) fn apply(s: &str, case: Case) -> String {
-  let tokens = tokenize(s);
-  if tokens.is_empty() {
-    return String::new();
+pub(crate) struct Tokens<'a> {
+  rest: &'a str,
+}
+
+impl<'a> Iterator for Tokens<'a> {
+  type Item = &'a str;
+
+  fn next(&mut self) -> Option<&'a str> {
+    let start = self.rest.find(char::is_alphanumeric)?;
+    let token = &self.rest[start..];
+    let end = token_len(token);
+    self.rest = &token[end..];
+    Some(&token[..end])
   }
-  match case {
-    Case::Camel => {
-      let mut out = String::new();
-      for (i, t) in tokens.iter().enumerate() {
-        if i == 0 {
-          out.push_str(&t.to_ascii_lowercase());
-        } else {
-          out.push_str(&title_case(t));
-        }
+}
+
+/// Byte length of the token at the start of `token`.
+fn token_len(token: &str) -> usize {
+  let current = token.char_indices().skip(1);
+  let previous = token.chars();
+  let following = token.chars().skip(2).map(Some).chain(std::iter::once(None));
+
+  current
+    .zip(previous)
+    .zip(following)
+    .find(|(((_, current), previous), following)| {
+      !current.is_alphanumeric() || splits_before(*previous, *current, *following)
+    })
+    .map_or(token.len(), |(((offset, _), _), _)| offset)
+}
+
+/// True when a token boundary falls immediately before `current`, which a
+/// run of alphanumerics reaches at two case transitions: after a lowercase
+/// or digit (`listPets`), and at the last uppercase of a run followed by a
+/// lowercase (`URLPath`).
+fn splits_before(previous: char, current: char, following: Option<char>) -> bool {
+  let starts_after_lower = previous.is_ascii_lowercase() || previous.is_ascii_digit();
+  let ends_upper_run = previous.is_ascii_uppercase()
+    && current.is_ascii_uppercase()
+    && following.is_some_and(|ch| ch.is_ascii_lowercase());
+  starts_after_lower && current.is_ascii_uppercase() || ends_upper_run
+}
+
+/// Renders `name`'s tokens joined in the given case.
+pub(crate) fn apply(name: &str, case: Case) -> String {
+  tokenize(name).enumerate().fold(
+    String::with_capacity(name.len()),
+    |mut out, (index, token)| {
+      if index > 0 {
+        out.push_str(case.separator());
       }
+      case.write_token(&mut out, token, index);
       out
-    }
-    Case::Pascal => tokens.iter().map(|t| title_case(t)).collect(),
-    Case::Snake => tokens
-      .iter()
-      .map(|t| t.to_ascii_lowercase())
-      .collect::<Vec<_>>()
-      .join("_"),
-    Case::Kebab => tokens
-      .iter()
-      .map(|t| t.to_ascii_lowercase())
-      .collect::<Vec<_>>()
-      .join("-"),
-    Case::Constant => tokens
-      .iter()
-      .map(|t| t.to_ascii_uppercase())
-      .collect::<Vec<_>>()
-      .join("_"),
-  }
-}
-
-fn title_case(t: &str) -> String {
-  let mut chars = t.chars();
-  chars.next().map_or_else(String::new, |first| {
-    let mut out = String::new();
-    out.extend(first.to_uppercase());
-    out.push_str(&chars.as_str().to_ascii_lowercase());
-    out
-  })
+    },
+  )
 }
 
 #[cfg(test)]
@@ -110,37 +70,64 @@ mod tests {
 
   #[test]
   fn tokenize_splits_on_underscore_hyphen_space() {
-    assert_eq!(tokenize("get_some_thing"), vec!["get", "some", "thing"]);
-    assert_eq!(tokenize("get-some-thing"), vec!["get", "some", "thing"]);
-    assert_eq!(tokenize("get some thing"), vec!["get", "some", "thing"]);
+    assert_eq!(
+      tokenize("get_some_thing").collect::<Vec<_>>(),
+      vec!["get", "some", "thing"]
+    );
+    assert_eq!(
+      tokenize("get-some-thing").collect::<Vec<_>>(),
+      vec!["get", "some", "thing"]
+    );
+    assert_eq!(
+      tokenize("get some thing").collect::<Vec<_>>(),
+      vec!["get", "some", "thing"]
+    );
   }
 
   #[test]
   fn tokenize_splits_on_any_non_alphanumeric_punctuation() {
-    assert_eq!(tokenize("get.some/thing"), vec!["get", "some", "thing"]);
-    assert_eq!(tokenize("get!some@thing"), vec!["get", "some", "thing"]);
-    assert_eq!(tokenize("a__b---c"), vec!["a", "b", "c"]);
+    assert_eq!(
+      tokenize("get.some/thing").collect::<Vec<_>>(),
+      vec!["get", "some", "thing"]
+    );
+    assert_eq!(
+      tokenize("get!some@thing").collect::<Vec<_>>(),
+      vec!["get", "some", "thing"]
+    );
+    assert_eq!(
+      tokenize("a__b---c").collect::<Vec<_>>(),
+      vec!["a", "b", "c"]
+    );
   }
 
   #[test]
   fn tokenize_splits_on_camel_case_transition() {
-    assert_eq!(tokenize("getSomeThing"), vec!["get", "Some", "Thing"]);
+    assert_eq!(
+      tokenize("getSomeThing").collect::<Vec<_>>(),
+      vec!["get", "Some", "Thing"]
+    );
   }
 
   #[test]
   fn tokenize_treats_consecutive_uppercase_as_single_token() {
     // From the spec example.
-    assert_eq!(tokenize("getURLPath"), vec!["get", "URL", "Path"]);
+    assert_eq!(
+      tokenize("getURLPath").collect::<Vec<_>>(),
+      vec!["get", "URL", "Path"]
+    );
   }
 
   #[test]
   fn tokenize_handles_trailing_uppercase_run() {
-    assert_eq!(tokenize("parseURL"), vec!["parse", "URL"]);
+    assert_eq!(
+      tokenize("parseURL").collect::<Vec<_>>(),
+      vec!["parse", "URL"]
+    );
   }
 
   #[test]
   fn tokenize_handles_leading_uppercase_run() {
-    assert_eq!(tokenize("URLPath"), vec!["URL", "Path"]);
+    assert_eq!(tokenize("URLPath").collect::<Vec<_>>(), vec!["URL", "Path"]);
   }
 
   #[test]

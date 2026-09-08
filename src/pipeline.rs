@@ -1,24 +1,13 @@
 use std::rc::Rc;
 
 use crate::{
-  bindings::EmitTarget,
-  emit::{
-    MODEL_ARTIFACT_PATH,
-    angular::{
-      REST_MODEL_PATH, REST_MODEL_TEMPLATE, REST_UTIL_PATH, REST_UTIL_TEMPLATE, REST_VALIDATE_PATH,
-      REST_VALIDATE_TEMPLATE, emit_service,
-    },
-    model::emit_ts_models::emit_model,
-    render_generated_banner,
-  },
+  api_model::canonical::ApiModel,
+  emit::{emitters_for, render_generated_banner},
   error::{Diagnostic, Reporter},
-  ir::canonical::ApiModel,
   options::{GenerateConfig, validate_generate_config},
   plan::plan_generation,
   result::{GenerateSummary, GeneratedArtifact},
 };
-
-// ── Result types ────────────────────────────────────────────────────────────
 
 pub struct GenerateResult {
   pub summary: GenerateSummary,
@@ -26,34 +15,25 @@ pub struct GenerateResult {
   pub artifacts: Vec<GeneratedArtifact>,
 }
 
-/// Top-level pipeline outcome on failure: the accumulated warnings up to the
-/// failure point, plus the fatal diagnostic that ended the pipeline. Warnings
-/// "ride on the reporter" inside stages; this struct exists only at the
-/// pipeline boundary so the NAPI layer can surface both halves to the
-/// consumer.
+/// The warnings recorded before a run failed, and the fatal that ended
+/// it.
 #[derive(Debug)]
 pub struct GenerateFailure {
   pub warnings: Vec<Diagnostic>,
   pub fatal: Diagnostic,
 }
 
-// ── Pipeline ────────────────────────────────────────────────────────────────
-
-/// Decode → policy-check → normalize. `normalize_api_model` performs
-/// the final semantic step (discriminator narrowing + `$ref`
-/// validation) before returning.
+/// Decode → policy-check → normalize.
 pub(crate) fn build_ir(
   config: &GenerateConfig,
   display_path: &Rc<str>,
-  reporter: &mut Reporter<'_>,
+  reporter: &Reporter,
 ) -> Result<ApiModel, Diagnostic> {
   let document = match (&config.input_path, &config.input_contents) {
     (Some(path), None) => crate::parse::read_and_decode(path, display_path)?,
     (None, Some(contents)) => {
       crate::parse::decode_input_contents(contents, config.input_format, display_path)?
     }
-    // Validator guarantees exactly-one — these branches are unreachable
-    // in practice but we keep them defensive rather than panicking.
     _ => {
       return Err(Diagnostic::new(
         crate::error::DiagnosticCode::InvalidOption,
@@ -64,20 +44,16 @@ pub(crate) fn build_ir(
   };
   crate::parse::validate_openapi_version(&document, reporter)?;
   crate::parse::validate_generation_policy(&document, reporter)?;
-  crate::ir::normalize_api_model(&document, &config.response_type_mapping, reporter)
+  crate::api_model::normalize_api_model(&document, &config.response_type_mapping, reporter)
 }
 
 pub fn execute_generate(config: GenerateConfig) -> Result<GenerateResult, GenerateFailure> {
-  // Self-test hook for `catch_unwind` at the NAPI boundary. The magic
-  // input-path string is opaque enough that no real spec path can hit it;
-  // kept in release builds so CI exercises the panic-to-E_UNEXPECTED path.
+  // Sentinel path that forces a panic, exercising the `catch_unwind` at
+  // the NAPI boundary. Present in release builds.
   if config.input_path.as_deref() == Some("__panic_for_test__") {
     panic!("test sentinel: forced panic");
   }
 
-  // Build display_path: honour an explicitly-supplied value (URL inputs,
-  // direct inputContents callers); otherwise derive from input_path with
-  // backslash-to-slash normalisation.
   let display_path: Rc<str> = config.display_path.as_deref().map_or_else(
     || {
       config.input_path.as_deref().map_or_else(
@@ -94,80 +70,51 @@ pub fn execute_generate(config: GenerateConfig) -> Result<GenerateResult, Genera
     Rc::from,
   );
 
-  let mut warnings: Vec<Diagnostic> = Vec::new();
+  let reporter = Reporter::new(Rc::clone(&display_path));
 
-  match run_pipeline(config, Rc::clone(&display_path), &mut warnings) {
+  match run_pipeline(config, display_path, &reporter) {
     Ok((summary, artifacts)) => Ok(GenerateResult {
       summary,
-      diagnostics: warnings,
+      diagnostics: reporter.into_warnings(),
       artifacts,
     }),
-    Err(fatal) => Err(GenerateFailure { warnings, fatal }),
+    Err(fatal) => Err(GenerateFailure {
+      warnings: reporter.into_warnings(),
+      fatal,
+    }),
   }
 }
 
 fn run_pipeline(
   mut config: GenerateConfig,
   display_path: Rc<str>,
-  warnings: &mut Vec<Diagnostic>,
+  reporter: &Reporter,
 ) -> Result<(GenerateSummary, Vec<GeneratedArtifact>), Diagnostic> {
-  let mut reporter = Reporter::new(Rc::clone(&display_path), warnings);
-  validate_generate_config(&mut config, &mut reporter)?;
-  let ir = build_ir(&config, &display_path, &mut reporter)?;
+  validate_generate_config(&mut config, reporter)?;
+  let ir = build_ir(&config, &display_path, reporter)?;
   let summary = GenerateSummary::from_ir(display_path.as_ref().to_string(), &ir);
-  let source_path = summary.normalized_source_path.as_str();
 
-  let plan = plan_generation(&config, &ir, &reporter)?;
-  // One banner allocation per pipeline run, threaded into every emitter
-  // by reference. Bench-large emits 35+ artifacts; this trims one
-  // `format!` per artifact (and on petstore-sized inputs the cost is
-  // also paid by every consumer test).
-  let banner = render_generated_banner(source_path);
+  let plan = plan_generation(&config, &ir, reporter)?;
 
-  // Canonical emit order: models → angular-rest support → per-tag
-  // services. `plan.services` is already class-name-sorted by
-  // `resolve_service_plans`, so artifact ordering is independent of
-  // operation insertion order.
-  let mut artifacts: Vec<GeneratedArtifact> = Vec::new();
-  if config.emit.contains(&EmitTarget::Models) && !ir.schemas.is_empty() {
-    let body = emit_model(&ir.schemas, &plan.mapped_types);
-    artifacts.push(GeneratedArtifact::new(
-      MODEL_ARTIFACT_PATH.to_string(),
-      format!("{banner}{body}"),
-    ));
-  }
-  if config.emit.contains(&EmitTarget::Angular) {
-    artifacts.push(GeneratedArtifact::new(
-      REST_MODEL_PATH.to_string(),
-      format!("{banner}{REST_MODEL_TEMPLATE}"),
-    ));
-    artifacts.push(GeneratedArtifact::new(
-      REST_UTIL_PATH.to_string(),
-      format!("{banner}{REST_UTIL_TEMPLATE}"),
-    ));
-    artifacts.push(GeneratedArtifact::new(
-      REST_VALIDATE_PATH.to_string(),
-      format!("{banner}{REST_VALIDATE_TEMPLATE}"),
-    ));
-    for service in &plan.services {
-      let body = emit_service(service);
-      artifacts.push(GeneratedArtifact::new(
-        service.artifact_path.clone(),
-        format!("{banner}{body}"),
-      ));
-    }
-  }
+  // One banner per run, prefixed onto every artifact.
+  let banner = render_generated_banner(summary.normalized_source_path.as_str());
+
+  let artifacts: Vec<GeneratedArtifact> = config
+    .emit
+    .iter()
+    .flat_map(|target| emitters_for(*target))
+    .flat_map(|emitter| emitter.artifacts(&plan))
+    .map(|artifact| artifact.with_banner(&banner))
+    .collect();
 
   crate::io::writer::write_generated_artifacts(
     config.output_path.as_deref(),
     &artifacts,
-    &reporter,
+    reporter,
   )?;
 
   Ok((summary, artifacts))
 }
-
-// ── Tests ────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
@@ -184,12 +131,10 @@ mod tests {
     options::GenerateConfig,
     parse::input::decode_openapi_input,
     result::{GenerateSummary, GeneratedArtifact},
-    test_support::test_ctx,
+    test_support::test_reporter,
   };
 
   use super::{GenerateResult, build_ir, execute_generate};
-
-  // ── build_ir ─────────────────────────────────────────────────────────────
 
   fn build_ir_config_for_path(path: &str) -> GenerateConfig {
     GenerateConfig {
@@ -208,10 +153,10 @@ mod tests {
 
   #[test]
   fn build_ir_runs_input_validation_policy_and_normalize_in_one_pass() {
-    let mut ctx = test_ctx();
+    let ctx = test_reporter();
     let display: Rc<str> = Rc::from("test/fixtures/petstore-minimal.openapi.yaml");
     let config = build_ir_config_for_path("test/fixtures/petstore-minimal.openapi.yaml");
-    let ir = build_ir(&config, &display, &mut ctx.reporter()).expect("compiler stages succeed");
+    let ir = build_ir(&config, &display, &ctx).expect("compiler stages succeed");
 
     assert_eq!(ir.info.title, "Petstore Minimal");
     assert_eq!(ir.info.spec_version, "3.0.3");
@@ -243,11 +188,11 @@ mod tests {
     )
     .expect("fixture should be written");
 
-    let mut ctx = test_ctx();
+    let ctx = test_reporter();
     let path_str = path.to_str().expect("utf-8 path");
     let display: Rc<str> = Rc::from(path_str);
     let config = build_ir_config_for_path(path_str);
-    let Err(failure) = build_ir(&config, &display, &mut ctx.reporter()) else {
+    let Err(failure) = build_ir(&config, &display, &ctx) else {
       panic!("invalid operation shape should fail")
     };
 
@@ -279,8 +224,6 @@ mod tests {
       schema_count: 1,
     }
   }
-
-  // ── GenerateResult ───────────────────────────────────────────────────────
 
   #[test]
   fn generated_artifact_new_preserves_path_and_contents() {
@@ -317,8 +260,6 @@ mod tests {
     assert_eq!(result.diagnostics[0].message, diagnostic.message);
     assert_eq!(result.artifacts, vec![artifact]);
   }
-
-  // ── execute_generate ─────────────────────────────────────────────────────
 
   #[test]
   fn execute_generate_emits_typescript_and_angular_artifacts_in_canonical_order() {
@@ -376,7 +317,7 @@ mod tests {
     let util_artifact = result
       .artifacts
       .iter()
-      .find(|a| a.path == "rest.util.ts")
+      .find(|artifact| artifact.path == "rest.util.ts")
       .expect("rest.util.ts present");
     assert_eq!(util_artifact.path, "rest.util.ts");
     assert!(
@@ -404,38 +345,32 @@ mod tests {
     })
     .expect("generation succeeds");
 
-    // The artifact list has no `errors.generated.ts` — error interfaces
-    // live alongside `*Params` inside the per-tag service file.
+    // Error interfaces live in the per-tag service file, so there is no
+    // `errors.generated.ts`.
     assert!(
       !result
         .artifacts
         .iter()
-        .any(|a| a.path == "errors.generated.ts"),
+        .any(|artifact| artifact.path == "errors.generated.ts"),
       "errors.generated.ts must not be emitted as a standalone artifact",
     );
 
     let service = result
       .artifacts
       .iter()
-      .find(|a| a.path == "rest/pet.rest.generated.ts")
+      .find(|artifact| artifact.path == "rest/pet.rest.generated.ts")
       .expect("pet service emitted");
 
-    // Per-status pairs render verbatim; numeric keys; refs to model types
-    // resolve through the existing model import (no extra import block).
     assert!(service.contents.contains("export interface UpdatePetError"));
     assert!(service.contents.contains("400: ValidationProblem;"));
     assert!(service.contents.contains("404: NotFound;"));
     assert!(service.contents.contains("500: {"));
     assert!(service.contents.contains("traceId: string;"));
-    // 503 declared no JSON content — silently skipped.
+    // 503 declared no JSON content.
     assert!(!service.contents.contains("503:"));
-    // `default` key intentionally not surfaced.
     assert!(!service.contents.contains("default:"));
-    // The same model import that already serves `*Params` also covers
-    // the error body refs. The nested `body: UpdatePetRequest` field
-    // contributes that ref, so the deduplicated, alphabetised import
-    // line carries it alongside the response type (`Pet`) and the
-    // error-body refs.
+    // One deduplicated, alphabetised import line carries the response
+    // type, the `body:` ref and the error-body refs.
     assert!(
       service
         .contents
@@ -462,8 +397,7 @@ mod tests {
     };
     let result = execute_generate(config).expect("inputContents pipeline must succeed");
     assert_eq!(result.summary.title, "Inline Test");
-    // display_path is the supplied URL verbatim — no slash-normalisation,
-    // no path resolution.
+    // display_path is the supplied URL verbatim.
     assert_eq!(
       result.summary.normalized_source_path,
       "https://example.com/spec.yaml",

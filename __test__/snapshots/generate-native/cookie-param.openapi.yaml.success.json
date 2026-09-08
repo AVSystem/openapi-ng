@@ -1,0 +1,33 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/cookie-param.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Cookie Param",
+    "pathCount": 1,
+    "operationCount": 1,
+    "schemaCount": 0
+  },
+  "diagnostics": [
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "operationId 'listPets': parameter 'sessionId' uses location 'cookie', which is not supported in the generated service contract and will be omitted.",
+      "path": "test/fixtures/cookie-param.openapi.yaml",
+      "subcode": "unsupported-parameter-location"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest.validate.ts"
+    },
+    {
+      "path": "rest/pet.rest.generated.ts"
+    }
+  ]
+}

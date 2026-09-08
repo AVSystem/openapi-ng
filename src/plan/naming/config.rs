@@ -1,7 +1,4 @@
-//! Internal representation of the user-facing `NamingConfig`. The NAPI
-//! boundary projects `bindings::NamingOptions` into this shape after
-//! flag-validating each parse spec and unwrapping the JS RegExp into
-//! `{ source, flags }`.
+//! The validated, regex-compiled form of the caller's naming config.
 
 use crate::plan::naming::parse_spec::CompiledParseSpec;
 
@@ -17,10 +14,10 @@ pub(crate) enum Naming {
   Chain(Vec<RuleEntry>),
 }
 
-/// A single entry in a chain — either a bare format-string shorthand or
-/// a full `Rule`. The shorthand is equivalent to `Rule { format:
-/// Some(s), case: None, .. }`; we keep them distinct so config-time
-/// error messages can name the source form precisely.
+/// One entry of a fallback chain.
+///
+/// `Shorthand(s)` behaves as `Rule { format: Some(s), .. }`; the two stay
+/// distinct so a config error can name the form the caller wrote.
 #[derive(Debug, Clone)]
 pub(crate) enum RuleEntry {
   Shorthand(String),
@@ -45,8 +42,8 @@ pub(crate) enum Case {
 }
 
 impl Case {
-  pub(crate) fn parse(s: &str) -> Option<Self> {
-    match s {
+  pub(crate) fn parse(value: &str) -> Option<Self> {
+    match value {
       "camel" => Some(Self::Camel),
       "pascal" => Some(Self::Pascal),
       "snake" => Some(Self::Snake),
@@ -54,6 +51,43 @@ impl Case {
       "constant" => Some(Self::Constant),
       _ => None,
     }
+  }
+}
+
+impl Case {
+  /// Text inserted between adjacent tokens.
+  pub(crate) const fn separator(self) -> &'static str {
+    match self {
+      Self::Camel | Self::Pascal => "",
+      Self::Snake | Self::Constant => "_",
+      Self::Kebab => "-",
+    }
+  }
+
+  /// Appends `token` to `out` in the casing this style uses at `index`.
+  pub(crate) fn write_token(self, out: &mut String, token: &str, index: usize) {
+    match self {
+      Self::Camel if index == 0 => push_lower(out, token),
+      Self::Camel | Self::Pascal => push_title(out, token),
+      Self::Snake | Self::Kebab => push_lower(out, token),
+      Self::Constant => push_upper(out, token),
+    }
+  }
+}
+
+fn push_lower(out: &mut String, token: &str) {
+  out.extend(token.chars().map(|ch| ch.to_ascii_lowercase()));
+}
+
+fn push_upper(out: &mut String, token: &str) {
+  out.extend(token.chars().map(|ch| ch.to_ascii_uppercase()));
+}
+
+fn push_title(out: &mut String, token: &str) {
+  let mut chars = token.chars();
+  if let Some(first) = chars.next() {
+    out.extend(first.to_uppercase());
+    out.extend(chars.map(|ch| ch.to_ascii_lowercase()));
   }
 }
 

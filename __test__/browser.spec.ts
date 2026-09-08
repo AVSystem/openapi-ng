@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import type { GenerateOptions } from '../index.js';
 
 import { generate as nativeGenerate } from '../lib/index.js';
 
@@ -44,7 +45,7 @@ const petstoreOptions = {
   inputContents: petstore,
   displayPath: 'petstore-minimal.openapi.yaml',
   emit: ['models', 'angular'],
-};
+} satisfies GenerateOptions;
 
 wasiTest(
   'browser generate through the WASI binding matches the native output',

@@ -1,55 +1,41 @@
 use std::fs;
 
 use crate::{
-  error::{Diagnostic, DiagnosticCode, Reporter},
+  error::{Diagnostic, DiagnosticCode, Reporter, bail},
   io::host_cwd::resolve_against_host_cwd,
   result::GeneratedArtifact,
 };
 
-/// Write a formatted line into a `Writer`. `Writer`'s `fmt::Write` impl is
-/// infallible (it writes into an in-memory `String`), so the underlying
-/// `writeln!` cannot fail; this macro hides the unwrap noise.
-#[macro_export]
-macro_rules! wln {
-  ($w:expr, $($arg:tt)*) => {{
-    use std::fmt::Write as _;
-    writeln!($w, $($arg)*).expect("writing into Writer cannot fail")
-  }};
-}
-
 pub(crate) fn write_generated_artifacts(
   output_path: Option<&str>,
   artifacts: &[GeneratedArtifact],
-  reporter: &Reporter<'_>,
+  reporter: &Reporter,
 ) -> Result<(), Diagnostic> {
   let Some(output_path) = output_path else {
     return Ok(());
   };
 
-  for artifact in artifacts {
-    write_artifact(output_path, artifact, reporter)?;
-  }
-
-  Ok(())
+  artifacts
+    .iter()
+    .try_for_each(|artifact| write_artifact(output_path, artifact, reporter))
 }
 
 fn write_artifact(
   output_path: &str,
   artifact: &GeneratedArtifact,
-  reporter: &Reporter<'_>,
+  reporter: &Reporter,
 ) -> Result<(), Diagnostic> {
   let artifact_rel = std::path::Path::new(&artifact.path);
   if artifact_rel
     .components()
-    .any(|c| matches!(c, std::path::Component::ParentDir))
+    .any(|component| matches!(component, std::path::Component::ParentDir))
   {
-    return Err(reporter.error(
+    bail!(
+      reporter,
       DiagnosticCode::WriteFailed,
-      format!(
-        "Failed to write artifact: artifact path '{}' contains parent traversal ('..').",
-        artifact.path
-      ),
-    ));
+      "Failed to write artifact: artifact path '{}' contains parent traversal ('..').",
+      artifact.path
+    );
   }
 
   let output_dir = resolve_against_host_cwd(std::path::Path::new(output_path));
@@ -93,7 +79,7 @@ mod tests {
     time::{SystemTime, UNIX_EPOCH},
   };
 
-  use crate::{result::GeneratedArtifact, test_support::test_ctx};
+  use crate::{result::GeneratedArtifact, test_support::test_reporter};
 
   fn unique_path(label: &str) -> std::path::PathBuf {
     let nanos = SystemTime::now()
@@ -113,7 +99,7 @@ mod tests {
   #[test]
   fn write_generated_artifacts_writes_nested_artifacts_into_output_directory() {
     let output_path = unique_path("artifact-writer-success");
-    let mut ctx = test_ctx();
+    let ctx = test_reporter();
     let artifacts = vec![
       artifact("model.generated.ts", "export interface Pet {}\n"),
       artifact("rest/pet.rest.generated.ts", "export class PetService {}\n"),
@@ -122,7 +108,7 @@ mod tests {
     super::write_generated_artifacts(
       Some(output_path.to_str().expect("output path should be utf-8")),
       &artifacts,
-      &ctx.reporter(),
+      &ctx,
     )
     .expect("writer succeeds");
 
@@ -147,7 +133,7 @@ mod tests {
     fs::write(blocked_output_path.join("rest"), "not-a-directory")
       .expect("create blocking parent file");
 
-    let mut ctx = test_ctx();
+    let ctx = test_reporter();
     let failure = super::write_generated_artifacts(
       Some(
         blocked_output_path
@@ -158,7 +144,7 @@ mod tests {
         "rest/pet.rest.generated.ts",
         "export class PetService {}\n",
       )],
-      &ctx.reporter(),
+      &ctx,
     )
     .expect_err("writer should fail when parent directory cannot be created");
 
@@ -174,13 +160,13 @@ mod tests {
     fs::create_dir_all(&output_path).expect("create output directory");
     fs::write(output_path.join("a.ts"), "stale content").expect("write stale file");
 
-    let mut ctx = test_ctx();
+    let ctx = test_reporter();
     let artifacts = vec![artifact("a.ts", "fresh content")];
 
     super::write_generated_artifacts(
       Some(output_path.to_str().expect("output path should be utf-8")),
       &artifacts,
-      &ctx.reporter(),
+      &ctx,
     )
     .expect("overwrite should succeed");
 
@@ -194,13 +180,13 @@ mod tests {
   #[test]
   fn write_generated_artifacts_rejects_artifact_path_with_parent_traversal() {
     let output_path = unique_path("artifact-writer-traversal");
-    let mut ctx = test_ctx();
+    let ctx = test_reporter();
     let artifacts = vec![artifact("../escape.ts", "x")];
 
     let err = super::write_generated_artifacts(
       Some(output_path.to_str().expect("output path should be utf-8")),
       &artifacts,
-      &ctx.reporter(),
+      &ctx,
     )
     .expect_err("should reject artifact path containing '..'");
 

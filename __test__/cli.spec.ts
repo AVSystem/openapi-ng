@@ -181,10 +181,7 @@ test('cli generate writes 3 artifacts for fixture without operations', t => {
 // ── Verbose: warnings ──────────────────────────────────────────────────────
 
 test('cli generate suppresses warnings without --verbose', t => {
-  // cookie-param emits a non-fatal warning (cookies aren't surfaced in the
-  // generated service contract — browsers manage cookies via the cookie
-  // store). header-param used to share this behaviour but headers are now
-  // first-class.
+  // cookie-param warns: the generated contract does not surface cookies.
   const result = runCli(['generate', '--input', fixture('cookie-param.openapi.yaml')]);
   t.is(result.status, 0);
   t.is(result.stderr, '');
@@ -321,8 +318,6 @@ test('cli with no args prints help to stdout and exits 2', t => {
 });
 
 test('cli --help still exits 0', t => {
-  // Pin the existing behaviour so the "no args" change does not bleed
-  // into the explicit-help path.
   const result = runCli(['--help']);
   t.is(result.status, 0);
 });

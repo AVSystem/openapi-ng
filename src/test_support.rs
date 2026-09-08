@@ -1,76 +1,60 @@
 use std::rc::Rc;
 
 use crate::{
-  error::{Diagnostic, Reporter},
-  ir::{
+  api_model::{
     canonical::{BodyFieldType, HttpMethod, ResponseContent},
     schema::{SchemaProperty, SchemaScalar, SchemaType},
   },
-  plan::artifact_plan::{
-    PlannedFormField, PlannedHeader, PlannedOperation, PlannedRequestBody, PlannedRequestContract,
-    PlannedRequestField, RequestFieldKind,
+  error::Reporter,
+  identifier::{Identifier, MethodName},
+  plan::{
+    artifact_plan::{
+      PlannedFormField, PlannedHeader, PlannedOperation, PlannedRequestBody,
+      PlannedRequestContract, PlannedRequestField, RequestFieldKind,
+    },
+    naming::{error_interface_name, request_interface_name},
   },
 };
 
-/// Self-contained reporter scaffolding for tests. Owns the warnings vec so
-/// individual tests don't have to manage the borrow themselves; expose
-/// the warnings borrow through `.reporter()` so tests can either ignore
-/// warnings (treat as `&Reporter<'_>`) or push warnings via
-/// `&mut Reporter<'_>`.
-pub(crate) struct TestReporter {
-  pub(crate) path: Rc<str>,
-  pub(crate) warnings: Vec<Diagnostic>,
+/// Reporter over a placeholder display path.
+pub(crate) fn test_reporter() -> Reporter {
+  reporter_for("test")
 }
 
-impl TestReporter {
-  pub(crate) fn new(path: impl Into<Rc<str>>) -> Self {
-    Self {
-      path: path.into(),
-      warnings: Vec::new(),
-    }
-  }
-
-  pub(crate) fn reporter(&mut self) -> Reporter<'_> {
-    Reporter::new(Rc::clone(&self.path), &mut self.warnings)
-  }
+/// Reporter whose diagnostics carry `path`.
+pub(crate) fn reporter_for(path: &str) -> Reporter {
+  Reporter::new(Rc::from(path))
 }
 
-pub(crate) fn test_ctx() -> TestReporter {
-  TestReporter::new("test")
-}
-
-pub(crate) fn property(name: &str, required: bool, ty: SchemaType) -> SchemaProperty {
+pub(crate) fn property(name: &str, required: bool, schema: SchemaType) -> SchemaProperty {
   SchemaProperty {
     name: name.into(),
     required,
-    ty,
+    schema,
     description: None,
     deprecated: false,
   }
 }
 
-pub(crate) fn nullable_property(name: &str, required: bool, ty: SchemaType) -> SchemaProperty {
+pub(crate) fn nullable_property(name: &str, required: bool, schema: SchemaType) -> SchemaProperty {
   SchemaProperty {
     name: name.into(),
     required,
-    ty: SchemaType::Nullable(Box::new(ty)),
+    schema: SchemaType::Nullable(Box::new(schema)),
     description: None,
     deprecated: false,
   }
 }
 
-// ── Request-field / operation fixture builders ────────────────────────────────
-
-/// A plain `string` scalar — the most common field type used in test fixtures.
-pub(crate) fn string_ty() -> SchemaType {
+pub(crate) fn string_schema() -> SchemaType {
   SchemaType::Scalar(SchemaScalar::String)
 }
 
-pub(crate) fn path_field<'a>(name: &str, ty: &'a SchemaType) -> PlannedRequestField<'a> {
+pub(crate) fn path_field<'a>(name: &str, schema: &'a SchemaType) -> PlannedRequestField<'a> {
   PlannedRequestField {
     name: name.into(),
     optional: false,
-    ty,
+    schema,
     kind: RequestFieldKind::Path,
   }
 }
@@ -78,40 +62,35 @@ pub(crate) fn path_field<'a>(name: &str, ty: &'a SchemaType) -> PlannedRequestFi
 pub(crate) fn query_field<'a>(
   name: &str,
   optional: bool,
-  ty: &'a SchemaType,
+  schema: &'a SchemaType,
 ) -> PlannedRequestField<'a> {
   PlannedRequestField {
     name: name.into(),
     optional,
-    ty,
+    schema,
     kind: RequestFieldKind::Query,
   }
 }
 
-/// Build a `PlannedRequestField` of kind `Body` for tests that exercise the
-/// FlatJson body layout (inline JSON object body whose properties hoisted to
-/// top-level).
+/// A field hoisted out of an inline JSON body.
 pub(crate) fn body_field<'a>(
   name: &str,
   optional: bool,
-  ty: &'a SchemaType,
+  schema: &'a SchemaType,
 ) -> PlannedRequestField<'a> {
   PlannedRequestField {
     name: name.into(),
     optional,
-    ty,
+    schema,
     kind: RequestFieldKind::Body,
   }
 }
 
-/// A `PlannedRequestBody::Nested` carrier with the given `ty` and optionality.
-pub(crate) fn nested_body(ty: &SchemaType, optional: bool) -> PlannedRequestBody<'_> {
-  PlannedRequestBody::Nested { ty, optional }
+pub(crate) fn nested_body(schema: &SchemaType, optional: bool) -> PlannedRequestBody<'_> {
+  PlannedRequestBody::Nested { schema, optional }
 }
 
-/// A `PlannedRequestBody::FlatJson` carrier whose properties are the given
-/// `Body`-kinded fields. `required` records whether the envelope was
-/// `requestBody.required: true`.
+/// A hoisted JSON body, `required` being the envelope's own flag.
 pub(crate) fn flat_json_body<'a>(
   properties: Vec<PlannedRequestField<'a>>,
   required: bool,
@@ -122,8 +101,7 @@ pub(crate) fn flat_json_body<'a>(
   }
 }
 
-/// Returns a `PlannedRequestContract` with no fields, headers, or body.
-/// Useful in tests that care about operation structure but not request shape.
+/// A contract with no fields, headers or body.
 pub(crate) fn empty_request() -> PlannedRequestContract<'static> {
   PlannedRequestContract {
     fields: vec![],
@@ -132,8 +110,7 @@ pub(crate) fn empty_request() -> PlannedRequestContract<'static> {
   }
 }
 
-/// Constructs a minimal `PlannedOperation` with the given parameters.
-/// `response` is `None` for operations without a typed response.
+/// An operation whose interface names follow from `operation_id`.
 pub(crate) fn op_with<'a>(
   operation_id: &str,
   method: HttpMethod,
@@ -141,9 +118,14 @@ pub(crate) fn op_with<'a>(
   request: PlannedRequestContract<'a>,
   response: Option<&'a ResponseContent>,
 ) -> PlannedOperation<'a> {
+  let method_name = MethodName::new(operation_id.to_string());
+  let takes_input =
+    !request.fields.is_empty() || request.body.is_some() || !request.headers.is_empty();
   PlannedOperation {
     operation_id: operation_id.to_string(),
-    method_name: operation_id.to_string(),
+    request_interface: takes_input.then(|| request_interface_name(&method_name)),
+    error_interface: None,
+    method_name,
     method,
     path: path.to_string(),
     request,
@@ -154,16 +136,17 @@ pub(crate) fn op_with<'a>(
   }
 }
 
-/// Variant of `op_with` that attaches an error-response slice. Borrows
-/// the slice from the caller — typical use is `&[ErrorResponse{...},
-/// ...]` constructed in the test body.
+/// An operation carrying `errors` and nothing else.
 pub(crate) fn op_with_errors<'a>(
   operation_id: &str,
-  errors: &'a [crate::ir::canonical::ErrorResponse],
+  errors: &'a [crate::api_model::canonical::ErrorResponse],
 ) -> PlannedOperation<'a> {
+  let method_name = MethodName::new(operation_id.to_string());
   PlannedOperation {
     operation_id: operation_id.to_string(),
-    method_name: operation_id.to_string(),
+    request_interface: None,
+    error_interface: (!errors.is_empty()).then(|| error_interface_name(&method_name)),
+    method_name,
     method: HttpMethod::Post,
     path: "/x".to_string(),
     request: empty_request(),
@@ -179,19 +162,16 @@ fn build_form_fields<'a>(
 ) -> Vec<PlannedFormField<'a>> {
   fields
     .into_iter()
-    .map(|(name, optional, ty)| PlannedFormField {
-      name: name.into(),
+    .map(|(name, optional, field_type)| PlannedFormField {
+      name: Identifier::parse(name).expect("test form-field name is an identifier"),
       optional,
-      ty,
+      field_type,
     })
     .collect()
 }
 
-/// Constructs a `PlannedOperation` whose request body is a multipart form,
-/// populated with the supplied form fields. `fields` and `headers` on the
-/// contract are empty. Each tuple is `(name, optional, ty)` where `ty` is
-/// borrowed from the caller (matching the IR-borrowing convention of
-/// `PlannedFormField`).
+/// An operation whose body is a multipart form of `(name, optional, schema)`
+/// fields.
 pub(crate) fn op_with_multipart_fields<'a>(
   fields: Vec<(&str, bool, &'a BodyFieldType)>,
 ) -> PlannedOperation<'a> {
@@ -210,11 +190,7 @@ pub(crate) fn op_with_multipart_fields<'a>(
   )
 }
 
-/// Constructs a `PlannedOperation` whose request body is a multipart form
-/// alongside non-empty `path/query` fields and/or `headers`. Mirror of
-/// `op_with_multipart_fields` but lets a caller supply path/query fields
-/// (typically `path_field(...)` / `query_field(...)`) and a list of
-/// `PlannedHeader`s in addition to the form fields.
+/// [`op_with_multipart_fields`] with path/query fields and headers too.
 pub(crate) fn op_with_multipart_fields_full<'a>(
   path_fields: Vec<PlannedRequestField<'a>>,
   headers: Vec<PlannedHeader<'a>>,
@@ -235,9 +211,7 @@ pub(crate) fn op_with_multipart_fields_full<'a>(
   )
 }
 
-/// Constructs a `PlannedOperation` whose request body is a url-encoded form,
-/// populated with the supplied form fields. Mirror of
-/// `op_with_multipart_fields` for the urlencoded variant.
+/// [`op_with_multipart_fields`] for the urlencoded flavour.
 pub(crate) fn op_with_urlencoded_fields<'a>(
   fields: Vec<(&str, bool, &'a BodyFieldType)>,
 ) -> PlannedOperation<'a> {

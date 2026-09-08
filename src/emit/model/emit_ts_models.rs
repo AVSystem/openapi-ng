@@ -1,224 +1,141 @@
-use std::fmt::Write as _;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
-  emit::typescript::{self as ts, Position, Writer, render_type, write_import_line},
-  ir::{
+  api_model::{
     canonical::ModelSymbol,
     schema::{SchemaProperty, SchemaType},
   },
+  emit::ts::{
+    Binding, Doc, Member, Position, Render, Statement, Writer, import_line, interface_block, jsdoc,
+    string_union, type_alias, type_reexport_line, w,
+  },
   plan::artifact_plan::ResolvedMappedType,
 };
-use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) fn emit_model(
-  model_symbols: &[ModelSymbol],
+  symbols: &[ModelSymbol],
   mapped_types: &[ResolvedMappedType<'_>],
 ) -> String {
-  // Heuristic: each named model symbol expands to ~256 bytes of TS once
-  // mapped imports are factored in. Pre-sizing the buffer avoids 4-5
-  // reallocs for petstore-rich-sized specs.
-  let capacity = (model_symbols.len() * 256).max(1024);
-  let mut output = Writer::with_capacity(capacity);
+  // Roughly 256 bytes of TypeScript per named symbol.
+  let mut out = Writer::with_capacity((symbols.len() * 256).max(1024));
 
-  emit_mapped_imports(mapped_types, &mut output);
+  emit_mapped_imports(mapped_types, &mut out);
 
-  let mapped_by_name: BTreeMap<&str, &ResolvedMappedType<'_>> =
-    mapped_types.iter().map(|m| (m.schema, m)).collect();
+  let mapped_by_name: BTreeMap<&str, &ResolvedMappedType<'_>> = mapped_types
+    .iter()
+    .map(|mapped| (mapped.schema, mapped))
+    .collect();
 
-  // `emit_mapped_imports` writes exactly one line per `mapped_type` (either an
-  // import or a re-export) — so non-empty input is sufficient to know we
-  // emitted something and need a blank-line separator before the model body.
-  if !mapped_types.is_empty() && !model_symbols.is_empty() {
-    output.blank_line();
+  // `emit_mapped_imports` writes one line per mapped type.
+  if !mapped_types.is_empty() && !symbols.is_empty() {
+    out.blank_line();
   }
 
   let mut first = true;
-
-  for symbol in model_symbols {
+  for symbol in symbols {
     let name = symbol.name.as_ref();
-    if let Some(mapped_type) = mapped_by_name.get(name) {
-      // Re-export self-aliases are emitted as `export type { ... } from
-      // '...'` in the imports block above — skip the placeholder alias
-      // entirely (`export type X = X;` would collide with the imported
-      // binding).
-      if is_self_alias(mapped_type) {
-        continue;
-      }
-      if !first {
-        output.blank_line();
-      }
-      first = false;
-      emit_mapped_placeholder(name, mapped_type, &mut output);
+    let mapped = mapped_by_name.get(name).copied();
+
+    // A self-aliasing mapped type was already written as a re-export.
+    if mapped.is_some_and(|mapped| is_self_alias(mapped)) {
       continue;
     }
-
     if !first {
-      output.blank_line();
+      out.blank_line();
     }
     first = false;
 
-    match &symbol.body {
-      SchemaType::InlineObject { properties } => emit_interface(
-        name,
-        symbol.description.as_deref(),
-        symbol.deprecated,
-        properties,
-        &mut output,
-      ),
-      SchemaType::StringLiterals { values } => emit_enum(
-        name,
-        symbol.description.as_deref(),
-        symbol.deprecated,
-        values,
-        &mut output,
-      ),
-      other => emit_type_alias(
-        name,
-        symbol.description.as_deref(),
-        symbol.deprecated,
-        other,
-        &mut output,
-      ),
+    match mapped {
+      Some(mapped) => type_alias(&mut out, name, Doc::default(), native_binding(mapped)),
+      None => emit_symbol(symbol, &mut out),
     }
   }
 
-  let mut rendered = output.into_string();
+  let mut rendered = out.into_string();
   if !rendered.ends_with('\n') {
     rendered.push('\n');
   }
   rendered
 }
 
-/// A mapped type is a *self-alias* when the binding it introduces into
-/// the file (the alias if set, otherwise the imported type name) already
-/// matches the schema name. In that case the regular `import type { Y as
-/// X } from '...';` + `export type X = X;` pair would collide on the
-/// `X` identifier, so we collapse to a single `export type { Y as X }
-/// from '...';` re-export and skip the alias placeholder.
-fn is_self_alias(mapped_type: &ResolvedMappedType<'_>) -> bool {
-  let binding_name = mapped_type
+fn emit_symbol(symbol: &ModelSymbol, out: &mut Writer) {
+  let doc = Doc::new(symbol.description.as_deref(), symbol.deprecated);
+  let name = symbol.name.as_ref();
+  match &symbol.body {
+    SchemaType::InlineObject { properties } if properties.is_empty() => {
+      type_alias(out, name, doc, "Record<string, never>");
+    }
+    SchemaType::InlineObject { properties } => {
+      interface_block(out, name, doc, properties.iter().map(member), true);
+    }
+    SchemaType::StringLiterals { values } => string_union(out, name, doc, values),
+    other => {
+      jsdoc(out, doc);
+      w!(out, "export type {name} = ");
+      other.render(out, Position::Standalone);
+      out.push(";\n");
+    }
+  }
+}
+
+fn member(property: &SchemaProperty) -> Member<'_> {
+  Member {
+    name: property.name.as_ref(),
+    optional: !property.required,
+    type_expr: &property.schema,
+    doc: Doc::new(property.description.as_deref(), property.deprecated),
+  }
+}
+
+/// The name a mapped type introduces into the file.
+fn native_binding<'a>(mapped: &'a ResolvedMappedType<'_>) -> &'a str {
+  mapped
     .alias
     .as_deref()
-    .unwrap_or_else(|| mapped_type.ty.as_ref());
-  binding_name == mapped_type.schema
+    .unwrap_or_else(|| mapped.type_name.as_ref())
 }
 
-fn emit_mapped_imports(mapped_types: &[ResolvedMappedType<'_>], output: &mut Writer) {
-  // Group by import path, partitioning each path's entries into
-  // re-exports and regular imports so the emitted block has a stable
-  // ordering: regular imports first (deterministic per-path), then
-  // re-exports.
-  let mut imports_by_path = BTreeMap::<&str, BTreeSet<(&str, Option<&str>)>>::new();
-  let mut reexports_by_path = BTreeMap::<&str, BTreeSet<(&str, &str)>>::new();
+/// True when the binding a mapped type introduces already equals the
+/// schema name it replaces, and the pair collapses to a single re-export.
+fn is_self_alias(mapped: &ResolvedMappedType<'_>) -> bool {
+  native_binding(mapped) == mapped.schema
+}
 
-  for mapped_type in mapped_types {
-    if is_self_alias(mapped_type) {
-      // `export type { ty as schema }` — when `ty == schema`, drop the
-      // alias rename so the line stays `export type { X } from '...'`.
-      let imported = mapped_type.ty.as_ref();
-      let exported_as = mapped_type.schema;
-      reexports_by_path
-        .entry(mapped_type.import.as_ref())
+/// Emits the mapped types' import block: regular imports first, grouped by
+/// path, then the re-exports.
+fn emit_mapped_imports(mapped_types: &[ResolvedMappedType<'_>], out: &mut Writer) {
+  let (self_aliased, aliased): (Vec<_>, Vec<_>) = mapped_types
+    .iter()
+    .partition(|mapped| is_self_alias(mapped));
+
+  let imports = aliased.iter().fold(
+    BTreeMap::<&str, BTreeSet<(&str, Option<&str>)>>::new(),
+    |mut grouped, mapped| {
+      grouped
+        .entry(mapped.import.as_ref())
         .or_default()
-        .insert((imported, exported_as));
-    } else {
-      imports_by_path
-        .entry(mapped_type.import.as_ref())
-        .or_default()
-        .insert((mapped_type.ty.as_ref(), mapped_type.alias.as_deref()));
-    }
-  }
-
-  for (import_path, type_names) in &imports_by_path {
-    write_import_line(output, type_names.iter().copied(), import_path, true);
-  }
-
-  for (import_path, entries) in &reexports_by_path {
-    write_reexport_line(output, entries, import_path);
-  }
-}
-
-fn write_reexport_line(output: &mut Writer, entries: &BTreeSet<(&str, &str)>, import_path: &str) {
-  output.push("export type { ");
-  let mut first = true;
-  for (imported, exported_as) in entries {
-    if !first {
-      output.push(", ");
-    }
-    first = false;
-    output.push(imported);
-    if imported != exported_as {
-      output.push(" as ");
-      output.push(exported_as);
-    }
-  }
-  output.push(" } from '");
-  output.push(import_path);
-  output.push("';\n");
-}
-
-fn emit_mapped_placeholder(name: &str, mapped_type: &ResolvedMappedType<'_>, output: &mut Writer) {
-  let native_type = mapped_type
-    .alias
-    .as_deref()
-    .unwrap_or_else(|| mapped_type.ty.as_ref());
-  ts::type_alias(output, name, None, false, native_type);
-}
-
-fn emit_type_alias(
-  name: &str,
-  description: Option<&str>,
-  deprecated: bool,
-  target: &SchemaType,
-  output: &mut Writer,
-) {
-  ts::jsdoc(output, description, deprecated);
-  write!(output, "export type {name} = ").unwrap();
-  render_type(output, target, Position::Standalone);
-  output.push(";\n");
-}
-
-fn emit_enum(
-  name: &str,
-  description: Option<&str>,
-  deprecated: bool,
-  values: &[String],
-  output: &mut Writer,
-) {
-  ts::string_union(output, name, description, deprecated, values);
-}
-
-fn emit_interface(
-  name: &str,
-  description: Option<&str>,
-  deprecated: bool,
-  properties: &[SchemaProperty],
-  output: &mut Writer,
-) {
-  if properties.is_empty() {
-    ts::type_alias(
-      output,
-      name,
-      description,
-      deprecated,
-      "Record<string, never>",
-    );
-    return;
-  }
-  ts::interface_block(
-    output,
-    name,
-    description,
-    deprecated,
-    properties.iter().map(|p| {
-      (
-        p.name.as_ref(),
-        !p.required,
-        &p.ty,
-        p.description.as_deref(),
-        p.deprecated,
-      )
-    }),
-    true,
+        .insert((mapped.type_name.as_ref(), mapped.alias.as_deref()));
+      grouped
+    },
   );
+  let reexports = self_aliased.iter().fold(
+    BTreeMap::<&str, BTreeSet<(&str, &str)>>::new(),
+    |mut grouped, mapped| {
+      grouped
+        .entry(mapped.import.as_ref())
+        .or_default()
+        .insert((mapped.type_name.as_ref(), mapped.schema));
+      grouped
+    },
+  );
+
+  imports.iter().for_each(|(path, bindings)| {
+    let bindings = bindings
+      .iter()
+      .map(|&(name, alias)| Binding { name, alias });
+    import_line(out, bindings, path, Statement::TypeImport);
+  });
+  reexports.iter().for_each(|(path, entries)| {
+    type_reexport_line(out, entries, path);
+  });
 }
