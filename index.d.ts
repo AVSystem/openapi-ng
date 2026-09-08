@@ -115,10 +115,11 @@ export interface GeneratorDiagnostic {
  * Explicit decoder selection. Skips both extension-based detection and
  * the JSON-then-YAML sniff fallback. Honoured only with `input_contents`.
  */
-export declare const enum InputFormat {
-  Json = 'json',
-  Yaml = 'yaml'
-}
+export type InputFormat = 'json' | 'yaml';
+export declare const InputFormat: {
+  readonly Json: 'json';
+  readonly Yaml: 'yaml';
+};
 
 /**
  * One caller-declared mapped type: replace the generated declaration for
@@ -180,12 +181,13 @@ export interface NamingValue {
 }
 
 /** How a response body is decoded, named as the JS runtime names it. */
-export declare const enum ResponseType {
-  Json = 'json',
-  Blob = 'blob',
-  Text = 'text',
-  ArrayBuffer = 'arrayBuffer'
-}
+export type ResponseType = 'json' | 'blob' | 'text' | 'arrayBuffer';
+export declare const ResponseType: {
+  readonly Json: 'json';
+  readonly Blob: 'blob';
+  readonly Text: 'text';
+  readonly ArrayBuffer: 'arrayBuffer';
+};
 
 /**
  * Overrides the response kind decoded for one content type.

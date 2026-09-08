@@ -141,6 +141,15 @@ function getArtifact(result: { artifacts: Artifact[] }, targetPath: string) {
   return result.artifacts.find(artifact => artifact.path === targetPath);
 }
 
+/** Fails naming `targetPath` when the result does not carry it. */
+function requireArtifact(result: { artifacts: Artifact[] }, targetPath: string): Artifact {
+  const artifact = getArtifact(result, targetPath);
+  if (artifact === undefined) {
+    throw new Error(`expected the result to carry ${targetPath}`);
+  }
+  return artifact;
+}
+
 function assertRestHelpers(t: ExecutionContext, result: { artifacts: Artifact[] }) {
   const restModel = getArtifact(result, 'rest.model.ts');
   const restUtil = getArtifact(result, 'rest.util.ts');
@@ -613,10 +622,10 @@ test('generate returns artifact contents and writes the same bytes to disk', asy
     }
     // Files were still written to disk.
     t.true(fs.existsSync(path.join(outputPath, 'model.generated.ts')));
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
     t.is(
       fs.readFileSync(path.join(outputPath, 'model.generated.ts'), 'utf8'),
-      modelArtifact?.contents,
+      modelArtifact.contents,
     );
   });
 });
@@ -1077,7 +1086,7 @@ test('generate maps a targeted schema to an imported external type without chang
       ],
     });
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
 
     t.truthy(modelArtifact);
     const serviceArtifact = getArtifact(result, 'rest/pet.rest.generated.ts');
@@ -1114,7 +1123,7 @@ test('generate encodes oneOf/anyOf composition as focused public contract fragme
       [],
     );
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
     const serviceArtifact = getArtifact(
       result,
       'rest/adoption-request.rest.generated.ts',
@@ -1162,7 +1171,7 @@ test('generate keeps mapped-type assertions explicit alongside composition contr
       ],
     });
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
 
     t.truthy(modelArtifact);
     t.true(
@@ -1196,7 +1205,7 @@ test('generate emits a re-export for mapped types whose binding name equals the 
       ],
     });
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
     t.truthy(modelArtifact);
     t.true(
       modelArtifact?.contents?.includes(
@@ -1229,7 +1238,7 @@ test('generate emits a bare re-export when schema name equals imported type name
       ],
     });
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
     t.truthy(modelArtifact);
     t.true(
       modelArtifact?.contents?.includes(
@@ -1258,7 +1267,7 @@ test('generate encodes allOf composition as an intersection contract with nullab
       [],
     );
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
     const serviceArtifact = getArtifact(result, 'rest/adopter.rest.generated.ts');
 
     t.truthy(modelArtifact);
@@ -1298,7 +1307,7 @@ test('generate collapses single-entry oneOf/anyOf/allOf wrappers instead of emit
 
     t.deepEqual(result.diagnostics, []);
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
 
     t.truthy(modelArtifact);
     t.true(modelArtifact?.contents?.includes('export type AnimalView = AnimalBase;'));
@@ -1321,7 +1330,7 @@ test('generate emits Record-based contracts for typed additionalProperties objec
 
     t.deepEqual(result.diagnostics, []);
 
-    const modelArtifact = getArtifact(result, 'model.generated.ts');
+    const modelArtifact = requireArtifact(result, 'model.generated.ts');
     const serviceArtifact = getArtifact(result, 'rest/pet.rest.generated.ts');
 
     t.truthy(modelArtifact);

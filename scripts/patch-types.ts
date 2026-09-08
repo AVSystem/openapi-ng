@@ -119,6 +119,9 @@ const NARROWED_DIAGNOSTIC = [
 ] as const;
 
 const EMIT_TARGET_UNION = "export type EmitTarget = 'models' | 'angular';";
+const INPUT_FORMAT_UNION = "export type InputFormat = 'json' | 'yaml';";
+const RESPONSE_TYPE_UNION =
+  "export type ResponseType = 'json' | 'blob' | 'text' | 'arrayBuffer';";
 
 // `[^*]|\*(?!/)` rather than `[\s\S]*?` so a lazy match cannot run past this
 // declaration's own `*/` and swallow the next block.
@@ -143,6 +146,35 @@ const dtsPatches: readonly Patch[] = [
       '};',
     ].join('\n'),
     source => source.includes(EMIT_TARGET_UNION),
+  ),
+
+  // `InputFormat` carries the same const-enum problem as `EmitTarget`.
+  rewritePattern(
+    'InputFormat const-enum removal',
+    /export declare const enum InputFormat \{\s*Json = 'json',\s*Yaml = 'yaml'\s*\}/,
+    [
+      INPUT_FORMAT_UNION,
+      'export declare const InputFormat: {',
+      "  readonly Json: 'json';",
+      "  readonly Yaml: 'yaml';",
+      '};',
+    ].join('\n'),
+    source => source.includes(INPUT_FORMAT_UNION),
+  ),
+
+  rewritePattern(
+    'ResponseType const-enum removal',
+    /export declare const enum ResponseType \{\s*Json = 'json',\s*Blob = 'blob',\s*Text = 'text',\s*ArrayBuffer = 'arrayBuffer'\s*\}/,
+    [
+      RESPONSE_TYPE_UNION,
+      'export declare const ResponseType: {',
+      "  readonly Json: 'json';",
+      "  readonly Blob: 'blob';",
+      "  readonly Text: 'text';",
+      "  readonly ArrayBuffer: 'arrayBuffer';",
+      '};',
+    ].join('\n'),
+    source => source.includes(RESPONSE_TYPE_UNION),
   ),
 
   // The wrapper defaults `emit` before the boundary, so a consumer may

@@ -9,7 +9,55 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+const { field, inputError } = require('../../lib/diagnostic.js');
+
+/** @typedef {import('../../index.js').Config} Config */
+/** @typedef {import('../../index.js').EmitTarget} EmitTarget */
+/** @typedef {import('../../index.js').MappedType} MappedType */
+
+/**
+ * What `parseArgs` resolved the command line to.
+ *
+ * @typedef {{ kind: 'version' }} ParsedVersion
+ * @typedef {{ kind: 'help', subcommand: 'generate' | 'init' | null, explicit: boolean }} ParsedHelp
+ * @typedef {{ kind: 'init', format: string }} ParsedInit
+ * @typedef {{
+ *   kind: 'generate',
+ *   inputPath: string | null,
+ *   outputPath: string | null,
+ *   verbose: boolean | null,
+ *   emit: EmitTarget[] | null,
+ *   mappedTypes: MappedType[] | null,
+ *   configPath: string | null,
+ *   naming?: import('../../index.js').NamingConfig | null,
+ * }} ParsedGenerate
+ * @typedef {ParsedVersion | ParsedHelp | ParsedInit | ParsedGenerate} ParsedArgs
+ */
+
+/**
+ * The generate request after the file config and the flags are merged.
+ *
+ * @typedef {{
+ *   inputPath: string | null,
+ *   outputPath: string | null,
+ *   verbose: boolean,
+ *   emit: EmitTarget[],
+ *   mappedTypes: MappedType[] | null,
+ *   responseTypeMapping: import('../../index.js').ResponseTypeMapping[] | null,
+ *   naming: import('../../index.js').NamingConfig | null,
+ * }} MergedConfig
+ */
+
 const VALID_EMIT_TARGETS = Object.freeze(new Set(['models', 'angular']));
+
+/**
+ * @param {string} value
+ * @returns {value is EmitTarget}
+ */
+function isEmitTarget(value) {
+  return VALID_EMIT_TARGETS.has(value);
+}
+/** @type {readonly EmitTarget[]} */
 const DEFAULT_EMIT = Object.freeze(['models', 'angular']);
 
 const VALID_INIT_FORMATS = Object.freeze(new Set(['yaml', 'json', 'ts', 'js']));
@@ -19,6 +67,12 @@ const VALID_INIT_FORMATS = Object.freeze(new Set(['yaml', 'json', 'ts', 'js']));
 // the config path, leaving the user staring at a config-not-found error
 // without ever seeing their `--input` argument honoured. Treat any token
 // starting with `-` (long `--foo` or short `-f`) as a flag, never a value.
+/**
+ * @param {readonly string[]} argv
+ * @param {number} i Index of the flag itself.
+ * @param {string} flagName Name printed in the failure.
+ * @returns {string}
+ */
 function requireValue(argv, i, flagName) {
   const value = argv[i + 1];
   if (
@@ -34,6 +88,13 @@ function requireValue(argv, i, flagName) {
 // Normalize one user-supplied emit list (CLI comma-string or YAML
 // array) into a deduped array of recognised targets. Unknown entries
 // fail fast with a config-file hint.
+/**
+ * Normalises one emit list — a CLI comma-string or a config array — into
+ * a deduped array of recognised targets. `null` when nothing was given.
+ *
+ * @param {unknown} value
+ * @returns {EmitTarget[] | null}
+ */
 function normalizeEmit(value) {
   if (value === null || value === undefined) return null;
 
@@ -52,15 +113,22 @@ function normalizeEmit(value) {
     );
   }
 
+  /** @type {EmitTarget[]} */
+  const targets = [];
   for (const item of items) {
-    if (!VALID_EMIT_TARGETS.has(item)) {
+    if (!isEmitTarget(item)) {
       throw new Error(`Unknown emit target: '${item}'. Allowed: 'models', 'angular'.`);
     }
+    if (!targets.includes(item)) targets.push(item);
   }
 
-  return Array.from(new Set(items));
+  return targets;
 }
 
+/**
+ * @param {string} value A `<schema:import:type(:alias)?>` triple or quad.
+ * @returns {MappedType}
+ */
 function parseMappedType(value) {
   const source = String(value);
   // Reject up front: importPath segments may not contain ':' under the
@@ -68,15 +136,21 @@ function parseMappedType(value) {
   // file when import paths contain colons (e.g. Windows-style absolute
   // paths like C:\foo, or :: namespace separators).
   const parts = source.split(':');
-  if (parts.length < 3 || parts.length > 4 || parts.some(part => part.length === 0)) {
+  const [schema, importPath, typeName, alias] = parts;
+  if (
+    parts.length < 3 ||
+    parts.length > 4 ||
+    schema === undefined ||
+    importPath === undefined ||
+    typeName === undefined ||
+    parts.some(part => part.length === 0)
+  ) {
     throw new Error(
       `Invalid --mapped-type value: ${value}. Expected <schema:import:type(:alias)?>. ` +
         `For import paths containing ':' (e.g., Windows absolute paths), use the mappedTypes: ` +
         `entry in your .openapi-ng.yaml / .openapi-ng.json config file instead.`,
     );
   }
-
-  const [schema, importPath, typeName, alias] = parts;
 
   return {
     schema,
@@ -102,6 +176,12 @@ const CONFIG_FILENAMES = Object.freeze([
   '.openapi-ng.json',
 ]);
 
+/**
+ * Walks up from `startDir` for the first recognised config file.
+ *
+ * @param {string} startDir
+ * @returns {string | null}
+ */
 function discoverConfigPath(startDir) {
   let dir = path.resolve(startDir);
   let prev;
@@ -120,6 +200,12 @@ function discoverConfigPath(startDir) {
 
 const JS_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.ts', '.mts', '.cts']);
 
+/**
+ * Loads a config file, dispatching on its extension.
+ *
+ * @param {string} configPath
+ * @returns {Promise<Config>}
+ */
 async function loadConfigFile(configPath) {
   const ext = path.extname(configPath).toLowerCase();
 
@@ -133,9 +219,7 @@ async function loadConfigFile(configPath) {
     // formatter prints the same "Config file not found:" line YAML/JSON
     // produces today.
     if (!fs.existsSync(absPath)) {
-      const e = new Error(`Config file not found: ${configPath}`);
-      e.code = 'E_INPUT_INVALID';
-      throw e;
+      throw inputError(`Config file not found: ${configPath}`);
     }
 
     let mod;
@@ -148,29 +232,21 @@ async function loadConfigFile(configPath) {
       // of the generic "Failed to load" wrap so users know the fix
       // (upgrade Node, switch to .js, or pass --experimental-strip-types).
       const isTs = ext === '.ts' || ext === '.mts' || ext === '.cts';
-      if (isTs && err?.code === 'ERR_UNKNOWN_FILE_EXTENSION') {
-        const e = new Error(
+      if (isTs && field(err, 'code') === 'ERR_UNKNOWN_FILE_EXTENSION') {
+        throw inputError(
           `TypeScript config files require Node 22.6+ with --experimental-strip-types, ` +
             `or Node 23.6+ (flag enabled by default). ` +
             `Alternatively, use a .js/.mjs config.`,
         );
-        e.code = 'E_INPUT_INVALID';
-        throw e;
       }
-      const e = new Error(
-        `Failed to load config file ${configPath}: ${err?.message ?? err}`,
-      );
-      e.code = 'E_INPUT_INVALID';
-      throw e;
+      throw inputError(`Failed to load config file ${configPath}: ${field(err, 'message') ?? err}`);
     }
 
     if (!('default' in mod) || mod.default === undefined) {
-      const e = new Error(
+      throw inputError(
         `Config file ${configPath} has no default export. ` +
           `Use \`export default { ... }\` or \`module.exports = { ... }\`.`,
       );
-      e.code = 'E_INPUT_INVALID';
-      throw e;
     }
 
     let value = mod.default;
@@ -180,12 +256,10 @@ async function loadConfigFile(configPath) {
     }
 
     if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-      const e = new Error(
+      throw inputError(
         `Config file ${configPath} default export must be an object or function returning one; ` +
           `got ${value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value}.`,
       );
-      e.code = 'E_INPUT_INVALID';
-      throw e;
     }
 
     return value;
@@ -201,16 +275,10 @@ async function loadConfigFile(configPath) {
   try {
     contents = fs.readFileSync(configPath, 'utf8');
   } catch (err) {
-    if (err && err.code === 'ENOENT') {
-      const e = new Error(`Config file not found: ${configPath}`);
-      e.code = 'E_INPUT_INVALID';
-      throw e;
+    if (field(err, 'code') === 'ENOENT') {
+      throw inputError(`Config file not found: ${configPath}`);
     }
-    const e = new Error(
-      `Failed to read config file ${configPath}: ${err?.message ?? err}`,
-    );
-    e.code = 'E_INPUT_INVALID';
-    throw e;
+    throw inputError(`Failed to read config file ${configPath}: ${field(err, 'message') ?? err}`);
   }
 
   try {
@@ -221,14 +289,14 @@ async function loadConfigFile(configPath) {
     const YAML = require('yaml');
     return YAML.parse(contents) ?? {};
   } catch (err) {
-    const e = new Error(
-      `Failed to parse config file ${configPath}: ${err?.message ?? err}`,
-    );
-    e.code = 'E_INPUT_INVALID';
-    throw e;
+    throw inputError(`Failed to parse config file ${configPath}: ${field(err, 'message') ?? err}`);
   }
 }
 
+/**
+ * @param {unknown} items
+ * @returns {MappedType[] | null}
+ */
 function normalizeMappedTypes(items) {
   if (!Array.isArray(items)) return null;
   return items.map(item => ({
@@ -239,6 +307,10 @@ function normalizeMappedTypes(items) {
   }));
 }
 
+/**
+ * @param {unknown} items
+ * @returns {import('../../index.js').ResponseTypeMapping[] | null}
+ */
 function normalizeResponseTypeMapping(items) {
   if (!Array.isArray(items)) return null;
   return items.map(item => ({
@@ -247,14 +319,17 @@ function normalizeResponseTypeMapping(items) {
   }));
 }
 
+/**
+ * Accepts a naming block from a config file, refusing a `parse` that is
+ * not a real `RegExp` — which is every value YAML or JSON can carry.
+ *
+ * @param {unknown} naming
+ * @returns {import('../../index.js').NamingConfig | null}
+ */
 function normalizeNamingFromFile(naming) {
   if (naming === undefined || naming === null) return null;
   if (typeof naming !== 'object' || Array.isArray(naming)) {
-    const e = new Error(
-      `Invalid naming config: expected an object with optional 'methodName' and 'group' keys.`,
-    );
-    e.code = 'E_INPUT_INVALID';
-    throw e;
+    throw inputError(`Invalid naming config: expected an object with optional 'methodName' and 'group' keys.`);
   }
   // `parse` must be a JavaScript RegExp. JS/TS configs deliver one
   // directly; YAML/JSON cannot encode RegExp, so any `parse:` value
@@ -262,7 +337,7 @@ function normalizeNamingFromFile(naming) {
   // This keeps the "no parse in YAML/JSON" safety property without
   // tracking the source format through the call chain.
   for (const key of ['methodName', 'group']) {
-    const value = naming[key];
+    const value = field(naming, key);
     if (value === undefined) continue;
     const items = Array.isArray(value) ? value : [value];
     for (const item of items) {
@@ -272,21 +347,35 @@ function normalizeNamingFromFile(naming) {
         item.parse !== undefined &&
         !(item.parse instanceof RegExp)
       ) {
-        const e = new Error(
+        throw inputError(
           `naming.${key}: 'parse' must be a JavaScript RegExp. ` +
             `YAML/JSON configs cannot encode RegExp — use an openapi-ng.config.ts ` +
             `(or .js/.mjs) file when you need 'parse' rules.`,
         );
-        e.code = 'E_INPUT_INVALID';
-        throw e;
       }
     }
   }
   return naming;
 }
 
+/**
+ * Merges the file config under the CLI flags, which win field by field.
+ *
+ * @param {Config} fileConfig
+ * @param {ParsedGenerate} cliFlags
+ * @returns {MergedConfig}
+ */
 function mergeConfig(fileConfig, cliFlags) {
-  const merged = {};
+  /** @type {MergedConfig} */
+  const merged = {
+    inputPath: null,
+    outputPath: null,
+    verbose: false,
+    emit: [...DEFAULT_EMIT],
+    mappedTypes: null,
+    responseTypeMapping: null,
+    naming: null,
+  };
 
   merged.inputPath = cliFlags.inputPath ?? fileConfig.input ?? null;
   merged.outputPath = cliFlags.outputPath ?? fileConfig.output ?? null;
@@ -308,6 +397,10 @@ function mergeConfig(fileConfig, cliFlags) {
   return merged;
 }
 
+/**
+ * @param {readonly string[]} argv Arguments after the executable name.
+ * @returns {ParsedArgs}
+ */
 function parseArgs(argv) {
   let configPath = null;
 
@@ -320,9 +413,10 @@ function parseArgs(argv) {
   }
 
   // Extract global --config/-c before command parsing
+  /** @type {string[]} */
   const filteredArgv = [];
   for (let i = 0; i < argv.length; i++) {
-    const token = argv[i];
+    const token = argv[i] ?? '';
     if (token === '--config' || token === '-c') {
       configPath = requireValue(argv, i, '--config');
       i += 1;
@@ -349,7 +443,7 @@ function parseArgs(argv) {
   if (command === 'init') {
     let format = 'yaml';
     for (let i = 0; i < rest.length; i += 1) {
-      const token = rest[i];
+      const token = rest[i] ?? '';
       if (token === '--help' || token === '-h') {
         return { kind: 'help', subcommand: 'init', explicit: true };
       }
@@ -380,7 +474,7 @@ function parseArgs(argv) {
   const mappedTypes = [];
 
   for (let index = 0; index < rest.length; index += 1) {
-    const token = rest[index];
+    const token = rest[index] ?? '';
     // Per-subcommand help short-circuit. Recognised anywhere in the
     // argument list so users can append `--help` to a half-finished
     // command without erasing the rest first.

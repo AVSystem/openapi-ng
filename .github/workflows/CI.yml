@@ -49,6 +49,8 @@ jobs:
         run: bun run lint
       - name: Typecheck
         run: bun run typecheck
+      - name: Snapshot fixture coverage
+        run: bun run regen-snapshots
       - name: Cargo fmt
         run: cargo fmt -- --check
       - name: Clippy
