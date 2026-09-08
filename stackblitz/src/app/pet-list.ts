@@ -1,6 +1,6 @@
 import { Component, inject, output, signal } from '@angular/core';
-import type { PetId, PetStatus } from '../generated/model.generated';
-import { PetRest } from '../generated/rest/pet.rest.generated';
+import type { PetId, PetStatus } from '../generated/model';
+import { PetRest } from '../generated/rest/pet.rest';
 
 @Component({
   selector: 'app-pet-list',

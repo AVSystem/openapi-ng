@@ -8,8 +8,8 @@
 // just a tsc --noEmit gate.
 
 import { schema } from '@angular/forms/signals';
-import type { PetRest, UpdatePetParams } from '../generated/rest/pet.rest.generated';
-import type { Pet } from '../generated/model.generated.ts';
+import type { PetRest, UpdatePetParams } from '../generated/rest/pet.rest';
+import type { Pet } from '../generated/model.ts';
 import type { RequestFnVoid } from '../generated/rest.util';
 import { validateRest } from '../generated/rest.validate';
 

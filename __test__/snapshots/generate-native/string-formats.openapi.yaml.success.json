@@ -46,7 +46,7 @@
   ],
   "artifacts": [
     {
-      "path": "model.generated.ts"
+      "path": "model.ts"
     },
     {
       "path": "rest.model.ts"

@@ -3,7 +3,7 @@ import stripJsonComments from 'strip-json-comments';
 
 export type ConfigOptions = Pick<
   GenerateOptions,
-  'emit' | 'mappedTypes' | 'responseTypeMapping' | 'naming'
+  'emit' | 'layout' | 'mappedTypes' | 'responseTypeMapping' | 'naming'
 >;
 
 export type ParsedConfig =
@@ -14,6 +14,10 @@ export type ParsedConfig =
 // all must not change the output.
 export const DEFAULT_CONFIG = `{
   "emit": ["models", "angular"],
+
+  // Angular output shape: "services" (per-tag classes), "operations"
+  // (one file per operation), or both
+  // "layout": ["services"],
 
   // External TypeScript types standing in for schemas,
   // e.g. { "schema": "GeoFeature", "import": "geojson", "type": "Feature", "alias": "Geo" }

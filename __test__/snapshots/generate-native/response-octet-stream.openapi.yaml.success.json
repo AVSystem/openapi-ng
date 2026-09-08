@@ -19,7 +19,7 @@
       "path": "rest.validate.ts"
     },
     {
-      "path": "rest/blob.rest.generated.ts"
+      "path": "rest/blob.rest.ts"
     }
   ]
 }

@@ -45,7 +45,12 @@ pub(crate) fn plan_generation<'ir>(
 
   let services = if emit_angular {
     let resolver = crate::plan::naming::NamingResolver::new(config.naming.clone());
-    resolve_service_plans(ir, &resolver, reporter)?
+    resolve_service_plans(
+      ir,
+      &resolver,
+      reporter,
+      config.layout.contains(&crate::bindings::Layout::Operations),
+    )?
   } else {
     Vec::new()
   };

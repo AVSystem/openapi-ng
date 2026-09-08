@@ -10,7 +10,7 @@ import type {
   TreeValidationResult,
 } from '@angular/forms/signals';
 import type { BaseHttpResourceOptions } from './rest.model';
-import type { RequestFn, RequestFnValue } from './rest.util';
+import type { Resourceful, ResourcefulValue } from './rest.util';
 
 export type { MapToErrorsFn } from '@angular/forms/signals';
 
@@ -48,14 +48,14 @@ export function validateRest<
   TPathKind extends PathKind = PathKind.Root,
 >(
   path: SchemaPath<TValue, SchemaPathRules.Supported, TPathKind>,
-  requestFn: RequestFn<TRequest, TResponse>,
+  requestFn: Resourceful<TRequest, TResponse>,
   opts: RestValidatorOptions<TRequest, TResponse, TValue, TPathKind>,
 ): void {
   const { request, onSuccess, onError, options, ...passThrough } = opts;
   validateAsync<TValue, TRequest | undefined, TResponse | undefined, TPathKind>(path, {
     params: request,
     factory: (req: Signal<TRequest | undefined>) =>
-      (requestFn as RequestFnValue<TRequest, TResponse>).resource(req, options),
+      (requestFn as ResourcefulValue<TRequest, TResponse>).resource(req, options),
     onSuccess: (result, ctx) =>
       result === undefined ? undefined : (onSuccess ?? (() => undefined))(result, ctx),
     onError,

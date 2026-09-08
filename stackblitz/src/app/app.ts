@@ -1,5 +1,5 @@
 import { Component, signal } from '@angular/core';
-import type { PetId } from '../generated/model.generated';
+import type { PetId } from '../generated/model';
 import { PetDetail } from './pet-detail';
 import { PetList } from './pet-list';
 import { SignupForm } from './signup-form';

@@ -37,7 +37,7 @@ function printUsage() {
     [
       `${c.bold('Usage:')}`,
       `  openapi-ng generate [--input <path>] [--output <dir>] [--verbose]`,
-      `                     [--emit <targets>] [--config <path>]`,
+      `                     [--emit <targets>] [--layout <layouts>] [--config <path>]`,
       `                     [--mapped-type <schemaName:importPath:typeName>]`,
       `  openapi-ng init [--format yaml|json|ts|js]`,
       '',
@@ -49,6 +49,10 @@ function printUsage() {
       `${c.bold('Emit targets:')}`,
       `  --emit models,angular       Comma-separated list (repeatable). Default: 'models,angular'.`,
       `                              'angular' depends on 'models'; it is auto-included.`,
+      '',
+      `${c.bold('Layout:')}`,
+      `  --layout services,operations Comma-separated list (repeatable). Default: 'services'.`,
+      `                              'services' emits per-tag classes; 'operations' one file per operation.`,
       '',
       `${c.bold('Supported inputs:')}`,
       '  - Local OpenAPI 3.x JSON or YAML files within the current subset.',
@@ -76,6 +80,9 @@ function printGenerateUsage() {
       `  --emit <targets>            Comma-separated list (repeatable). Default: 'models,angular'.`,
       `                              Valid: 'models', 'angular'.`,
       `                              'angular' depends on 'models'; it is auto-included.`,
+      `  --layout <layouts>          Comma-separated list (repeatable). Default: 'services'.`,
+      `                              Valid: 'services' (per-tag classes), 'operations' (one file`,
+      `                              per operation). List both for classes over operation files.`,
       `  --mapped-type <s:i:t[:a]>   Map schema <s> to imported type <t> from path <i>,`,
       `                              optionally renamed to <a>. Repeatable.`,
       `  --verbose                   Include warnings in the success summary.`,
@@ -147,6 +154,12 @@ emit:
   - models
   - angular
 
+# layout: angular output shape. 'services' (default) emits one class per
+# tag; 'operations' one importable constant per operation. List both to
+# get the classes on top of the operation files.
+# layout:
+#   - services
+
 # mappedTypes:
 #   - schema: DateTime
 #     import: dayjs
@@ -181,6 +194,8 @@ export default defineConfig({
 
   // emit: ['models', 'angular'],
 
+  // layout: ['services'], // or ['operations'] | ['services', 'operations']
+
   // mappedTypes: [
   //   { schema: 'DateTime', import: 'dayjs', type: 'Dayjs' },
   // ],
@@ -207,6 +222,7 @@ export default {
   output: './src/generated',
 
   // emit: ['models', 'angular'],
+  // layout: ['services'], // or ['operations'] | ['services', 'operations']
 };
 `;
 
@@ -330,6 +346,7 @@ async function main(argv) {
       mappedTypes: merged.mappedTypes ?? undefined,
       responseTypeMapping: merged.responseTypeMapping ?? undefined,
       naming: merged.naming ?? undefined,
+      layout: merged.layout ?? undefined,
     });
     process.stdout.write(`${formatSuccess(result, merged.verbose)}\n`);
   } catch (error) {

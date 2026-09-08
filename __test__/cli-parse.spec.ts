@@ -836,3 +836,95 @@ const tsNativeAvailable = nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 6)
     });
   },
 );
+
+// ── layout ──────────────────────────────────────────────────────────────────
+
+test('normalizeLayout splits a comma-separated string and trims whitespace', t => {
+  t.deepEqual(parse.normalizeLayout('services'), ['services']);
+  t.deepEqual(parse.normalizeLayout(' operations '), ['operations']);
+  t.deepEqual(parse.normalizeLayout('services, operations'), ['services', 'operations']);
+});
+
+test('normalizeLayout accepts an array and dedupes it', t => {
+  t.deepEqual(parse.normalizeLayout(['operations', 'services', 'operations']), [
+    'operations',
+    'services',
+  ]);
+});
+
+test('normalizeLayout returns null for absent values', t => {
+  t.is(parse.normalizeLayout(undefined), null);
+  t.is(parse.normalizeLayout(null), null);
+});
+
+test('normalizeLayout rejects unknown values', t => {
+  const err = t.throws(() => parse.normalizeLayout('flat'));
+  t.true(err?.message.includes("Unknown layout: 'flat'"));
+  t.true(err?.message.includes("'services', 'operations'"));
+});
+
+test('normalizeLayout rejects non-list values', t => {
+  const err = t.throws(() => parse.normalizeLayout(42));
+  t.true(err?.message.includes('Invalid layout value'));
+  t.true(err?.message.includes('--layout services,operations'));
+});
+
+test('parseArgs: --layout sets the layout list', t => {
+  const result = parse.parseArgs(['generate', '--layout', 'services,operations']);
+  t.deepEqual(result.layout, ['services', 'operations']);
+});
+
+test('parseArgs: repeated --layout flags accumulate', t => {
+  const result = parse.parseArgs([
+    'generate',
+    '--layout',
+    'services',
+    '--layout',
+    'operations',
+  ]);
+  t.deepEqual(result.layout, ['services', 'operations']);
+});
+
+test('parseArgs: layout absent yields null', t => {
+  const result = parse.parseArgs(['generate']);
+  t.is(result.layout, null);
+});
+
+test('parseArgs: --layout rejects unknown values at parse time', t => {
+  const err = t.throws(() => parse.parseArgs(['generate', '--layout', 'flat']));
+  t.true(err?.message.includes("Unknown layout: 'flat'"));
+});
+
+test('parseArgs: --layout errors when next token is another flag', t => {
+  const err = t.throws(() =>
+    parse.parseArgs(['generate', '--layout', '--input', 'spec.yaml']),
+  );
+  t.regex(err!.message, /--layout requires a value/);
+});
+
+test('mergeConfig: cli layout wins over file layout', t => {
+  const merged = parse.mergeConfig(
+    { layout: ['operations'] },
+    { layout: ['services', 'operations'] },
+  );
+  t.deepEqual(merged.layout, ['services', 'operations']);
+});
+
+test('mergeConfig: file layout fills in when the cli flag is absent', t => {
+  const merged = parse.mergeConfig({ layout: ['operations'] }, { layout: null });
+  t.deepEqual(merged.layout, ['operations']);
+});
+
+test('mergeConfig: a file layout given as a string is split like the cli flag', t => {
+  const merged = parse.mergeConfig({ layout: 'services,operations' }, { layout: null });
+  t.deepEqual(merged.layout, ['services', 'operations']);
+});
+
+test('mergeConfig: layout defaults to null so the generator default applies', t => {
+  t.is(parse.mergeConfig({}, {}).layout, null);
+});
+
+test('mergeConfig: rejects an unknown file-config layout', t => {
+  const err = t.throws(() => parse.mergeConfig({ layout: ['flat'] }, {}));
+  t.true(err?.message.includes("Unknown layout: 'flat'"));
+});

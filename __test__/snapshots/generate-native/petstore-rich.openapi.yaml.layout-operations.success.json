@@ -1,0 +1,37 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/petstore-rich.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Petstore Rich",
+    "pathCount": 2,
+    "operationCount": 3,
+    "schemaCount": 6
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest.validate.ts"
+    },
+    {
+      "path": "rest/pet/get-pet.ts"
+    },
+    {
+      "path": "rest/pet/list-pets.ts"
+    },
+    {
+      "path": "rest/pet/update-pet.ts"
+    },
+    {
+      "path": "rest/pet/index.ts"
+    }
+  ]
+}

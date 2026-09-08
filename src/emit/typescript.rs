@@ -21,7 +21,6 @@
 //! owning a `Writer`.
 
 use std::borrow::Cow;
-use std::collections::{BTreeMap, BTreeSet};
 
 use crate::ir::canonical::BodyFieldType;
 use crate::ir::identifier::is_valid_identifier;
@@ -225,11 +224,15 @@ pub(crate) fn safe_property_name(name: &str) -> Cow<'_, str> {
 /// line is added (after the description body if both are present) so the
 /// emitted output surfaces the deprecation marker to IDE tooltips and
 /// linters at the call site.
+pub(crate) fn has_jsdoc(description: Option<&str>, deprecated: bool) -> bool {
+  deprecated || description.is_some_and(|text| !text.trim_end().is_empty())
+}
+
 pub(crate) fn jsdoc(out: &mut Writer, description: Option<&str>, deprecated: bool) {
-  let trimmed = description.map(str::trim_end).filter(|s| !s.is_empty());
-  if trimmed.is_none() && !deprecated {
+  if !has_jsdoc(description, deprecated) {
     return;
   }
+  let trimmed = description.map(str::trim_end).filter(|s| !s.is_empty());
   out.line("/**");
   if let Some(text) = trimmed {
     for line in text.lines() {
@@ -332,19 +335,6 @@ pub(crate) fn string_union(
   out.dedent();
 }
 
-/// Emit one `import [type] { ... } from '...';` line per path entry.
-/// Names within each path are emitted in iteration order (callers should
-/// pass a `BTreeSet` for stable output).
-pub(crate) fn import_block(
-  out: &mut Writer,
-  by_path: &BTreeMap<&str, BTreeSet<&str>>,
-  type_only: bool,
-) {
-  for (path, names) in by_path {
-    write_import_line(out, names.iter().map(|n| (*n, None)), path, type_only);
-  }
-}
-
 /// Write a single `import [type] { name [as alias], ... } from 'path';`
 /// statement. Folds the 2 sites that duplicate this `format!` shape
 /// (mapped-type imports, service type imports).
@@ -360,11 +350,36 @@ pub(crate) fn write_import_line<'a>(
   path: &str,
   type_only: bool,
 ) {
-  let prefix = if type_only {
-    "import type { "
+  let (inline_prefix, block_prefix) = if type_only {
+    ("import type { ", "import type {\n")
   } else {
-    "import { "
+    ("import { ", "import {\n")
   };
+  write_specifier_line(out, inline_prefix, block_prefix, names, path);
+}
+
+/// `export type { name, ... } from 'path';`, wrapped like `write_import_line`.
+pub(crate) fn write_type_reexport_line<'a>(
+  out: &mut Writer,
+  names: impl IntoIterator<Item = &'a str>,
+  path: &str,
+) {
+  write_specifier_line(
+    out,
+    "export type { ",
+    "export type {\n",
+    names.into_iter().map(|name| (name, None)),
+    path,
+  );
+}
+
+fn write_specifier_line<'a>(
+  out: &mut Writer,
+  inline_prefix: &str,
+  block_prefix: &str,
+  names: impl IntoIterator<Item = (&'a str, Option<&'a str>)>,
+  path: &str,
+) {
   let suffix_len = " } from '".len() + path.len() + "';".len();
   // Buffer the (name, alias) pairs so we can measure the joined width
   // before committing to inline vs multi-line. Names are short
@@ -376,10 +391,10 @@ pub(crate) fn write_import_line<'a>(
     .map(|(name, alias)| name.len() + alias.map_or(0, |a| " as ".len() + a.len()))
     .sum();
   let separators_width = entries.len().saturating_sub(1) * ", ".len();
-  let joined_width = prefix.len() + names_width + separators_width + suffix_len;
+  let joined_width = inline_prefix.len() + names_width + separators_width + suffix_len;
 
   if joined_width <= IMPORT_INLINE_WIDTH || entries.len() <= 1 {
-    out.push(prefix);
+    out.push(inline_prefix);
     let mut first = true;
     for (name, alias) in &entries {
       if !first {
@@ -401,11 +416,7 @@ pub(crate) fn write_import_line<'a>(
   // Multi-line form: one identifier per indented line, trailing comma
   // on every entry (matches prettier's wrap style so the first
   // formatter pass on a consumer's checkout is a no-op).
-  out.push(if type_only {
-    "import type {\n"
-  } else {
-    "import {\n"
-  });
+  out.push(block_prefix);
   out.indent();
   for (name, alias) in &entries {
     out.push(name);

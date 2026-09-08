@@ -276,11 +276,55 @@ const successFixtures = [
   // so the response is emitted as a typed JSON shape via the default
   // `requestFactory<…>(…)` (no non-JSON variant).
   'response-problem-json.openapi.yaml',
+  // Operations named `default` and `index` are legal class properties
+  // under the default layout; the `operations` layout rejects them (see
+  // the reserved-identifier failure snapshots below).
+  'default-method-name.openapi.yaml',
+  'index-method-name.openapi.yaml',
 ] as const;
 
-for (const fixtureName of successFixtures) {
-  test(`generate preserves full success payload snapshot for ${fixtureName}`, async t => {
-    t.deepEqual(await successResult(fixtureName), hydrateSuccessSnapshot(fixtureName));
+// Option-parameterised success cases. `label` names the snapshot files:
+// `<label>.success.json` plus the `<label>/` sibling directory. Keep in
+// sync with `layoutCases` in scripts/regen-snapshots.mjs.
+interface SuccessCase {
+  fixture: string;
+  label: string;
+  options: Record<string, unknown>;
+}
+
+const layoutCases: readonly SuccessCase[] = [
+  {
+    fixture: 'petstore-rich.openapi.yaml',
+    label: 'petstore-rich.openapi.yaml.layout-operations',
+    options: { layout: ['operations'] },
+  },
+  {
+    fixture: 'petstore-rich.openapi.yaml',
+    label: 'petstore-rich.openapi.yaml.layout-services-operations',
+    options: { layout: ['services', 'operations'] },
+  },
+  {
+    fixture: 'header-param.openapi.yaml',
+    label: 'header-param.openapi.yaml.layout-operations',
+    options: { layout: ['operations'] },
+  },
+  // `delete` is a reserved word: the operation file declares `delete_`
+  // and exports it under the real name; the barrel forwards it.
+  {
+    fixture: 'reserved-method-name.openapi.yaml',
+    label: 'reserved-method-name.openapi.yaml.layout-services-operations',
+    options: { layout: ['services', 'operations'] },
+  },
+];
+
+const successCases: readonly SuccessCase[] = [
+  ...successFixtures.map(fixture => ({ fixture, label: fixture, options: {} })),
+  ...layoutCases,
+];
+
+for (const { fixture: fixtureName, label, options } of successCases) {
+  test(`generate preserves full success payload snapshot for ${label}`, async t => {
+    t.deepEqual(await successResult(fixtureName, options), hydrateSuccessSnapshot(label));
   });
 }
 
@@ -329,12 +373,9 @@ test('snapshot artifacts type-check under tsc --noEmit', t => {
     hydrateStaticTemplate().artifacts;
 
   const includeGlobs: string[] = [];
-  for (const fixtureName of successFixtures) {
-    const snap = hydrateSuccessSnapshot(fixtureName);
-    const fixtureDir = path.join(
-      compileRoot,
-      fixtureName.replace(/[^a-zA-Z0-9_-]+/g, '_'),
-    );
+  for (const { label } of successCases) {
+    const snap = hydrateSuccessSnapshot(label);
+    const fixtureDir = path.join(compileRoot, label.replace(/[^a-zA-Z0-9_-]+/g, '_'));
     fs.mkdirSync(fixtureDir, { recursive: true });
 
     for (const artifact of snap.artifacts) {
@@ -346,7 +387,7 @@ test('snapshot artifacts type-check under tsc --noEmit', t => {
           ? artifact.contents
           : staticArtifacts.find(a => a.path === artifact.path)?.contents;
       if (contents === undefined) {
-        t.fail(`Missing contents for ${artifact.path} in ${fixtureName}`);
+        t.fail(`Missing contents for ${artifact.path} in ${label}`);
         return;
       }
       const filePath = path.join(fixtureDir, artifact.path);
@@ -457,6 +498,21 @@ test('generate preserves stable failure shape for malformed.yaml (regex message)
   t.true((payload.path ?? '').endsWith('test/fixtures/malformed.yaml'));
   // No pre-fatal warnings expected for a decode-stage failure.
   t.deepEqual(payload.warnings, []);
+});
+
+test('generate preserves full failure payload snapshot for a default-named operation under layout operations', async t => {
+  t.deepEqual(
+    await failurePayload('default-method-name.openapi.yaml', { layout: ['operations'] }),
+    readJsonSnapshot('default-method-name.openapi.yaml.layout-operations.failure.json'),
+  );
+});
+
+// `index.ts` is the barrel: an operation file of that name would overwrite it.
+test('generate preserves full failure payload snapshot for an index-named operation under layout operations', async t => {
+  t.deepEqual(
+    await failurePayload('index-method-name.openapi.yaml', { layout: ['operations'] }),
+    readJsonSnapshot('index-method-name.openapi.yaml.layout-operations.failure.json'),
+  );
 });
 
 test('generate preserves full failure payload snapshot for invalid mapped type option', async t => {

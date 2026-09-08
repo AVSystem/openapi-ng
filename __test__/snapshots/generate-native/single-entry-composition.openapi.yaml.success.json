@@ -10,7 +10,7 @@
   "diagnostics": [],
   "artifacts": [
     {
-      "path": "model.generated.ts"
+      "path": "model.ts"
     },
     {
       "path": "rest.model.ts"
@@ -22,7 +22,7 @@
       "path": "rest.validate.ts"
     },
     {
-      "path": "rest/animal.rest.generated.ts"
+      "path": "rest/animal.rest.ts"
     }
   ]
 }

@@ -34,6 +34,7 @@ pub(crate) fn group_operations<'a>(
 ) -> Result<GroupedOperations<'a>, Diagnostic> {
   let mut groups: GroupedOperations<'a> = Vec::new();
   let mut group_indexes = HashMap::<String, usize>::new();
+  let mut method_names: Vec<HashMap<String, &'a OperationDef>> = Vec::new();
 
   for operation in operations {
     let group_name = resolver.group(operation, reporter)?;
@@ -43,9 +44,31 @@ pub(crate) fn group_operations<'a>(
       let index = groups.len();
       let key = group_name.clone();
       groups.push((group_name, Vec::new()));
+      method_names.push(HashMap::new());
       group_indexes.insert(key, index);
       index
     });
+
+    // Two operations with one method name would be two identically named
+    // class properties, or two operation files at the same path.
+    let group_name = &groups[group_index].0;
+    if let Some(previous) = method_names[group_index].insert(method_name.clone(), operation) {
+      return Err(Diagnostic::policy_violation(
+        reporter,
+        "naming-resolution",
+        format!(
+          "methodName '{}' resolves for both {} {} (operationId={}) and {} {} (operationId={}) in group '{}'; adjust naming.methodName so they differ.",
+          method_name,
+          previous.method,
+          previous.path,
+          previous.operation_id,
+          operation.method,
+          operation.path,
+          operation.operation_id,
+          group_name,
+        ),
+      ));
+    }
 
     groups[group_index].1.push((operation, method_name));
   }
@@ -836,7 +859,7 @@ mod tests {
       let ir = api_model_with_multipart_op();
       let mut ctx = test_ctx();
       let services =
-        resolve_service_plans(&ir, &NamingResolver::default(), &ctx.reporter()).expect("ok");
+        resolve_service_plans(&ir, &NamingResolver::default(), &ctx.reporter(), false).expect("ok");
       let op = &services[0].operations[0];
       match &op.request.body {
         Some(PlannedRequestBody::Multipart { fields }) => {
@@ -854,7 +877,7 @@ mod tests {
       let ir = api_model_with_multipart_unsorted_fields();
       let mut ctx = test_ctx();
       let services =
-        resolve_service_plans(&ir, &NamingResolver::default(), &ctx.reporter()).expect("ok");
+        resolve_service_plans(&ir, &NamingResolver::default(), &ctx.reporter(), false).expect("ok");
       let Some(PlannedRequestBody::Multipart { fields }) = &services[0].operations[0].request.body
       else {
         panic!("expected multipart body");
@@ -872,7 +895,7 @@ mod tests {
       // surfaces on the request interface — reject at planning time.
       let ir = api_model_with_form_collision();
       let mut ctx = test_ctx();
-      let err = resolve_service_plans(&ir, &NamingResolver::default(), &ctx.reporter())
+      let err = resolve_service_plans(&ir, &NamingResolver::default(), &ctx.reporter(), false)
         .expect_err("hoisted form fields collide with path param");
       assert_eq!(err.subcode, Some("field-collision"));
       assert!(err.message.contains("fileName"));
@@ -887,7 +910,7 @@ mod tests {
       let ir = api_model_with_multipart_ref_body("UploadForm");
       let mut ctx = test_ctx();
       let services =
-        resolve_service_plans(&ir, &NamingResolver::default(), &ctx.reporter()).expect("ok");
+        resolve_service_plans(&ir, &NamingResolver::default(), &ctx.reporter(), false).expect("ok");
       assert!(matches!(
         services[0].operations[0].request.body,
         Some(PlannedRequestBody::Multipart { .. })

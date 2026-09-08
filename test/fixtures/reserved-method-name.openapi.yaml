@@ -1,0 +1,84 @@
+openapi: 3.0.3
+info:
+  title: Reserved Method Names
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      summary: List pets, optionally filtered by status.
+      tags:
+        - Pet
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetList'
+  /pets/{petId}:
+    get:
+      operationId: getPet
+      tags:
+        - Pet
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '404':
+          description: not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    delete:
+      operationId: delete
+      description: Remove a pet. The operationId is a reserved word on purpose.
+      tags:
+        - Pet
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: deleted
+components:
+  schemas:
+    Pet:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    PetList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Pet'
+    Problem:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string

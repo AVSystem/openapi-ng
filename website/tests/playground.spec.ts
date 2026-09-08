@@ -47,12 +47,49 @@ test('generates the petstore client in the browser', async ({ page }) => {
   await ready(page);
   expect(await page.evaluate(() => globalThis.crossOriginIsolated)).toBe(true);
   await expect(page.locator('#pg-tree li[data-path]')).toHaveCount(6);
-  const petFile = page.locator(
-    '#pg-tree li[data-path="rest/pet.rest.generated.ts"] button',
-  );
-  await expect(petFile).toHaveAttribute('title', 'rest/pet.rest.generated.ts');
+  const petFile = page.locator('#pg-tree li[data-path="rest/pet.rest.ts"] button');
+  await expect(petFile).toHaveAttribute('title', 'rest/pet.rest.ts');
   await petFile.click();
   await expect(page.locator('#pg-code')).toContainText('listPets');
+});
+
+test('nests the operations layout in collapsible directories', async ({ page }) => {
+  await ready(page);
+  await replaceText(
+    page,
+    '#pg-config',
+    '{"emit": ["models", "angular"], "layout": ["services", "operations"]}',
+  );
+  const tree = page.locator('#pg-tree');
+  await expect(tree.locator('li[data-path]')).toHaveCount(12);
+  const rest = tree.locator('li[data-dir="rest"]');
+  const pet = rest.locator('li[data-dir="rest/pet"]');
+  await expect(pet.locator('> button')).toHaveAttribute('aria-expanded', 'true');
+  const index = pet.locator('li[data-path="rest/pet/index.ts"] button');
+  await expect(index).toHaveAttribute('title', 'rest/pet/index.ts');
+  await index.click();
+  await expect(page.locator('#pg-code')).toContainText('list-pets');
+  await pet.locator('> button').click();
+  await expect(pet.locator('> button')).toHaveAttribute('aria-expanded', 'false');
+  await expect(index).toBeHidden();
+  await expect(rest.locator('li[data-path="rest/pet.rest.ts"]')).toBeVisible();
+  // A regeneration keeps the fold.
+  await replaceText(
+    page,
+    '#pg-config',
+    '{"emit": ["models", "angular"], "layout": ["operations"]}',
+  );
+  await expect(tree.locator('li[data-path]')).toHaveCount(10);
+  await expect(pet.locator('> button')).toHaveAttribute('aria-expanded', 'false');
+  await expect(index).toBeHidden();
+  await pet.locator('> button').click();
+  await expect(index).toBeVisible();
+  // The tree never scrolls sideways, however deep the files sit.
+  const [scrollWidth, clientWidth] = await tree.evaluate(el => [
+    el.scrollWidth,
+    el.clientWidth,
+  ]);
+  expect(scrollWidth).toBe(clientWidth);
 });
 
 test('shows a typed diagnostic for an unsupported spec', async ({ page }) => {
@@ -130,9 +167,7 @@ test('keeps diagnostic colours readable in both themes', async ({ page }) => {
 
 test('applies a pasted project config to the generated names', async ({ page }) => {
   await ready(page);
-  await page
-    .locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button')
-    .click();
+  await page.locator('#pg-tree li[data-path="rest/pet.rest.ts"] button').click();
   await expect(page.locator('#pg-code')).toContainText('listPets');
   await replaceText(page, '#pg-config', SNAKE_CASE_CONFIG);
   await expect(page.locator('#pg-code')).toContainText('list_pets');
@@ -253,9 +288,7 @@ test.describe('on a wide screen', () => {
     await ready(page);
     const widthOf = () =>
       page.locator('.pg').evaluate(el => el.getBoundingClientRect().width);
-    await page
-      .locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button')
-      .click();
+    await page.locator('#pg-tree li[data-path="rest/pet.rest.ts"] button').click();
     const wide = await widthOf();
     await page.locator('#pg-tree li[data-path="rest.util.ts"] button').click();
     expect(await widthOf()).toBeCloseTo(wide, 0);
@@ -274,9 +307,7 @@ test.describe('on a wide screen', () => {
 
 test('scrolls inside each pane, never in a nested wrapper', async ({ page }) => {
   await ready(page);
-  await page
-    .locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button')
-    .click();
+  await page.locator('#pg-tree li[data-path="rest/pet.rest.ts"] button').click();
   // CodeMirror owns its scrolling; an outer scroller would double up and re-measure.
   for (const pane of ['#pg-editor', '#pg-config']) {
     await expect(page.locator(pane)).toHaveCSS('overflow-x', 'hidden');
@@ -339,9 +370,7 @@ test('shows the generated file in a read-only editor with line numbers and searc
   page,
 }) => {
   await ready(page);
-  await page
-    .locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button')
-    .click();
+  await page.locator('#pg-tree li[data-path="rest/pet.rest.ts"] button').click();
   const output = page.locator('#pg-code');
   await expect(output.locator('.cm-content')).toHaveAttribute('contenteditable', 'false');
   await expect(output.locator('.cm-lineNumbers .cm-gutterElement').nth(1)).toHaveText(
@@ -384,9 +413,7 @@ test('paints the editors like the docs code blocks in both themes', async ({ pag
   }
   expect(snippet.light.background).not.toBe(snippet.dark.background);
   await ready(page);
-  await page
-    .locator('#pg-tree li[data-path="rest/pet.rest.generated.ts"] button')
-    .click();
+  await page.locator('#pg-tree li[data-path="rest/pet.rest.ts"] button').click();
   for (const theme of ['light', 'dark'] as const) {
     for (const pane of ['#pg-editor', '#pg-config', '#pg-code']) {
       expect(await themed(theme, `${pane} .cm-editor`)).toBe(snippet[theme].background);

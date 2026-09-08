@@ -150,6 +150,7 @@ describe('parseConfig', () => {
       ok: true,
       options: {
         emit: ['models', 'angular'],
+        layout: ['services'],
         mappedTypes: [],
         responseTypeMapping: [],
         naming: {

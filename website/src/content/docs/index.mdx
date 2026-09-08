@@ -24,26 +24,28 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 <CardGrid>
   <Card title="Rust-powered codegen" icon="rocket">
-    The engine is a native binary loaded via [NAPI-RS](https://napi.rs).
-    The same input always produces identical output.
+    The engine is a native binary loaded via [NAPI-RS](https://napi.rs). The same input
+    always produces identical output.
   </Card>
   <Card title="Angular-first output" icon="puzzle">
-    Each operation comes with three flavors — `.observable()`,
-    `.resource()`, and `.request()` — matching Angular's current HTTP
-    primitives.
+    Each operation comes with three flavors — `.observable()`, `.resource()`, and
+    `.request()` — matching Angular's current HTTP primitives.
+  </Card>
+  <Card title="Two layouts" icon="list-format">
+    Per-tag `@Injectable` services by default, or `layout: operations` for one
+    tree-shakeable constant per operation, bound to DI per call or once with
+    `withInjector()`.
   </Card>
   <Card title="Strict OpenAPI subset" icon="approve-check">
-    A focused 3.x subset with clear diagnostics. No silent
-    misgeneration.
+    A focused 3.x subset with clear diagnostics. No silent misgeneration.
   </Card>
   <Card title="Configurable naming" icon="setting">
-    Tune method names and service grouping with template + regex rules,
-    via YAML, JSON, or TypeScript config.
+    Tune method names and service grouping with template + regex rules, via YAML, JSON, or
+    TypeScript config.
   </Card>
   <Card title="Thin, pass-through helpers" icon="open-book">
-    Generated methods build the request and forward every
-    `HttpClient.request` / `httpResource` option through
-    unchanged. The response reaches you untouched.
+    Generated methods build the request and forward every `HttpClient.request` /
+    `httpResource` option through unchanged. The response reaches you untouched.
   </Card>
 </CardGrid>
 

@@ -21,10 +21,7 @@ export type PetId = string;
 
 export type PetList = Pet[];
 
-export type PetStatus =
-  | 'available'
-  | 'pending'
-  | 'sold';
+export type PetStatus = 'available' | 'pending' | 'sold';
 ```
 
 Properties are sorted alphabetically. Optional fields get `?`. All
@@ -44,22 +41,18 @@ operation is a readonly property with three flavors:
   providedIn: 'root',
 })
 export class PetRest {
-  readonly listPets = requestFactory.zeroArg<PetList>(
-    () => ({
-      method: 'GET',
-      url: `/pets`,
-    }),
-  );
+  readonly listPets = requestFactory.zeroArg<PetList>(() => ({
+    method: 'GET',
+    url: `/pets`,
+  }));
 
-  readonly getPet = requestFactory<GetPetParams, Pet>(
-    (request: GetPetParams) => {
-      const { petId } = request;
-      return {
-        method: 'GET',
-        url: `/pets/${encodeURIComponent(petId)}`,
-      };
-    },
-  );
+  readonly getPet = requestFactory<GetPetParams, Pet>((request: GetPetParams) => {
+    const { petId } = request;
+    return {
+      method: 'GET',
+      url: `/pets/${encodeURIComponent(petId)}`,
+    };
+  });
 
   readonly updatePet = requestFactory<UpdatePetParams, Pet>(
     (request: UpdatePetParams) => {
@@ -104,9 +97,9 @@ how the spec author wrote the schema:
 ```ts
 // `updatePet` — body is `$ref: UpdatePetRequest`, so it nests.
 export interface UpdatePetParams {
-  petId: PetId;             // path param
+  petId: PetId; // path param
   includeHistory?: boolean; // query param
-  body: UpdatePetRequest;   // ref body, nested
+  body: UpdatePetRequest; // ref body, nested
 }
 
 // `decide` — body is an inline `{ csvImportId, doImport }` object, so
@@ -124,6 +117,152 @@ hoist its properties. Hoisted properties that collide with a path or
 query parameter name are rejected at codegen with
 `E_POLICY_VIOLATION` / `field-collision` — rename the offender or
 hoist the body schema to a `$ref` so it nests under `body` instead.
+
+## Standalone operations
+
+Set `layout: ['operations']` (or `--layout operations`) and every
+operation becomes its own file under `rest/<group>/`, exporting one
+constant built with `defineOperation`. The builder and the
+`<Op>Params` / `<Op>Error` interfaces are the same text the service
+class carries; only the wrapper differs, and there are no classes:
+
+```ts
+// rest/pet/get-pet.ts
+import { defineOperation } from '../../rest.util';
+import type { Pet, PetId } from '../../model';
+
+export const getPet = /* @__PURE__ */ defineOperation<GetPetParams, Pet>(
+  'getPet',
+  (request: GetPetParams) => {
+    const { petId } = request;
+    return {
+      method: 'GET',
+      url: `/pets/${encodeURIComponent(petId)}`,
+    };
+  },
+);
+
+export interface GetPetParams {
+  petId: PetId;
+}
+```
+
+`rest/<group>/index.ts` re-exports every file in the
+group. Import it as a namespace and only the members you touch reach
+the bundle: the `/* @__PURE__ */` annotation lets esbuild (the Angular
+CLI's bundler) and Rollup drop the operations you never read.
+
+```ts
+import * as pets from './rest/pet';
+
+readonly pet = pets.getPet.resource(() => ({ petId: this.selectedId() }));
+```
+
+### Calling a standalone operation
+
+`.observable()` and `.resource()` resolve `HttpClient` and the base
+path per call, from `options.injector` or else from the current
+[injection context](https://angular.dev/guide/di/dependency-injection-context),
+the same contract `resource` and `httpResource` follow:
+
+```ts
+// Field initializer, constructor, guard, validateAsync factory: no injector needed.
+readonly pets = listPets.resource({ defaultValue: [] });
+
+// Event handler, effect, rxResource stream: pass the injector.
+readonly #injector = inject(Injector);
+update(petId: PetId) {
+  updatePet.observable({ petId, status: 'sold' }, { injector: this.#injector }).subscribe();
+}
+```
+
+An explicit `{ injector }` also wins over a `withInjector()` binding.
+Calling either outside an injection context without an injector
+throws `openapi-ng: listPets.observable() was called outside an
+injection context` in dev builds, with Angular's `NG0203` attached as
+`cause`.
+
+`.request()` needs neither. Without options it returns the builder
+output as written, with the spec-relative URL, so unit tests and mock
+handlers can use it with no Angular involved. Pass `{ injector }` to
+get the URL with the base path prepended. The bound form below always
+prepends it.
+
+### Binding once: `.withInjector()`
+
+`op.withInjector(injector?)` resolves DI once and returns the bound
+form: exactly the `RequestFn` a service class property is, so handlers
+call it without passing an injector each time. The argument defaults
+to `inject(Injector)`, so the zero-argument call must run in an
+injection context:
+
+```ts
+readonly createPet = createPet.withInjector();
+
+save() {
+  this.createPet.observable({ body: this.draft() }).subscribe();
+}
+```
+
+For several operations, the free `withInjector` from `rest.util` binds
+a record in one line. The result exposes exactly the operations named
+and none of them has `withInjector`:
+
+```ts
+import { withInjector } from './rest.util';
+
+readonly #api = withInjector({ createPet, deletePet, listPets });
+```
+
+Pass a literal, not the namespace import: `withInjector(pets)` works
+but retains every operation in the group. To get the whole group, list
+`services` in `layout` as well and inject the class instead.
+
+### Both layouts together
+
+`layout: ['services', 'operations']` emits the operation files and
+barrels plus the per-tag classes, each property bound from the barrel:
+
+```ts
+import { Injectable } from '@angular/core';
+import * as ops from './pet';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class PetRest {
+  readonly delete = ops.delete.withInjector();
+  readonly listPets = ops.listPets.withInjector();
+}
+
+export type { DeleteParams, ListPetsParams } from './pet';
+```
+
+`PetRest.listPets` has the same type with or without `operations` in
+the list, and the class file re-exports the `Params` / `Error`
+interfaces, so adding `operations` changes the file tree and nothing
+that compiles against the class.
+
+### Reserved names
+
+A method name that is a reserved word (`delete` is the common one once
+naming rules strip a tag prefix) is declared as `delete_` and exported
+under its real name. `ops.delete` works on the namespace import; a
+direct import aliases it:
+
+```ts
+import { delete as deletePet } from './rest/pet/delete';
+```
+
+Two names cannot be standalone operations: `default`, which the barrel
+would expose as `ops.default`, and `index`, whose file is the barrel
+itself. The generator rejects both with `E_POLICY_VIOLATION` /
+`reserved-identifier` and points at `naming.methodName`. Two method
+names that kebab-case to one file name (`delete` and `delete_`) are
+rejected under `naming-resolution`.
+
+`validateRest` accepts a standalone operation or a bound one as its
+second argument.
 
 ## Configuring the base path
 
@@ -160,12 +299,12 @@ strong typing on top.
 The signature uses overloads keyed on whether you pass `defaultValue`
 and/or `parse`:
 
-| Options                       | Return type                       |
-|-------------------------------|-----------------------------------|
-| *(none)*                      | `HttpResourceRef<T \| undefined>` |
-| `{ defaultValue }`            | `HttpResourceRef<T>`              |
-| `{ parse }`                   | `HttpResourceRef<U \| undefined>` |
-| `{ defaultValue, parse }`     | `HttpResourceRef<U>`              |
+| Options                   | Return type                       |
+| ------------------------- | --------------------------------- |
+| _(none)_                  | `HttpResourceRef<T \| undefined>` |
+| `{ defaultValue }`        | `HttpResourceRef<T>`              |
+| `{ parse }`               | `HttpResourceRef<U \| undefined>` |
+| `{ defaultValue, parse }` | `HttpResourceRef<U>`              |
 
 …where `T` is the spec-declared response type and `U` is whatever
 `parse` returns.
@@ -179,25 +318,27 @@ typed as the spec's response type**, so `parse` becomes an honest
 transformation rather than a runtime cast.
 
 ```ts
-import { PetRest } from './generated/rest/pet.rest.generated';
-import type { Pet } from './generated/model.generated';
+import { PetRest } from './generated/rest/pet.rest';
+import type { Pet } from './generated/model';
 
-@Component({ /* ... */ })
+@Component({/* ... */})
 export class PetList {
   readonly #petRest = inject(PetRest);
 
   // raw: Pet, return: PetSummary — both fully typed, no `as` needed.
-  protected readonly summary =
-    this.#petRest.getPet.resource(
-      () => ({ petId: this.selectedId() }),
-      {
-        defaultValue: { id: '', label: '—' } satisfies PetSummary,
-        parse: (raw) => ({ id: raw.id, label: raw.name }),
-      },
-    );
+  protected readonly summary = this.#petRest.getPet.resource(
+    () => ({ petId: this.selectedId() }),
+    {
+      defaultValue: { id: '', label: '—' } satisfies PetSummary,
+      parse: raw => ({ id: raw.id, label: raw.name }),
+    },
+  );
 }
 
-interface PetSummary { id: string; label: string }
+interface PetSummary {
+  id: string;
+  label: string;
+}
 ```
 
 Pass any of the standard `httpResource` options the same way — for
@@ -216,8 +357,8 @@ The reactive request callback may return `undefined` to skip the call
 (matching `httpResource`'s convention):
 
 ```ts
-this.#petRest.getPet.resource(
-  () => this.selectedId() ? { petId: this.selectedId() } : undefined,
+this.#petRest.getPet.resource(() =>
+  this.selectedId() ? { petId: this.selectedId() } : undefined,
 );
 ```
 
@@ -283,11 +424,11 @@ this.#petRest.updatePet.observable(req, { observe: 'response' });
 this.#petRest.updatePet.observable(req, { observe: 'events', reportProgress: true });
 ```
 
-| Options                       | Return type                       |
-|-------------------------------|-----------------------------------|
-| *(none)* / `{ observe: 'body' }`    | `Observable<T>`                     |
-| `{ observe: 'response' }`           | `Observable<HttpResponse<T>>`       |
-| `{ observe: 'events' }`             | `Observable<HttpEvent<T>>`          |
+| Options                          | Return type                   |
+| -------------------------------- | ----------------------------- |
+| _(none)_ / `{ observe: 'body' }` | `Observable<T>`               |
+| `{ observe: 'response' }`        | `Observable<HttpResponse<T>>` |
+| `{ observe: 'events' }`          | `Observable<HttpEvent<T>>`    |
 
 The options bag mirrors `HttpClient.request`'s options minus the
 fields the generator already supplies — `body`, `params`, `headers`,
@@ -305,33 +446,32 @@ need `Location`, `ETag`, or trace headers from a `POST` / `PUT` /
 ## Using a service
 
 ```ts
-@Component({ /* ... */ })
+@Component({/* ... */})
 export class PetList {
   readonly #petRest = inject(PetRest);
 
   // As an Observable
-  protected readonly pets$ =
-    this.#petRest.listPets.observable();
+  protected readonly pets$ = this.#petRest.listPets.observable();
 
   // As an HttpResource (reactive, signal-based)
-  protected readonly petsResource =
-    this.#petRest.listPets.resource({
-      defaultValue: [],
-    });
+  protected readonly petsResource = this.#petRest.listPets.resource({
+    defaultValue: [],
+  });
 
   // With parameters
-  protected readonly petResource =
-    this.#petRest.getPet.resource(
-      () => ({ petId: this.selectedId() }),
-    );
+  protected readonly petResource = this.#petRest.getPet.resource(() => ({
+    petId: this.selectedId(),
+  }));
 
   // Imperative call
   protected update(petId: PetId) {
-    this.#petRest.updatePet.observable({
-      petId,
-      status: 'sold',
-      tagIds: [1, 2],
-    }).subscribe();
+    this.#petRest.updatePet
+      .observable({
+        petId,
+        status: 'sold',
+        tagIds: [1, 2],
+      })
+      .subscribe();
   }
 
   // Raw CommonRequest — for custom transports, logging, etc.
@@ -350,11 +490,11 @@ the matching `httpResource` factory. The `requestFactory` symbol
 itself is a callable for JSON, with sibling factories for the other
 kinds:
 
-| Response kind | Factory                       | Emitted return type           |
-|---------------|-------------------------------|-------------------------------|
-| `json`        | `requestFactory(...)`         | `Observable<T>` / `HttpResourceRef<T>` |
-| `blob`        | `requestFactory.blob(...)`    | `Observable<Blob>` / `HttpResourceRef<Blob>` |
-| `text`        | `requestFactory.text(...)`    | `Observable<string>` / `HttpResourceRef<string>` |
+| Response kind | Factory                           | Emitted return type                                        |
+| ------------- | --------------------------------- | ---------------------------------------------------------- |
+| `json`        | `requestFactory(...)`             | `Observable<T>` / `HttpResourceRef<T>`                     |
+| `blob`        | `requestFactory.blob(...)`        | `Observable<Blob>` / `HttpResourceRef<Blob>`               |
+| `text`        | `requestFactory.text(...)`        | `Observable<string>` / `HttpResourceRef<string>`           |
 | `arrayBuffer` | `requestFactory.arrayBuffer(...)` | `Observable<ArrayBuffer>` / `HttpResourceRef<ArrayBuffer>` |
 
 The picker uses the response's declared content type; you can override
@@ -431,7 +571,7 @@ tree-shakes away when unused.
 import { validateRest } from './generated/rest.validate';
 
 validateRest(emailPath, accountRest.checkEmail, {
-  request: (ctx) => ({ email: ctx.value() }),
+  request: ctx => ({ email: ctx.value() }),
   onError: () => ({ kind: 'email-taken' }),
 });
 ```
@@ -446,9 +586,9 @@ states:
 
 ```ts
 validateRest(emailPath, accountRest.checkEmail, {
-  request: (ctx) => ({ email: ctx.value() }),
+  request: ctx => ({ email: ctx.value() }),
   debounce: 300,
-  when: (ctx) => ctx.value().length > 2,
+  when: ctx => ctx.value().length > 2,
   onError: () => ({ kind: 'email-taken' }),
 });
 ```

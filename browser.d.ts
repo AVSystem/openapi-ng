@@ -15,7 +15,7 @@ export type {
   NamingConfig,
   ResponseTypeMapping,
 } from './index';
-export { EmitTarget, GenerateError } from './index';
+export { EmitTarget, GenerateError, Layout } from './index';
 
 /**
  * Generate in the browser. Same contract as the Node `generate`, except

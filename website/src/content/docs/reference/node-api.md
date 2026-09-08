@@ -33,16 +33,17 @@ interface GenerateOptions {
   inputPath?: string;
   inputContents?: string;
   displayPath?: string;
-  inputFormat?: InputFormat;          // const enum: 'json' | 'yaml'
+  inputFormat?: InputFormat; // const enum: 'json' | 'yaml'
   outputPath?: string;
-  emit?: Array<EmitTarget>;           // const enum: 'models' | 'angular'
+  emit?: Array<EmitTarget>; // const enum: 'models' | 'angular'
   mappedTypes?: Array<MappedType>;
   responseTypeMapping?: Array<ResponseTypeMapping>;
   naming?: NamingConfig;
+  layout?: Array<Layout>; // const enum: 'services' | 'operations'
 }
 ```
 
-`InputFormat`, `EmitTarget`, and `ResponseType` (used below) are
+`InputFormat`, `EmitTarget`, `Layout`, and `ResponseType` (used below) are
 exported both as TypeScript types and as runtime `const` objects, so
 you can use them either as string literals or as named constants:
 
@@ -51,13 +52,13 @@ import { EmitTarget, InputFormat, generate } from '@avsystem/openapi-ng';
 
 await generate({
   inputPath: './spec.yaml',
-  inputFormat: InputFormat.Yaml,            // or 'yaml'
-  emit: [EmitTarget.Models, EmitTarget.Angular],  // or ['models', 'angular']
+  inputFormat: InputFormat.Yaml, // or 'yaml'
+  emit: [EmitTarget.Models, EmitTarget.Angular], // or ['models', 'angular']
 });
 ```
 
 | Field                 | Notes                                                                                                                                                                                                       |
-|-----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `inputPath`           | Path to the spec on disk. Mutually exclusive with `inputContents`; setting both or neither is rejected.                                                                                                     |
 | `inputContents`       | Raw spec source. When set, `displayPath` is required and `OPENAPI_NG_MAX_INPUT_BYTES` applies to the byte length.                                                                                           |
 | `displayPath`         | Banner / diagnostic display string. Required with `inputContents`; ignored with `inputPath` (the path itself is normalised).                                                                                |
@@ -67,6 +68,7 @@ await generate({
 | `mappedTypes`         | Per-schema overrides — point a generated schema at an external import. See the [Configuration guide](/guides/configuration/).                                                                               |
 | `responseTypeMapping` | Per-content-type override for the response decoding kind (`json` / `blob` / `text` / `arrayBuffer`). Matched case-insensitively against the spec's media types. Wires the right `requestFactory.*` variant. |
 | `naming`              | Customise emitted method and group names. See the [Configuration guide](/guides/configuration/).                                                                                                            |
+| `layout`              | Angular output layouts: `services` (default, per-tag classes) and/or `operations` (one file per operation plus a barrel). See [Layout](/guides/configuration/#layout).                                      |
 
 ### Browser usage
 
@@ -80,10 +82,10 @@ for installation and the required response headers.
 
 ```ts
 interface MappedType {
-  schema: string;   // schema name as it appears in #/components/schemas
-  import: string;   // package or relative path to import from
-  type: string;     // exported type name in that module
-  alias?: string;   // local alias if it would otherwise collide
+  schema: string; // schema name as it appears in #/components/schemas
+  import: string; // package or relative path to import from
+  type: string; // exported type name in that module
+  alias?: string; // local alias if it would otherwise collide
 }
 ```
 
@@ -91,8 +93,8 @@ interface MappedType {
 
 ```ts
 interface ResponseTypeMapping {
-  contentType: string;                                   // matched case-insensitively
-  responseType: ResponseType;                            // const enum: 'json' | 'blob' | 'text' | 'arrayBuffer'
+  contentType: string; // matched case-insensitively
+  responseType: ResponseType; // const enum: 'json' | 'blob' | 'text' | 'arrayBuffer'
 }
 ```
 
@@ -114,7 +116,7 @@ interface NamingRule {
   from?: string;
   parse?: RegExp;
   format?: string;
-  case?: Case;     // 'camel' | 'pascal' | 'snake' | 'kebab' | 'constant'
+  case?: Case; // 'camel' | 'pascal' | 'snake' | 'kebab' | 'constant'
 }
 ```
 
@@ -143,8 +145,8 @@ interface GenerateSummary {
 }
 
 interface GeneratedArtifact {
-  path: string;       // relative output path
-  contents: string;   // emitted source, always present
+  path: string; // relative output path
+  contents: string; // emitted source, always present
 }
 ```
 
@@ -168,6 +170,7 @@ interface Config {
   mappedTypes?: Array<MappedType>;
   responseTypeMapping?: Array<ResponseTypeMapping>;
   naming?: NamingConfig;
+  layout?: Array<Layout>;
 }
 ```
 
@@ -177,9 +180,7 @@ import { defineConfig } from '@avsystem/openapi-ng/config';
 export default defineConfig({
   input: 'petstore.openapi.yaml',
   output: './generated',
-  responseTypeMapping: [
-    { contentType: 'application/pdf', responseType: 'blob' },
-  ],
+  responseTypeMapping: [{ contentType: 'application/pdf', responseType: 'blob' }],
 });
 ```
 

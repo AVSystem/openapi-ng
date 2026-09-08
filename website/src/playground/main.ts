@@ -6,7 +6,7 @@ import { createEditor } from './editor';
 import { detectFormat, displayPathFor } from './format';
 import { engineVersion, GenerateError, loadGenerate, type GenerateFn } from './generator';
 import { copyText, createOutput } from './output';
-import { buildTree, renderTree } from './tree';
+import { ancestorsOf, buildTree, renderTree, type TreeNode } from './tree';
 
 const DEBOUNCE_MS = 150;
 const STATUS_RESTORE_MS = 2000;
@@ -51,7 +51,9 @@ export function start(doc: Document): void {
 
   let generate: GenerateFn | null = null;
   let lastResult: GenerateResult | null = null;
+  let lastTree: TreeNode[] = [];
   let selectedPath: string | null = null;
+  const collapsed = new Set<string>();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let runId = 0;
   let readyStatus = '';
@@ -94,21 +96,39 @@ export function start(doc: Document): void {
     for (const note of notes) append(note, 'is-note');
   }
 
+  function renderFiles(): void {
+    if (!lastResult) return;
+    renderTree(treeEl, lastTree, {
+      selectedPath,
+      collapsed,
+      onSelect: select,
+      onToggle: toggle,
+    });
+  }
+
   function select(path: string): void {
     selectedPath = path;
-    if (!lastResult) return;
-    const rows = buildTree(lastResult.artifacts);
-    renderTree(treeEl, rows, selectedPath, select);
-    const artifact = lastResult.artifacts.find(a => a.path === path);
+    renderFiles();
+    const artifact = lastResult?.artifacts.find(a => a.path === path);
     if (artifact) output.setValue(artifact.contents);
+  }
+
+  function toggle(dir: string): void {
+    if (!collapsed.delete(dir)) collapsed.add(dir);
+    renderFiles();
   }
 
   function showResult(result: GenerateResult, elapsedMs: number, notes: string[]): void {
     lastResult = result;
+    lastTree = buildTree(result.artifacts);
     root!.classList.remove('is-stale');
     const paths = result.artifacts.map(a => a.path);
-    if (!selectedPath || !paths.includes(selectedPath)) selectedPath = paths[0] ?? null;
-    renderTree(treeEl, buildTree(result.artifacts), selectedPath, select);
+    if (!selectedPath || !paths.includes(selectedPath)) {
+      selectedPath = paths[0] ?? null;
+      // A freshly picked file must not land inside a folded directory.
+      for (const dir of ancestorsOf(selectedPath ?? '')) collapsed.delete(dir);
+    }
+    renderFiles();
     const current = result.artifacts.find(a => a.path === selectedPath);
     output.setValue(current ? current.contents : '');
     summaryEl.textContent =

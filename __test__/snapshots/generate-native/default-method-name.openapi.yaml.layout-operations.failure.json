@@ -1,0 +1,6 @@
+{
+  "code": "E_POLICY_VIOLATION",
+  "message": "methodName 'default' for operation GET /pets (operationId=default) cannot be a standalone operation: the barrel would expose it as `ops.default`. Adjust naming.methodName or use layout 'services'.",
+  "path": "test/fixtures/default-method-name.openapi.yaml",
+  "warnings": []
+}

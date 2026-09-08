@@ -32,7 +32,7 @@
   ],
   "artifacts": [
     {
-      "path": "model.generated.ts"
+      "path": "model.ts"
     },
     {
       "path": "rest.model.ts"
@@ -44,7 +44,7 @@
       "path": "rest.validate.ts"
     },
     {
-      "path": "rest/adopter.rest.generated.ts"
+      "path": "rest/adopter.rest.ts"
     }
   ]
 }

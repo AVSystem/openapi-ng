@@ -1,15 +1,16 @@
-use std::collections::{BTreeMap, BTreeSet};
+use crate::wln;
+use std::collections::BTreeSet;
 
 use crate::emit::typescript::{self as ts, Writer};
 use crate::ir::canonical::ResponseContent;
 use crate::ir::schema::collect_type_references;
 use crate::plan::artifact_plan::{PlannedOperation, PlannedRequestBody, RequestFieldKind};
 
-/// Relative path from a generated service file (`rest/*.rest.generated.ts`)
-/// to the sibling `model.generated.ts` that holds all emitted TypeScript
+/// Relative path from a generated service file (`rest/*.rest.ts`)
+/// to the sibling `model.ts` that holds all emitted TypeScript
 /// types. Fixed by the emit layout — services always live one directory
 /// below the model artifact — so it is a constant rather than a plan field.
-const MODEL_IMPORT_PATH: &str = "../model.generated";
+const MODEL_IMPORT_PATH: &str = "../model";
 
 pub(super) fn render_service_imports(
   buffer: &mut Writer,
@@ -17,21 +18,44 @@ pub(super) fn render_service_imports(
   helper_import_path: &str,
 ) {
   buffer.line("import { Injectable } from '@angular/core';");
+  let helper_symbols: &[&str] = if uses_http_params(operations) {
+    &["httpParams", "requestFactory"]
+  } else {
+    &["requestFactory"]
+  };
+  write_helper_import(buffer, helper_import_path, helper_symbols);
+  write_model_imports(
+    buffer,
+    &collect_model_type_imports(operations),
+    MODEL_IMPORT_PATH,
+  );
+}
 
-  let uses_http_params = operations.iter().any(|operation| {
+pub(super) fn uses_http_params(operations: &[PlannedOperation<'_>]) -> bool {
+  operations.iter().any(|operation| {
     operation
       .request
       .fields
       .iter()
       .any(|f| f.kind == RequestFieldKind::Query)
-  });
-  let helper_import = if uses_http_params {
-    format!("import {{ httpParams, requestFactory }} from '{helper_import_path}';")
-  } else {
-    format!("import {{ requestFactory }} from '{helper_import_path}';")
-  };
-  buffer.line(&helper_import);
+  })
+}
 
+pub(super) fn write_helper_import(buffer: &mut Writer, path: &str, symbols: &[&str]) {
+  wln!(buffer, "import {{ {} }} from '{path}';", symbols.join(", "));
+}
+
+pub(super) fn write_model_imports(buffer: &mut Writer, imports: &BTreeSet<&str>, path: &str) {
+  if !imports.is_empty() {
+    ts::write_import_line(buffer, imports.iter().map(|name| (*name, None)), path, true);
+  }
+}
+
+/// Every user-declared schema name the operations reference, in sorted
+/// order: request fields, headers, bodies, success and error responses.
+pub(super) fn collect_model_type_imports<'a>(
+  operations: &'a [PlannedOperation<'a>],
+) -> BTreeSet<&'a str> {
   let mut imports: BTreeSet<&str> = BTreeSet::new();
   for operation in operations {
     for field in &operation.request.fields {
@@ -82,11 +106,7 @@ pub(super) fn render_service_imports(
       collect_type_references(&error.body, &mut imports);
     }
   }
-
-  if !imports.is_empty() {
-    let by_path = BTreeMap::from([(MODEL_IMPORT_PATH, imports)]);
-    ts::import_block(buffer, &by_path, true);
-  }
+  imports
 }
 
 #[cfg(test)]
@@ -176,7 +196,7 @@ mod tests {
     );
     let out = render(&[op_a, op_b]);
     // The single import line lists `Pet` exactly once.
-    assert!(out.contains("import type { Pet } from '../model.generated';"));
+    assert!(out.contains("import type { Pet } from '../model';"));
     assert_eq!(out.matches("Pet").count(), 1);
   }
 
@@ -193,7 +213,7 @@ mod tests {
       body: None,
     };
     let out = render(&[op_with("createPet", HttpMethod::Get, "/x", request, None)]);
-    assert!(out.contains("import type { IdempotencyKey } from '../model.generated';"));
+    assert!(out.contains("import type { IdempotencyKey } from '../model';"));
   }
 
   // ── Body imports under smart-flatten ──────────────────────────────────────
@@ -207,7 +227,7 @@ mod tests {
       body: Some(nested_body(&payload_ref, false)),
     };
     let out = render(&[op_with("createPet", HttpMethod::Post, "/x", request, None)]);
-    assert!(out.contains("import type { CreatePetPayload } from '../model.generated';"));
+    assert!(out.contains("import type { CreatePetPayload } from '../model';"));
   }
 
   #[test]
@@ -225,7 +245,7 @@ mod tests {
       )),
     };
     let out = render(&[op_with("createPet", HttpMethod::Post, "/x", request, None)]);
-    assert!(out.contains("import type { PetStatus } from '../model.generated';"));
+    assert!(out.contains("import type { PetStatus } from '../model';"));
   }
 
   #[test]
@@ -244,7 +264,7 @@ mod tests {
       request,
       Some(&pet_response),
     )]);
-    assert!(out.contains("import type { Pet } from '../model.generated';"));
+    assert!(out.contains("import type { Pet } from '../model';"));
     assert_eq!(out.matches("Pet").count(), 1);
   }
 
@@ -257,6 +277,6 @@ mod tests {
     assert!(out.contains("requestFactory"));
     assert!(!out.contains("HttpClient"));
     assert!(!out.contains("httpParams"));
-    assert!(!out.contains("../model.generated"));
+    assert!(!out.contains("../model"));
   }
 }

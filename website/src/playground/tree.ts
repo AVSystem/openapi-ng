@@ -3,42 +3,67 @@ export interface Artifact {
   contents: string;
 }
 
-export type TreeRow =
-  | { kind: 'dir'; name: string; depth: 0 }
-  | { kind: 'file'; path: string; name: string; depth: 0 | 1; bytes: number };
+export type TreeNode =
+  | { kind: 'dir'; path: string; name: string; children: TreeNode[] }
+  | { kind: 'file'; path: string; name: string; bytes: number };
+
+export interface TreeView {
+  selectedPath: string | null;
+  // Directory paths folded shut; everything else is open.
+  collapsed: ReadonlySet<string>;
+  onSelect(path: string): void;
+  onToggle(dir: string): void;
+}
 
 const encoder = new TextEncoder();
 
-export function buildTree(artifacts: ReadonlyArray<Artifact>): TreeRow[] {
-  const root: TreeRow[] = [];
-  const dirs = new Map<string, TreeRow[]>();
-  for (const artifact of artifacts) {
-    const slash = artifact.path.indexOf('/');
-    const bytes = encoder.encode(artifact.contents).length;
-    if (slash === -1) {
-      root.push({
-        kind: 'file',
-        path: artifact.path,
-        name: artifact.path,
-        depth: 0,
-        bytes,
+export function buildTree(artifacts: ReadonlyArray<Artifact>): TreeNode[] {
+  const root: TreeNode[] = [];
+  const dirs = new Map<string, TreeNode[]>();
+  const childrenOf = (dir: string): TreeNode[] => {
+    if (dir === '') return root;
+    let children = dirs.get(dir);
+    if (!children) {
+      children = [];
+      dirs.set(dir, children);
+      const slash = dir.lastIndexOf('/');
+      childrenOf(slash === -1 ? '' : dir.slice(0, slash)).push({
+        kind: 'dir',
+        path: dir,
+        name: dir.slice(slash + 1),
+        children,
       });
-      continue;
     }
-    const dir = artifact.path.slice(0, slash);
-    const name = artifact.path.slice(slash + 1);
-    const rows = dirs.get(dir) ?? [];
-    rows.push({ kind: 'file', path: artifact.path, name, depth: 1, bytes });
-    dirs.set(dir, rows);
+    return children;
+  };
+  for (const artifact of artifacts) {
+    const slash = artifact.path.lastIndexOf('/');
+    childrenOf(slash === -1 ? '' : artifact.path.slice(0, slash)).push({
+      kind: 'file',
+      path: artifact.path,
+      name: artifact.path.slice(slash + 1),
+      bytes: encoder.encode(artifact.contents).length,
+    });
   }
-  const byName = (a: { name: string }, b: { name: string }) =>
-    a.name.localeCompare(b.name);
-  root.sort(byName);
-  for (const dir of [...dirs.keys()].sort()) {
-    root.push({ kind: 'dir', name: dir, depth: 0 });
-    root.push(...(dirs.get(dir) ?? []).sort(byName));
-  }
+  const sort = (nodes: TreeNode[]) => {
+    nodes.sort(
+      (a, b) =>
+        Number(a.kind === 'dir') - Number(b.kind === 'dir') ||
+        a.name.localeCompare(b.name),
+    );
+    for (const node of nodes) if (node.kind === 'dir') sort(node.children);
+  };
+  sort(root);
   return root;
+}
+
+// Directories on the way to `path`, outermost first.
+export function ancestorsOf(path: string): string[] {
+  const dirs: string[] = [];
+  for (let i = path.indexOf('/'); i !== -1; i = path.indexOf('/', i + 1)) {
+    dirs.push(path.slice(0, i));
+  }
+  return dirs;
 }
 
 function formatBytes(bytes: number): string {
@@ -47,35 +72,41 @@ function formatBytes(bytes: number): string {
 
 export function renderTree(
   container: HTMLElement,
-  rows: TreeRow[],
-  selectedPath: string | null,
-  onSelect: (path: string) => void,
+  nodes: TreeNode[],
+  view: TreeView,
 ): void {
   const doc = container.ownerDocument;
-  const list = doc.createElement('ul');
-  for (const row of rows) {
-    const item = doc.createElement('li');
-    item.dataset.depth = String(row.depth);
-    if (row.kind === 'dir') {
-      item.className = 'is-dir';
-      item.textContent = `${row.name}/`;
-    } else {
-      item.dataset.path = row.path;
-      if (row.path === selectedPath) item.className = 'is-selected';
+  const render = (children: TreeNode[]): HTMLUListElement => {
+    const list = doc.createElement('ul');
+    for (const node of children) {
+      const item = doc.createElement('li');
       const button = doc.createElement('button');
       button.type = 'button';
-      button.title = row.path;
+      button.title = node.path;
       const name = doc.createElement('span');
       name.className = 'name';
-      name.textContent = row.name;
-      const size = doc.createElement('span');
-      size.className = 'size';
-      size.textContent = formatBytes(row.bytes);
-      button.append(name, size);
-      button.addEventListener('click', () => onSelect(row.path));
-      item.append(button);
+      name.textContent = node.name;
+      button.append(name);
+      if (node.kind === 'dir') {
+        const open = !view.collapsed.has(node.path);
+        item.className = open ? 'is-dir' : 'is-dir is-collapsed';
+        item.dataset.dir = node.path;
+        button.setAttribute('aria-expanded', String(open));
+        button.addEventListener('click', () => view.onToggle(node.path));
+        item.append(button, render(node.children));
+      } else {
+        item.dataset.path = node.path;
+        if (node.path === view.selectedPath) item.className = 'is-selected';
+        const size = doc.createElement('span');
+        size.className = 'size';
+        size.textContent = formatBytes(node.bytes);
+        button.append(size);
+        button.addEventListener('click', () => view.onSelect(node.path));
+        item.append(button);
+      }
+      list.append(item);
     }
-    list.append(item);
-  }
-  container.replaceChildren(list);
+    return list;
+  };
+  container.replaceChildren(render(nodes));
 }

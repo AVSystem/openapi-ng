@@ -18,20 +18,14 @@ import type { Observable } from 'rxjs';
 
 import type { CommonRequest } from '../generated/rest.model';
 
-import type { BinaryRest } from '../generated/rest/binary.rest.generated';
-import type { ConfigRest } from '../generated/rest/config.rest.generated';
+import type { BinaryRest } from '../generated/rest/binary.rest';
+import type { ConfigRest } from '../generated/rest/config.rest';
 import type {
   DownloadInvoicePdfParams,
   InvoiceRest,
-} from '../generated/rest/invoice.rest.generated';
-import type {
-  PetRest,
-  UpdatePetAvatarParams,
-} from '../generated/rest/pet.rest.generated';
-import type {
-  SearchRest,
-  SubmitFormParams,
-} from '../generated/rest/search.rest.generated';
+} from '../generated/rest/invoice.rest';
+import type { PetRest, UpdatePetAvatarParams } from '../generated/rest/pet.rest';
+import type { SearchRest, SubmitFormParams } from '../generated/rest/search.rest';
 
 declare const petSvc: PetRest;
 declare const searchSvc: SearchRest;

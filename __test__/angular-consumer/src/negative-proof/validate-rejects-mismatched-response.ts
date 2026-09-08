@@ -9,8 +9,8 @@
 // Expected error: TS2339 — property 'nonExistentField' does not exist on
 // type 'Pet'.
 import { schema } from '@angular/forms/signals';
-import type { PetRest, UpdatePetParams } from '../../generated/rest/pet.rest.generated';
-import type { Pet } from '../../generated/model.generated.ts';
+import type { PetRest, UpdatePetParams } from '../../generated/rest/pet.rest';
+import type { Pet } from '../../generated/model.ts';
 import { validateRest } from '../../generated/rest.validate';
 
 declare const service: PetRest;

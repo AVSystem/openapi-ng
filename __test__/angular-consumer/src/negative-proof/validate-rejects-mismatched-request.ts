@@ -16,7 +16,7 @@
 // proof is meant to lock down — instead of a TS2345 argument-type
 // error on the `service.updatePet` position.
 import { schema } from '@angular/forms/signals';
-import type { PetRest } from '../../generated/rest/pet.rest.generated';
+import type { PetRest } from '../../generated/rest/pet.rest';
 import { validateRest } from '../../generated/rest.validate';
 
 declare const service: PetRest;

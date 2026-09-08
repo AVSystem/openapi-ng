@@ -49,11 +49,11 @@ test('cli generate prints human-readable summary with title and file list', t =>
     t.true(result.stdout.includes('2 paths'));
     t.true(result.stdout.includes('3 operations'));
     t.true(result.stdout.includes('6 schemas'));
-    t.true(result.stdout.includes('model.generated.ts'));
+    t.true(result.stdout.includes('model.ts'));
     t.true(result.stdout.includes('rest.model.ts'));
     t.true(result.stdout.includes('rest.util.ts'));
     t.true(result.stdout.includes('rest.validate.ts'));
-    t.true(result.stdout.includes('rest/pet.rest.generated.ts'));
+    t.true(result.stdout.includes('rest/pet.rest.ts'));
   });
 });
 
@@ -111,10 +111,10 @@ test('cli generate writes model and service files to --output dir', t => {
     ]);
     t.is(result.status, 0);
     t.is(result.stderr, '');
-    t.true(fs.existsSync(path.join(outputPath, 'model.generated.ts')));
+    t.true(fs.existsSync(path.join(outputPath, 'model.ts')));
     t.true(fs.existsSync(path.join(outputPath, 'rest.model.ts')));
     t.true(fs.existsSync(path.join(outputPath, 'rest.util.ts')));
-    t.true(fs.existsSync(path.join(outputPath, 'rest', 'pet.rest.generated.ts')));
+    t.true(fs.existsSync(path.join(outputPath, 'rest', 'pet.rest.ts')));
   });
 });
 
@@ -132,7 +132,7 @@ test('cli generate --emit angular auto-includes models (with warning under --ver
     ]);
     t.is(result.status, 0);
     t.is(result.stderr, '');
-    t.true(fs.existsSync(path.join(outputPath, 'model.generated.ts')));
+    t.true(fs.existsSync(path.join(outputPath, 'model.ts')));
     t.true(result.stdout.includes("Auto-included 'models'"));
     t.true(result.stdout.includes('E_INVALID_OPTION'));
   });
@@ -151,10 +151,7 @@ test('cli generate --mapped-type replaces schema with import', t => {
     ]);
     t.is(result.status, 0);
     t.is(result.stderr, '');
-    const modelContents = fs.readFileSync(
-      path.join(outputPath, 'model.generated.ts'),
-      'utf8',
-    );
+    const modelContents = fs.readFileSync(path.join(outputPath, 'model.ts'), 'utf8');
     t.true(modelContents.includes("import type { ExternalPetId } from '@demo/types'"));
     t.true(modelContents.includes('ExternalPetId'));
     t.false(modelContents.includes('export type PetId = string;'));
@@ -171,7 +168,7 @@ test('cli generate writes 3 artifacts for fixture without operations', t => {
       outputPath,
     ]);
     t.is(result.status, 0);
-    t.true(fs.existsSync(path.join(outputPath, 'model.generated.ts')));
+    t.true(fs.existsSync(path.join(outputPath, 'model.ts')));
     t.true(fs.existsSync(path.join(outputPath, 'rest.model.ts')));
     t.true(fs.existsSync(path.join(outputPath, 'rest.util.ts')));
     t.false(fs.existsSync(path.join(outputPath, 'rest')));
@@ -577,9 +574,9 @@ test('cli generate reads array-form emit from config file', t => {
     const result = runCli(['generate'], dir);
     t.is(result.status, 0);
     t.is(result.stderr, '');
-    t.true(result.stdout.includes('model.generated.ts'));
-    t.true(fs.existsSync(path.join(dir, 'model.generated.ts')));
-    t.true(fs.existsSync(path.join(dir, 'rest', 'pet.rest.generated.ts')));
+    t.true(result.stdout.includes('model.ts'));
+    t.true(fs.existsSync(path.join(dir, 'model.ts')));
+    t.true(fs.existsSync(path.join(dir, 'rest', 'pet.rest.ts')));
   });
 });
 
@@ -615,7 +612,7 @@ test('cli generate reads mappedTypes from config file', t => {
     const result = runCli(['generate'], dir);
     t.is(result.status, 0);
     t.is(result.stderr, '');
-    const modelContents = fs.readFileSync(path.join(dir, 'model.generated.ts'), 'utf8');
+    const modelContents = fs.readFileSync(path.join(dir, 'model.ts'), 'utf8');
     t.true(modelContents.includes("import type { ExternalPetId } from '@demo/types'"));
     t.false(modelContents.includes('export type PetId = string;'));
   });
@@ -658,7 +655,7 @@ test('cli generate reads input from openapi-ng.config.ts (end-to-end)', t => {
     );
     const result = runCli(['generate'], dir);
     t.is(result.status, 0, result.stderr);
-    t.true(fs.existsSync(path.join(dir, 'out', 'model.generated.ts')));
+    t.true(fs.existsSync(path.join(dir, 'out', 'model.ts')));
   });
 });
 
@@ -674,7 +671,7 @@ test('cli generate reads input from openapi-ng.config.mjs (end-to-end)', t => {
     );
     const result = runCli(['generate'], dir);
     t.is(result.status, 0, result.stderr);
-    t.true(fs.existsSync(path.join(dir, 'out', 'model.generated.ts')));
+    t.true(fs.existsSync(path.join(dir, 'out', 'model.ts')));
   });
 });
 
@@ -792,4 +789,69 @@ test('cli generate --help describes --input accepting path or url', t => {
   const result = runCli(['generate', '--help']);
   t.is(result.status, 0);
   t.true(result.stdout.includes('path|url'));
+});
+
+test('cli generate --layout services,operations writes operation files, the barrel and the class', t => {
+  withTempDir(outputPath => {
+    const result = runCli([
+      'generate',
+      '--input',
+      fixture('reserved-method-name.openapi.yaml'),
+      '--output',
+      outputPath,
+      '--layout',
+      'services,operations',
+    ]);
+    t.is(result.status, 0);
+    t.is(result.stderr, '');
+    t.true(fs.existsSync(path.join(outputPath, 'rest', 'pet', 'list-pets.ts')));
+    t.true(fs.existsSync(path.join(outputPath, 'rest', 'pet', 'delete.ts')));
+    t.true(fs.existsSync(path.join(outputPath, 'rest', 'pet/index.ts')));
+    const service = fs.readFileSync(path.join(outputPath, 'rest', 'pet.rest.ts'), 'utf8');
+    t.true(service.includes('ops.delete.withInjector()'));
+  });
+});
+
+test('cli generate --layout operations omits the class file', t => {
+  withTempDir(outputPath => {
+    const result = runCli([
+      'generate',
+      '--input',
+      fixture('petstore-minimal.openapi.yaml'),
+      '--output',
+      outputPath,
+      '--layout',
+      'operations',
+    ]);
+    t.is(result.status, 0);
+    t.true(fs.existsSync(path.join(outputPath, 'rest', 'pet', 'list-pets.ts')));
+    t.false(fs.existsSync(path.join(outputPath, 'rest', 'pet.rest.ts')));
+  });
+});
+
+test('cli generate --layout rejects unknown values', t => {
+  const result = runCli([
+    'generate',
+    '--input',
+    fixture('petstore-minimal.openapi.yaml'),
+    '--layout',
+    'flat',
+  ]);
+  t.not(result.status, 0);
+  t.true(result.stderr.includes("Unknown layout: 'flat'"));
+});
+
+test('cli generate --emit models --layout operations fails with E_INVALID_OPTION', t => {
+  const result = runCli([
+    'generate',
+    '--input',
+    fixture('petstore-minimal.openapi.yaml'),
+    '--emit',
+    'models',
+    '--layout',
+    'operations',
+  ]);
+  t.not(result.status, 0);
+  t.true(result.stderr.includes('E_INVALID_OPTION'));
+  t.true(result.stderr.includes("requires the 'angular' emit target"));
 });
