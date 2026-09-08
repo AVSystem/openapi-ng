@@ -4,8 +4,8 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-// Through the wrapper, so a caught failure is a real `GenerateError` and
-// the snapshot can pin its `path` and `warnings`.
+// Through the wrapper: a caught failure is a real `GenerateError`, whose
+// `path` and `warnings` the snapshots pin.
 import { generate, isGenerateError } from '../scripts/lib/engine.ts';
 import type { GenerateOptions } from '../scripts/lib/engine.ts';
 // Every fixture list, the banner regex and the static-template set come
@@ -159,26 +159,19 @@ test('generate emits stable static-template artifacts (rest.model.ts, rest.util.
   t.deepEqual(staticTemplateArtifacts(baseline), hydrateStaticTemplate());
 });
 
-// Compile gate: write every success-snapshot's artifacts (plus the static
-// templates) to a temp project tree and run `tsc --noEmit` over them.
-// Catches regressions where snapshots stay textually stable but the emitted
-// TS no longer compiles — e.g. an Angular service that references an
-// un-imported response type. Lives in this file (next to the snapshot
-// loader) so the inputs the gate type-checks are exactly the snapshots
-// committed to disk, not a re-generation that might mask drift.
+// Compile gate over the snapshots committed to disk: catches emitted TS
+// that stays textually stable but stops compiling, such as an Angular
+// service referencing an un-imported response type.
 test('snapshot artifacts type-check under tsc --noEmit', t => {
   const repoNodeModules = path.join(repoRoot, 'node_modules');
   if (!fs.existsSync(path.join(repoNodeModules, 'typescript', 'bin', 'tsc'))) {
-    t.fail('node_modules/typescript not installed — run `pnpm install` first');
+    t.fail('node_modules/typescript not installed — run `bun install` first');
     return;
   }
 
-  // Co-locate the project tree with the existing angular-consumer fixture
-  // so module resolution traverses up to repo node_modules (same path that
-  // tsconfig.json's "moduleResolution": "bundler" relies on). Live as a
-  // sibling of `generated/` rather than inside it: generate.spec.ts's
-  // reset helper recursively wipes `generated/` and would race with this
-  // file under AVA's per-file parallelism.
+  // Under the angular-consumer fixture, so module resolution reaches the
+  // repo's node_modules; a sibling of `generated/`, which
+  // generate.spec.ts's reset helper wipes.
   const compileRoot = path.join(
     repoRoot,
     '__test__',

@@ -20,8 +20,7 @@ pub(crate) struct ModelSymbol {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct RequestDef {
   pub(crate) inputs: Vec<RequestInputDef>,
-  /// `in: header` parameters, kept apart from `inputs` because they
-  /// travel in a different slot of the request.
+  /// `in: header` parameters. Travel in a different request slot to `inputs`.
   pub(crate) headers: Vec<HeaderDef>,
   pub(crate) body: Option<RequestBodyDef>,
 }
@@ -53,10 +52,8 @@ pub(crate) struct RequestBodyDef {
   pub(crate) content: BodyContent,
 }
 
-/// An operation's request-body content.
-///
-/// A form variant's `body_ref` names the source schema when the body was
-/// declared as a top-level `$ref`.
+/// An operation's request-body content. A form variant's `body_ref` names
+/// the source schema when the body was declared as a top-level `$ref`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum BodyContent {
   Json(SchemaType),
@@ -86,10 +83,8 @@ pub(crate) enum BodyFieldType {
   ArrayOfBinary,
 }
 
-/// The HTTP methods the generator supports.
-///
-/// TRACE is absent by design: it is disabled at most production gateways,
-/// and a spec declaring it is rejected with its own diagnostic.
+/// The HTTP methods the generator supports. A spec declaring TRACE is
+/// rejected with its own diagnostic.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum HttpMethod {
   Get,
@@ -155,9 +150,8 @@ pub(crate) struct OperationDef {
   pub(crate) path: String,
   pub(crate) request: RequestDef,
   pub(crate) response: Option<ResponseContent>,
-  /// The 4xx and 5xx responses that declare a JSON schema, sorted by
-  /// status ascending. A schemaless or non-JSON error response is
-  /// skipped rather than rejected.
+  /// The 4xx and 5xx responses that declare a JSON schema, by ascending
+  /// status. A schemaless or non-JSON error response is skipped.
   pub(crate) errors: Vec<ErrorResponse>,
   /// The OpenAPI Operation's `summary` and `description`, joined by a
   /// blank line.
@@ -174,10 +168,8 @@ pub(crate) struct ErrorResponse {
   pub(crate) body: SchemaType,
 }
 
-/// An operation's success-response content.
-///
-/// `Json(None)` is a JSON response that declares no schema. The other
-/// variants carry no payload: their type is fixed by the variant.
+/// An operation's success-response content. `Json(None)` is a JSON
+/// response that declares no schema.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ResponseContent {
   Json(Option<SchemaType>),
@@ -223,18 +215,12 @@ mod tests {
 
   #[test]
   fn http_method_rejects_trace_so_normalize_can_emit_a_targeted_diagnostic() {
-    // TRACE returns None here — the strict rejection with its
-    // remediation message lives in `normalize_operation` (the comment
-    // on `from_lowercase` explains why this is split).
+    // TRACE returns None; `normalize_operation` raises the diagnostic.
     assert_eq!(HttpMethod::from_lowercase("trace"), None);
   }
 
   #[test]
   fn http_method_rejects_uppercase_and_unknown_keywords() {
-    // `from_lowercase` is strict about casing — the caller normalises
-    // the method string before invoking this. Asserting the strictness
-    // pins the contract so a refactor doesn't silently start accepting
-    // mixed-case input.
     assert_eq!(HttpMethod::from_lowercase("GET"), None);
     assert_eq!(HttpMethod::from_lowercase("Get"), None);
     assert_eq!(HttpMethod::from_lowercase("connect"), None);
@@ -292,7 +278,6 @@ mod tests {
     let text = ResponseContent::Text;
     let array_buffer = ResponseContent::ArrayBuffer;
 
-    // Json variant carries an Option<SchemaType>; others carry no payload.
     assert!(matches!(json_with_schema, ResponseContent::Json(Some(_))));
     assert!(matches!(json_without, ResponseContent::Json(None)));
     assert!(matches!(blob, ResponseContent::Blob));

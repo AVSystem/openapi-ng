@@ -5,18 +5,12 @@
 // Storage layout:
 //   <fixture>.success.json   summary, diagnostics, and a path-only artifact
 //                            list — no inline contents
-//   <fixture>/<path>         each artifact's body as a sibling file, so a
-//                            PR diff reads as TypeScript rather than as
-//                            JSON-escaped strings
+//   <fixture>/<path>         each artifact's body as a sibling file
 //   static-template.json     the path-only list for the Angular support
-//   static-template/<path>   files, whose bodies are identical across
-//                            every success fixture and so stored once
+//   static-template/<path>   bodies identical across every fixture
 //
-// Every fixture in test/fixtures/ must appear in exactly one of the three
-// sets in scripts/lib/snapshot-layout.ts; the script fails on one that
-// appears in none.
-//
-// Run with: bun run regen-snapshots
+// Every fixture in test/fixtures/ must appear in one of the three sets in
+// scripts/lib/snapshot-layout.ts. Run with: bun run regen-snapshots
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -40,10 +34,7 @@ const snapshots = snapshotDir(repoRoot);
 const staticTemplateDir = path.join(snapshots, 'static-template');
 const staticTemplateIndex = path.join(snapshots, 'static-template.json');
 
-/**
- * Fails when a fixture on disk appears in none of the three sets, so a new
- * fixture must be classified rather than silently ignored.
- */
+/** Fails when a fixture on disk appears in none of the three sets. */
 function assertEveryFixtureIsClassified(): void {
   const classified = new Set<string>([
     ...SUCCESS_FIXTURES.map(entry => entry.fixture),

@@ -15,9 +15,6 @@ pub(crate) fn service_file_stem(group: &str) -> String {
 
 /// PascalCase name of the interface carrying an operation's path, query,
 /// header and body fields, e.g. `listPets` → `ListPetsParams`.
-///
-/// Suffixed `Params`: a spec may already declare a schema named
-/// `<OperationId>Request`.
 pub(crate) fn request_interface_name(method_name: &MethodName) -> TypeName {
   TypeName::new(format!(
     "{}Params",
@@ -27,8 +24,6 @@ pub(crate) fn request_interface_name(method_name: &MethodName) -> TypeName {
 
 /// PascalCase name of the interface mapping an operation's 4xx/5xx statuses
 /// to their body types, e.g. `updatePet` → `UpdatePetError`.
-///
-/// Read at the call site as `UpdatePetError[400]`.
 pub(crate) fn error_interface_name(method_name: &MethodName) -> TypeName {
   TypeName::new(format!(
     "{}Error",
@@ -85,18 +80,10 @@ mod tests {
     );
   }
 
-  //
-  // service_class_name and service_file_stem are pure case-conversions
-  // over arbitrary tag strings sourced from the spec. The example tests
-  // above pin representative cases; the properties below assert global
-  // invariants so adversarial inputs (whitespace, control chars, unicode)
-  // can't sneak in malformed identifiers / file stems.
 
   use proptest::prelude::*;
 
-  /// First char must satisfy TS IdentifierStart (we restrict to ASCII
-  /// alphabetic + `_` + `$`); subsequent chars must be IdentifierPart.
-  /// Matches `is_ident` in `emit::typescript`.
+  /// ASCII-only TS identifier shape, matching `ident::is_ident`.
   fn is_ts_identifier(value: &str) -> bool {
     let mut chars = value.chars();
     let Some(first) = chars.next() else {
@@ -108,10 +95,8 @@ mod tests {
     chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$')
   }
 
-  /// Result of `service_file_stem` should be kebab-case ASCII: lowercase
-  /// letters, digits, and hyphens, with no leading/trailing hyphen and no
-  /// consecutive hyphens. Returns true for the empty string (e.g. when the
-  /// input was all non-alphanumeric).
+  /// Kebab-case ASCII: no leading, trailing or repeated hyphen. The empty
+  /// string passes.
   fn is_kebab_case_ascii(value: &str) -> bool {
     if value.is_empty() {
       return true;
@@ -136,11 +121,6 @@ mod tests {
   }
 
   proptest! {
-    /// `service_class_name` is only fed values that survive the
-    /// `tag_first_operation_grouper` policy check (tags non-empty after
-    /// trim, ASCII identifier-shaped). We test the policy-clean subset
-    /// here — alphabetic tags with optional hyphens/underscores — because
-    /// that's the surface the rest of the planner actually sees.
     #[test]
     fn service_class_name_emits_valid_ts_identifier_with_rest_suffix(
       tag in "[a-zA-Z][a-zA-Z0-9_-]{0,31}"
@@ -154,12 +134,6 @@ mod tests {
       );
     }
 
-    /// Scoped to ASCII tags because the policy layer in
-    /// `tag_first_operation_grouper` rejects any operation whose tag
-    /// would not produce a valid Angular-style file stem. Non-ASCII
-    /// inputs to `service_file_stem` are reachable in code but never in
-    /// practice — locking the kebab-case invariant on the ASCII subset
-    /// is what consumers actually rely on.
     #[test]
     fn service_file_stem_produces_kebab_case_or_empty_for_ascii_tags(
       tag in "[ -~]{0,32}"

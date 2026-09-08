@@ -1,9 +1,6 @@
-// Loads the generator from the local build, so a script run exercises the
-// tree it was invoked in.
-//
-// `lib/index.js` is untyped CommonJS implementing the surface the
-// repository's `index.d.ts` declares. The shape check below turns a
-// renamed or missing export into an error naming it, at load time.
+// Loads the generator from the local build. `lib/index.js` is CommonJS,
+// so the shape check below turns a renamed or missing export into an
+// error naming it, at load time.
 
 import { createRequire } from 'node:module';
 

@@ -1,11 +1,7 @@
 #!/usr/bin/env node
 
-// Resolve through the wrapper so caught errors are `GenerateError`
-// instances (the CLI formatter doesn't depend on `instanceof`, but
-// consumers debugging via `node --inspect` see a consistent shape).
-// NOTE: do NOT require('../lib/index.js') at module top — that would load
-// the native binding on every invocation, including --help and --version.
-// Use loadLibrary() inside the generate handler instead.
+// Loaded inside the generate handler, not at module top: requiring the
+// wrapper loads the native binding, which --help and --version must not.
 function loadLibrary() {
   return require('../lib/index.js');
 }
@@ -21,7 +17,7 @@ const {
   parseArgs,
 } = require('./lib/parse.js');
 
-// Minimal ANSI styler — emit colour only when stdout is a TTY and NO_COLOR is unset
+// Colour only when stdout is a TTY and NO_COLOR is unset.
 const USE_COLOR = process.stdout.isTTY === true && !process.env.NO_COLOR;
 /** @param {number} code @returns {(text: unknown) => string} */
 const wrap = code =>
@@ -281,8 +277,7 @@ async function main(argv) {
     } else {
       printUsage();
     }
-    // Bare `openapi-ng` (no subcommand) is a usage error — exit 2 so CI
-    // scripts can catch a missing command. Explicit `--help` keeps exit 0.
+    // Bare `openapi-ng` exits 2; an explicit `--help` exits 0.
     if (parsed.explicit === false) {
       process.exitCode = 2;
     }
@@ -300,7 +295,6 @@ async function main(argv) {
     return;
   }
 
-  // Load config file for generate command
   let fileConfig = {};
   try {
     const configFilePath = parsed.configPath ?? discoverConfigPath(process.cwd());
@@ -313,7 +307,6 @@ async function main(argv) {
     return;
   }
 
-  // Generate command
   let merged;
   try {
     merged = mergeConfig(fileConfig, parsed);
@@ -328,9 +321,7 @@ async function main(argv) {
 
   try {
     const { generate } = loadLibrary();
-    // Pass the user-provided inputPath verbatim. Relativisation of
-    // absolute paths inside CWD (for the generated-artifact banner) is
-    // owned by the Rust side in `render_generated_banner`, so the CLI
+    // Verbatim: `render_generated_banner` owns relativisation, so the CLI
     // and programmatic consumers (`generate({ inputPath: '/abs/...' })`)
     // get the same banner-path hygiene without duplicated logic.
     const result = await generate({

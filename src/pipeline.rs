@@ -34,7 +34,6 @@ pub(crate) fn build_ir(
     (None, Some(contents)) => {
       crate::parse::decode_input_contents(contents, config.input_format, display_path)?
     }
-    // `validate_generate_config` has already rejected both-or-neither.
     _ => {
       return Err(Diagnostic::new(
         crate::error::DiagnosticCode::InvalidOption,
@@ -49,14 +48,12 @@ pub(crate) fn build_ir(
 }
 
 pub fn execute_generate(config: GenerateConfig) -> Result<GenerateResult, GenerateFailure> {
-  // Sentinel path that forces a panic, so the `catch_unwind` at the NAPI
-  // boundary is exercised by a real call. Present in release builds.
+  // Sentinel path that forces a panic, exercising the `catch_unwind` at
+  // the NAPI boundary. Present in release builds.
   if config.input_path.as_deref() == Some("__panic_for_test__") {
     panic!("test sentinel: forced panic");
   }
 
-  // An explicit `display_path` wins; otherwise the input path with its
-  // separators normalised.
   let display_path: Rc<str> = config.display_path.as_deref().map_or_else(
     || {
       config.input_path.as_deref().map_or_else(
@@ -348,8 +345,8 @@ mod tests {
     })
     .expect("generation succeeds");
 
-    // The artifact list has no `errors.generated.ts` — error interfaces
-    // live alongside `*Params` inside the per-tag service file.
+    // Error interfaces live in the per-tag service file, so there is no
+    // `errors.generated.ts`.
     assert!(
       !result
         .artifacts
@@ -364,22 +361,16 @@ mod tests {
       .find(|a| a.path == "rest/pet.rest.generated.ts")
       .expect("pet service emitted");
 
-    // Per-status pairs render verbatim; numeric keys; refs to model types
-    // resolve through the existing model import (no extra import block).
     assert!(service.contents.contains("export interface UpdatePetError"));
     assert!(service.contents.contains("400: ValidationProblem;"));
     assert!(service.contents.contains("404: NotFound;"));
     assert!(service.contents.contains("500: {"));
     assert!(service.contents.contains("traceId: string;"));
-    // 503 declared no JSON content — silently skipped.
+    // 503 declared no JSON content.
     assert!(!service.contents.contains("503:"));
-    // `default` key intentionally not surfaced.
     assert!(!service.contents.contains("default:"));
-    // The same model import that already serves `*Params` also covers
-    // the error body refs. The nested `body: UpdatePetRequest` field
-    // contributes that ref, so the deduplicated, alphabetised import
-    // line carries it alongside the response type (`Pet`) and the
-    // error-body refs.
+    // One deduplicated, alphabetised import line carries the response
+    // type, the `body:` ref and the error-body refs.
     assert!(
       service
         .contents
@@ -406,8 +397,7 @@ mod tests {
     };
     let result = execute_generate(config).expect("inputContents pipeline must succeed");
     assert_eq!(result.summary.title, "Inline Test");
-    // display_path is the supplied URL verbatim — no slash-normalisation,
-    // no path resolution.
+    // display_path is the supplied URL verbatim.
     assert_eq!(
       result.summary.normalized_source_path,
       "https://example.com/spec.yaml",

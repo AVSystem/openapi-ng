@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
-// Refuses to publish while package.json still carries the placeholder
-// version, which would claim 0.0.0 on the registry.
+// Refuses to publish while package.json still carries version 0.0.0.
 
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

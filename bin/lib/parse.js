@@ -1,10 +1,5 @@
-// CLI argument and config parsing helpers extracted from openapi-ng.js.
-// Kept as a separate module so they are unit-testable without spawning
-// a subprocess and without coupling to the runtime/output surface.
-//
-// The exported records mirror the `MappedType` shape on the NAPI
-// boundary (`schema/import/type/alias`) one-to-one — the CLI does not
-// translate between naming worlds.
+// Argument and config parsing for the CLI. The exported records mirror
+// the NAPI `MappedType` shape one-to-one.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -62,8 +57,8 @@ const DEFAULT_EMIT = Object.freeze(['models', 'angular']);
 
 const VALID_INIT_FORMATS = Object.freeze(new Set(['yaml', 'json', 'ts', 'js']));
 
-// Validate that argv[i + 1] is a real value, not the next flag or end-of-args.
-// Without this, `--config --input spec.yaml` silently consumes `--input` as
+// Rejects a flag or end-of-args in the value position: without this,
+// `--config --input spec.yaml` consumes `--input` as
 // the config path, leaving the user staring at a config-not-found error
 // without ever seeing their `--input` argument honoured. Treat any token
 // starting with `-` (long `--foo` or short `-f`) as a flag, never a value.

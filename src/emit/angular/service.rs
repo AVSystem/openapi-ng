@@ -29,8 +29,7 @@ pub(crate) fn emit_service(service_plan: &ServicePlan<'_>) -> String {
 
   buffer.close_block("");
 
-  // Each operation's interfaces follow the class, grouped so that one
-  // operation's declarations stay contiguous.
+  // One operation's declarations stay contiguous, after the class.
   for operation in &service_plan.operations {
     if operation.request_interface.is_none() && operation.error_interface.is_none() {
       continue;

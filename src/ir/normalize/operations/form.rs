@@ -45,10 +45,8 @@ pub(super) enum FormKind {
   UrlEncoded,
 }
 
-/// Why a form body or one of its fields was rejected.
-///
-/// Paired with a [`FormKind`] it names the stable subcode a consumer can
-/// route on without parsing the message.
+/// Why a form body or one of its fields was rejected. Paired with a
+/// [`FormKind`] it names the stable subcode consumers route on.
 #[derive(Clone, Copy)]
 pub(super) enum Reject {
   /// The declared body schema does not resolve to an object.
@@ -86,16 +84,12 @@ impl FormKind {
   }
 }
 
-/// Subcode for a binary field in a urlencoded body, which the format has
-/// no encoding for. Covers the scalar and the array case alike.
+/// Subcode for a binary field in a urlencoded body, scalar or array.
 const URLENCODED_BINARY_FIELD: &str = "urlencoded-binary-field";
 
-/// Flattens a form body's schema into an alphabetically sorted field list.
-///
-/// The returned name is `Some` when the body was declared as a top-level
-/// `$ref`, resolved through `schema_index`. `format: binary` is detected
-/// only for an inline body: a `$ref` target's raw schema does not reach
-/// this layer.
+/// Flattens a form body's schema into an alphabetically sorted field
+/// list. The returned name is `Some` when the body was declared as a
+/// top-level `$ref`. `format: binary` is detected for an inline body only.
 pub(super) fn normalize_form_body_fields(
   media: &MediaType,
   body: FormBody<'_>,
@@ -115,8 +109,8 @@ pub(super) fn normalize_form_body_fields(
     )
   })?;
 
-  // `additionalProperties: false` and the absent case leave the field set
-  // closed; every other form of it leaves the body open-ended.
+  // Only `additionalProperties: false` and its absence leave the field
+  // set closed.
   if let Some(ap) = &raw_schema.additional_properties
     && !matches!(ap, AdditionalProperties::Boolean(false))
   {
@@ -189,8 +183,8 @@ struct RawPropertyFormat<'a> {
   items: Option<&'a str>,
 }
 
-/// Collects the per-property `format` hints, which `SchemaType` does not
-/// carry. Empty when the body is a top-level `$ref`.
+/// Collects the per-property `format` hints `SchemaType` does not carry.
+/// Empty when the body is a top-level `$ref`.
 fn collect_raw_property_formats(raw_schema: &Schema) -> BTreeMap<&str, RawPropertyFormat<'_>> {
   let mut lookup = BTreeMap::new();
   let Some(properties) = &raw_schema.properties else {
@@ -207,10 +201,8 @@ fn collect_raw_property_formats(raw_schema: &Schema) -> BTreeMap<&str, RawProper
   lookup
 }
 
-/// Classifies one form-body property.
-///
-/// Accepts a scalar, an array of scalars, a binary, and an array of
-/// binaries; every other shape fails with the matching [`Reject`].
+/// Classifies one form-body property. Accepts a scalar, a binary, or an
+/// array of either; every other shape fails with the matching [`Reject`].
 fn classify_body_field_type(
   ty: &SchemaType,
   raw_format: RawPropertyFormat<'_>,
@@ -234,7 +226,6 @@ fn classify_body_field_type(
         ),
       )),
     },
-    // An array of binary is detected through the item's `format` hint.
     SchemaType::Array(inner)
       if matches!(inner.as_ref(), SchemaType::Scalar(SchemaScalar::String))
         && raw_format.items == Some("binary") =>
@@ -270,8 +261,6 @@ fn classify_body_field_type(
         kind.label(),
       ),
     )),
-    // Composition, nullable, map, non-string enum and `Any` all report
-    // as composed.
     _ => Err(Diagnostic::policy_violation(
       reporter,
       kind.subcode(Reject::ComposedField),
@@ -335,7 +324,6 @@ content:
       BodyContent::Multipart { body_ref, fields } => {
         assert_eq!(body_ref, None);
         let names: Vec<&str> = fields.iter().map(|f| f.name.as_str()).collect();
-        // Sorted alphabetically.
         assert_eq!(names, vec!["avatar", "nickname", "status", "tagIds"]);
         let avatar = fields.iter().find(|f| f.name.as_str() == "avatar").unwrap();
         assert_eq!(avatar.ty, BodyFieldType::Binary);

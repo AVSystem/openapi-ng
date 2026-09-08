@@ -46,13 +46,9 @@ impl DiagnosticCode {
 /// One diagnostic. Severity is implicit: a fatal travels as `Err`, a
 /// warning through [`Reporter::warning`].
 ///
-/// Message convention: lead with a stage-gerund subject ("Failed to
-/// decode input", "Unsupported OpenAPI semantic shape", "Failed to plan
-/// services"), then state the detail, then append a sentence of
-/// actionable advice when one exists ("Rename the colliding parameters
-/// in the OpenAPI spec.", "Check for typos in the $ref..."). `subcode`
-/// is set for `PolicyViolation` to let consumers route on a kebab-case
-/// sub-class without parsing the message.
+/// `message` leads with a stage-gerund subject ("Failed to decode
+/// input"), then the detail, then advice when there is any. `subcode`
+/// is set for `PolicyViolation`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Diagnostic {
   pub code: DiagnosticCode,
@@ -123,10 +119,8 @@ pub struct GeneratorDiagnostic {
   pub path: String,
 }
 
-/// Borrowed breadcrumb naming one position of a schema walk, one variant
-/// per level.
-///
-/// Building one is allocation-free; only [`Context::render`] allocates.
+/// Borrowed breadcrumb naming one position of a schema walk. Building one
+/// is allocation-free; only [`Context::render`] allocates.
 #[derive(Clone, Copy)]
 pub(crate) enum Context<'a> {
   /// Top-level named schema: renders as `"schema {name}"`.
@@ -153,8 +147,7 @@ pub(crate) enum Context<'a> {
 }
 
 impl<'a> Context<'a> {
-  /// Render the full breadcrumb chain into a `String`. This allocates —
-  /// call only when actually constructing a diagnostic message.
+  /// Renders the full chain. Allocates.
   pub(crate) fn render(&self) -> String {
     match self {
       Context::Schema(name) => format!("schema {name}"),
@@ -194,9 +187,8 @@ impl Reporter {
     Diagnostic::new(code, message, Rc::clone(&self.path))
   }
 
-  /// Records a pre-fatal warning. `subcode` is a stable kebab-case tag that
-  /// lets consumers route on a finer class than `code` alone; pass `None`
-  /// when no such subdivision applies.
+  /// Records a pre-fatal warning. `subcode` is a stable kebab-case tag,
+  /// `None` when no subdivision applies.
   pub(crate) fn warning(
     &self,
     code: DiagnosticCode,
@@ -214,8 +206,6 @@ impl Reporter {
 }
 
 /// Returns a `PolicyViolation` from the enclosing function.
-///
-/// `$subcode` is the stable kebab-case tag consumers route on.
 macro_rules! bail_policy {
   ($reporter:expr, $subcode:expr, $($message:tt)*) => {
     return ::core::result::Result::Err($crate::error::Diagnostic::policy_violation(

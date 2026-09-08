@@ -1,12 +1,7 @@
 #!/usr/bin/env bun
-// Post-processes what `napi build` generates, so the published surface is
-// the one consumers should see.
-//
-// A patch that no longer matches fails the build naming itself, so a
-// change in NAPI-RS output cannot publish an unpatched surface. Every
-// patch is idempotent: a rerun on a patched tree is a no-op.
-//
-// Runs from the `postbuild` / `postbuild:debug` scripts.
+// Post-processes what `napi build` generates into the published surface.
+// A patch that no longer matches fails the build naming itself. Every
+// patch is idempotent. Runs from `postbuild` and `postbuild:debug`.
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -76,10 +71,7 @@ function rewritePattern(
   };
 }
 
-/**
- * Scopes literal substitutions to the body of one named interface, so a
- * coincidental `code: string` elsewhere can never be caught by the patch.
- */
+/** Scopes literal substitutions to the body of one named interface. */
 function withinInterface(
   name: string,
   interfaceName: string,
@@ -109,9 +101,8 @@ function withinInterface(
   };
 }
 
-// Narrow the opaque strings NAPI emits to the named unions consumers can
-// switch on exhaustively. The same field shapes appear in more than one
-// interface, so each set is scoped to its own block.
+// Narrows the opaque strings NAPI emits to named unions, per interface:
+// the same field shapes appear in more than one of them.
 const NARROWED_DIAGNOSTIC = [
   ['  code: string', '  code: DiagnosticCode'],
   ['  subcode?: string', '  subcode: DiagnosticSubcode | null'],
@@ -123,18 +114,17 @@ const INPUT_FORMAT_UNION = "export type InputFormat = 'json' | 'yaml';";
 const RESPONSE_TYPE_UNION =
   "export type ResponseType = 'json' | 'blob' | 'text' | 'arrayBuffer';";
 
-// `[^*]|\*(?!/)` rather than `[\s\S]*?` so a lazy match cannot run past this
-// declaration's own `*/` and swallow the next block.
+// `[^*]|\*(?!/)`, not `[\s\S]*?`: a lazy match runs past this
+// declaration's own `*/` and swallows the next block.
 const LEADING_DOC = '(?:^/\\*\\*(?:[^*]|\\*(?!/))*\\*/\\n)?';
 
 const dtsPatches: readonly Patch[] = [
   withinInterface('diagnostic narrowing', 'GeneratorDiagnostic', NARROWED_DIAGNOSTIC),
   withinInterface('error-payload narrowing', 'GenerateErrorPayload', NARROWED_DIAGNOSTIC.slice(0, 2)),
 
-  // A `const enum` in a published .d.ts breaks consumers compiling under
-  // isolatedModules / verbatimModuleSyntax (Vite, esbuild, Bun, TS 5+
-  // defaults). The union plus an ambient const keeps `EmitTarget.Models`
-  // working while staying importable from a single-file transpile.
+  // A `const enum` in a published .d.ts is unimportable under
+  // isolatedModules. The union plus an ambient const keeps
+  // `EmitTarget.Models` working under a single-file transpile.
   rewritePattern(
     'EmitTarget const-enum removal',
     /export declare const enum EmitTarget \{\s*Models = 'models',\s*Angular = 'angular'\s*\}/,
@@ -148,7 +138,7 @@ const dtsPatches: readonly Patch[] = [
     source => source.includes(EMIT_TARGET_UNION),
   ),
 
-  // `InputFormat` carries the same const-enum problem as `EmitTarget`.
+  // Same const-enum problem as `EmitTarget`.
   rewritePattern(
     'InputFormat const-enum removal',
     /export declare const enum InputFormat \{\s*Json = 'json',\s*Yaml = 'yaml'\s*\}/,
@@ -177,28 +167,26 @@ const dtsPatches: readonly Patch[] = [
     source => source.includes(RESPONSE_TYPE_UNION),
   ),
 
-  // The wrapper defaults `emit` before the boundary, so a consumer may
-  // omit it.
+  // The wrapper defaults `emit` before the boundary.
   rewrite('optional emit', 'emit: Array<EmitTarget>', 'emit?: Array<EmitTarget>'),
 
-  // `inputPath` is optional because a caller may pass `inputContents`
-  // instead; the two are validated mutually exclusive at runtime.
+  // A caller may pass `inputContents` instead; the two are mutually
+  // exclusive at runtime.
   rewrite('optional inputPath', 'inputPath: string', 'inputPath?: string'),
 
-  // A JS `RegExp` cannot cross the NAPI boundary, so Rust declares the
-  // `{ source, flags }` wire shape the wrapper unpacks into.
+  // A JS `RegExp` cannot cross the NAPI boundary: Rust declares the
+  // `{ source, flags }` shape the wrapper unpacks into.
   rewrite('friendly naming type', 'naming?: NamingOptions', 'naming?: NamingConfig'),
 
-  // The native export and its result union are wrapper-internal; the
-  // hand-authored tail declares `generate` instead.
+  // Wrapper-internal; the hand-authored tail declares `generate`.
   {
     name: 'native-export stripping',
     apply: source => {
       const stripped = source
         .replace(new RegExp(`${LEADING_DOC}^export declare function generateNative\\([^\\n]*\\n`, 'm'), '')
         .replace(new RegExp(`${LEADING_DOC}^export interface GenerateOutcome \\{[\\s\\S]*?^\\}\\n`, 'm'), '');
-      // Scoped to the declaration forms: GenerateErrorPayload's own doc
-      // comment legitimately mentions `GenerateOutcome.error` in prose.
+      // Scoped to the declaration forms: `GenerateErrorPayload`'s doc
+      // comment mentions `GenerateOutcome.error` in prose.
       if (/^export (?:declare function generateNative|interface GenerateOutcome)\b/m.test(stripped)) {
         throw new DriftError('native-export stripping', 'a declaration survived');
       }
@@ -207,7 +195,7 @@ const dtsPatches: readonly Patch[] = [
   },
 ];
 
-/** Marks where the hand-authored tail begins, so reruns stay idempotent. */
+/** Marks where the hand-authored tail begins. */
 const TAIL_MARKER = '\n// Hand-authored tail';
 
 function patchTypes(): void {
@@ -237,9 +225,8 @@ const SUPPORTED_PLATFORMS = [
 ];
 
 /**
- * Injects a platform-specific load error ahead of NAPI-RS's generic one, so
- * a consumer on an unsupported platform is told which platforms ship a
- * binary and that a WebAssembly fallback exists.
+ * Injects a load error ahead of NAPI-RS's generic one, naming the
+ * platforms that ship a binary and the WebAssembly fallback.
  */
 function patchNativeLoader(): void {
   const source = readFileSync(nativePath, 'utf8');

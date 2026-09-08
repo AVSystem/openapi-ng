@@ -16,9 +16,8 @@ use super::{
 };
 
 /// A [`MappedType`] whose `schema` was found in the IR, borrowed from the
-/// model symbol that matched.
-///
-/// Only [`validate_mapped_types_against_schemas`] constructs one.
+/// model symbol that matched. Only
+/// [`validate_mapped_types_against_schemas`] constructs one.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ResolvedMappedType<'a> {
   pub(crate) schema: &'a str,
@@ -67,10 +66,8 @@ pub(crate) struct PlannedOperation<'ir> {
   pub(crate) deprecated: bool,
 }
 
-/// Which slot of the HTTP request a [`PlannedRequestField`] fills.
-///
-/// `Body` marks a property hoisted out of an inline JSON body; a nested
-/// body has no fields of this kind.
+/// Which slot of the HTTP request a [`PlannedRequestField`] fills. `Body`
+/// marks a property hoisted out of an inline JSON body.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum RequestFieldKind {
   Path,
@@ -80,8 +77,8 @@ pub(crate) enum RequestFieldKind {
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct PlannedRequestContract<'ir> {
-  /// Path and query parameters. A hoisted body property lives on
-  /// [`PlannedRequestBody::FlatJson`], not here.
+  /// Path and query parameters; a hoisted body property lives on
+  /// [`PlannedRequestBody::FlatJson`].
   pub(crate) fields: Vec<PlannedRequestField<'ir>>,
   /// Header parameters, empty when the operation declares none.
   pub(crate) headers: Vec<PlannedHeader<'ir>>,
@@ -115,14 +112,10 @@ pub(crate) struct PlannedFormField<'ir> {
 /// How a request body is laid out on the request contract.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum PlannedRequestBody<'ir> {
-  /// A JSON body with no properties to hoist: a top-level `$ref`, or a
-  /// scalar, array or union. Keeps the spec author's type under one
-  /// `body` key.
+  /// A top-level `$ref`, scalar, array or union, under one `body` key.
   Nested { ty: &'ir SchemaType, optional: bool },
   /// An inline JSON object body, its properties hoisted to top level.
-  ///
-  /// Each `optional` already folds in the envelope's `required`: under a
-  /// `required: false` body every property is optional.
+  /// Each `optional` already folds in the envelope's `required`.
   FlatJson {
     properties: Vec<PlannedRequestField<'ir>>,
     required: bool,
@@ -470,8 +463,7 @@ mod tests {
         .expect("service plan resolves");
 
     assert_eq!(services.len(), 2);
-    // Services are sorted alphabetically by class_name (AdoptionRequestRest
-    // sorts before PetRest), regardless of the discovery order in the spec.
+    // Services sort by `class_name`, not by discovery order.
     assert_eq!(
       services
         .iter()
@@ -524,9 +516,8 @@ mod tests {
 
   #[test]
   fn resolve_service_plans_keeps_ref_bodies_nested_under_smart_flatten() {
-    // Smart-flatten preserves a body that's authored as a `$ref` even when
-    // that ref resolves to an `InlineObject` schema — the spec author's
-    // named type is the signal we honor.
+    // A body authored as a `$ref` stays nested even when the ref
+    // resolves to an `InlineObject`.
     let model_symbols = vec![
       ModelSymbol {
         name: "PetId".into(),

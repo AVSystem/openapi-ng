@@ -119,9 +119,8 @@ pub(super) fn normalize_schema(
   Ok(apply_nullable_flag(base, schema.nullable.unwrap_or(false)))
 }
 
-/// Dispatches on the schema's shape. The caller folds in `nullable`; this is
-/// the single chokepoint for the depth guard, because every shape either
-/// bottoms out or descends through a [`SchemaWalk`].
+/// Dispatches on the schema's shape; the caller folds in `nullable`. The
+/// single chokepoint for the depth guard.
 fn normalize_type(schema: &Schema, walk: SchemaWalk<'_>) -> Result<SchemaType, Diagnostic> {
   walk.check_depth()?;
   warn_dropped_format(schema, walk);

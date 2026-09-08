@@ -432,7 +432,6 @@ mod tests {
       !body.contains("*/"),
       "raw */ leaked into JSDoc body: {body}"
     );
-    // The replacement should keep the description readable.
     assert!(
       s.contains("*\\/"),
       "expected escaped *\\/ in output, got: {s}"

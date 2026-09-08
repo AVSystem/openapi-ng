@@ -61,10 +61,7 @@ pub(crate) fn decode_openapi_input(
 }
 
 /// Decodes a spec supplied as source text, failing when it exceeds the
-/// input byte cap.
-///
-/// Without a `hint` the format is sniffed, since there is no file
-/// extension to dispatch on.
+/// input byte cap. Without a `hint` the format is sniffed.
 pub(crate) fn decode_input_contents(
   source: &str,
   hint: Option<InputFormat>,
@@ -109,8 +106,6 @@ pub(crate) fn decode_openapi_input_with_hint(
     .and_then(|ext| ext.to_str())
     .map(str::to_ascii_lowercase);
 
-  // Both decoders' `Display` already ends in "at line X column Y", which
-  // every message below forwards verbatim.
   match extension.as_deref() {
     Some("json") => serde_json::from_str(source).map_err(|error| {
       Diagnostic::new(
@@ -135,16 +130,9 @@ pub(crate) fn decode_openapi_input_with_hint(
   }
 }
 
-/// Decodes YAML into an `OpenApiDocument`.
-///
-/// Repeated mapping keys are rejected by the model's `UniqueMap` /
-/// `UniqueIndexMap` fields during this single typed parse; a repeat under
-/// `components.schemas` is reported with the `duplicate-schema-name`
-/// subcode, and every other position keeps the decode error verbatim
-/// (serde already prints the field path and the source line and column).
-///
-/// The anchor-expansion guard runs only when the source contains `&`,
-/// without which no alias can expand.
+/// Decodes YAML into an `OpenApiDocument`. Repeated mapping keys are
+/// rejected by the model's `UniqueMap` fields. The anchor-expansion
+/// guard runs only when the source contains `&`.
 fn decode_yaml(source: &str, display_path: &Rc<str>) -> Result<OpenApiDocument, Diagnostic> {
   if source.contains('&') {
     check_anchor_expansion(source, display_path)?;
@@ -178,11 +166,9 @@ fn decode_failure(message: &str, display_path: &Rc<str>) -> Diagnostic {
 /// `components.schemas`.
 const SCHEMAS_FIELD_PATH: &str = "components.schemas";
 
-/// Rejects a source whose YAML aliases expand far beyond its own size.
-///
-/// Measures the parsed node tree by re-serialising it, which inlines every
-/// alias. A source this cannot parse or re-serialise passes, leaving the
-/// typed parse to report the real error.
+/// Rejects a source whose YAML aliases expand far beyond its own size,
+/// measured by re-serialising the node tree. A source this cannot parse
+/// passes, leaving the typed parse to report the error.
 fn check_anchor_expansion(source: &str, display_path: &Rc<str>) -> Result<(), Diagnostic> {
   let Ok(value) = serde_yml::from_str::<serde_yml::Value>(source) else {
     return Ok(());
@@ -244,9 +230,6 @@ mod tests {
     let _ = fs::remove_file(path);
   }
 
-  // Every decode message forwards the parser's own position suffix
-  // verbatim. A parser upgrade that drops it fails here rather than
-  // silently costing spec authors the line number.
   #[test]
   fn decode_error_for_malformed_json_includes_line_and_column() {
     let path = PathBuf::from("spec.json");
@@ -277,8 +260,6 @@ mod tests {
     );
   }
 
-  // Inline-source variant of the fixture test below, so the behaviour is
-  // pinned independently of the file on disk.
   #[test]
   fn duplicate_schema_name_in_yaml_is_diagnosed() {
     let yaml = r#"
@@ -314,7 +295,6 @@ components:
     assert_eq!(err.subcode, Some("duplicate-schema-name"));
   }
 
-  // --- size-cap tests ---
 
   #[test]
   fn rejects_input_larger_than_cap() {
@@ -330,7 +310,6 @@ components:
     fs::create_dir_all(&dir).unwrap();
     let path = dir.join("huge.yaml");
 
-    // Write 17 MiB of content so the cap fires before any parse attempt.
     let header = "openapi: 3.0.3\ninfo: { title: x, version: 1.0.0 }\npaths: {}\n# ";
     let pad_bytes = (17 * 1024 * 1024) - header.len();
     let mut content = String::with_capacity(17 * 1024 * 1024);
@@ -354,9 +333,6 @@ components:
 
   #[test]
   fn anchor_expansion_within_ratio_accepts() {
-    // A handful of aliases on a small anchor stays well under the default
-    // 50× expansion cap. Pins that legitimate anchor use is not regressed
-    // by the guard.
     let yaml = r#"openapi: 3.0.3
 info: { title: modest-anchor, version: '1.0.0' }
 paths: {}
@@ -378,12 +354,8 @@ components:
 
   #[test]
   fn anchor_expansion_exceeding_ratio_rejects() {
-    // Construct a YAML where the anchor body × alias count blows past the
-    // 50× ratio cap on re-serialisation. 500 A-rows × 16 aliases each ×
-    // a ~250-byte body re-serialises into ~2 MB from a ~30 KB source
-    // (~70× ratio). The check is independent of the OnceLock-cached cap
-    // because the cap setter is `max_expansion_ratio()`; this test
-    // exercises the same path the cached value would.
+    // 500 rows × 16 aliases × ~250-byte body: ~30 KB source, ~2 MB
+    // re-serialised, past the 50× cap.
     let mut yaml = String::from(
       "openapi: 3.0.3\ninfo:\n  title: Fanout\n  version: 1.0.0\npaths: {}\ncomponents:\n  schemas:\n    Base: &b\n      type: object\n      properties:\n",
     );
@@ -416,9 +388,6 @@ components:
     );
   }
 
-  // Anchor-free YAML decodes cleanly and lands every schema. Structural
-  // only: it does not observe whether the `&` gate skipped the
-  // re-serialisation, which `bun run bench` covers.
   #[test]
   fn anchor_free_yaml_decodes_successfully() {
     let mut yaml = String::from(
@@ -429,7 +398,6 @@ components:
         "    S{i:03}:\n      type: object\n      properties:\n        id: {{ type: string }}\n        name: {{ type: string }}\n",
       ));
     }
-    // Sanity-check the precondition: the source contains no anchor markers.
     assert!(
       !yaml.contains('&'),
       "fixture must be anchor-free to exercise the fast path",
@@ -451,8 +419,6 @@ components:
     use super::decode_openapi_input_with_hint;
     use crate::bindings::InputFormat;
 
-    // File named .yaml but contents are valid JSON. With the hint we
-    // skip extension lookup and decode as JSON directly.
     let path = PathBuf::from("misnamed.yaml");
     let display: Rc<str> = Rc::from("misnamed.yaml");
     let json_source =
@@ -480,7 +446,7 @@ components:
       .expect("clock works")
       .as_nanos();
     let path = std::env::temp_dir().join(format!("oapi-ng-noext-{nanos}")); // no extension
-    // Use a tab character inside a flow mapping — syntactically invalid in both JSON and YAML.
+    // A tab inside a flow mapping: invalid in both JSON and YAML.
     fs::write(&path, "{\t\"key\": [}").unwrap();
 
     let path_str = path.to_str().expect("utf-8 path");
@@ -489,11 +455,7 @@ components:
     let _ = fs::remove_file(&path);
 
     let msg = &err.message;
-    // The "Rename" hint must still be present.
     assert!(msg.contains("Rename"), "missing Rename hint: {msg}");
-    // The underlying parser error info should be there too — serde_yml includes
-    // "line" and "column" in its Display output so authors can jump to the
-    // offending byte without re-parsing by hand.
     assert!(
       msg.contains("line ") && msg.contains("column "),
       "expected line/column from parser in message: {msg}",
@@ -505,8 +467,6 @@ components:
     use super::decode_openapi_input_with_hint;
     use crate::bindings::InputFormat;
 
-    // A JSON-shaped map also parses as flow-style YAML, so the source
-    // has to be one YAML rejects: a tab inside a flow mapping.
     let path = PathBuf::from("ambiguous");
     let display: Rc<str> = Rc::from("ambiguous");
     let source = "{\t\"openapi\": \"3.0.3\"}";
@@ -525,9 +485,7 @@ components:
     use super::decode_openapi_input_with_hint;
     use crate::bindings::InputFormat;
 
-    // No path extension and no Content-Type — but with an explicit
-    // Json hint the decoder should still succeed. This is the URL-input
-    // shape where the JS wrapper hands us inputContents + an empty path.
+    // The URL-input shape: no extension, no Content-Type, explicit hint.
     let path = PathBuf::from("");
     let display: Rc<str> = Rc::from("https://example.com/openapi");
     let source = r#"{"openapi":"3.0.3","info":{"title":"NoExt","version":"1.0.0"},"paths":{}}"#;
@@ -540,8 +498,6 @@ components:
   fn decode_input_contents_enforces_byte_cap() {
     use super::decode_input_contents;
 
-    // Build a string larger than the default 16 MiB cap: 17 MiB of 'a'
-    // padding inside an otherwise-valid YAML header.
     let header = "openapi: 3.0.3\ninfo: { title: Big, version: 1.0.0 }\npaths: {}\n# ";
     let pad_bytes = (17 * 1024 * 1024) - header.len();
     let mut content = String::with_capacity(17 * 1024 * 1024);
@@ -589,14 +545,12 @@ mod proptests {
 
   proptest! {
     #![proptest_config(ProptestConfig {
-      // Keep iteration count reasonable for CI — boundary fuzzing doesn't need millions.
       cases: 256,
       ..ProptestConfig::default()
     })]
 
     #[test]
     fn read_and_decode_never_panics(bytes in proptest::collection::vec(any::<u8>(), 0..16384)) {
-      // Write to a unique temp file per case so concurrent property invocations don't collide.
       let dir = std::env::temp_dir().join(format!(
         "oapi-ng-prop-decode-{}-{}",
         std::process::id(),
@@ -606,7 +560,6 @@ mod proptests {
           .as_nanos(),
       ));
       std::fs::create_dir_all(&dir).unwrap();
-      // Pick an extension at random-ish to exercise both code paths.
       let ext = if bytes.len() % 2 == 0 { "yaml" } else { "json" };
       let path = dir.join(format!("input.{ext}"));
       std::fs::write(&path, &bytes).unwrap();
@@ -616,7 +569,6 @@ mod proptests {
       let result = read_and_decode(path_str, &display);
       let _ = std::fs::remove_dir_all(&dir);
 
-      // Property: never panic. Either Ok, or Err with a typed code.
       if let Err(diag) = result {
         prop_assert!(
           matches!(diag.code, DiagnosticCode::InputInvalid | DiagnosticCode::PolicyViolation),

@@ -25,8 +25,6 @@ pub(super) fn render_requestful_builder(
     .iter()
     .map(|f| f.name.as_ref())
     .collect();
-  // A nested body destructures as one `body`; a hoisted one destructures
-  // every field, which the `body:` expression then references by name.
   match &operation.request.body {
     None => {}
     Some(PlannedRequestBody::Nested { .. }) => destructured.push("body"),
@@ -78,9 +76,7 @@ pub(super) fn render_request_interface(
   operation: &PlannedOperation<'_>,
   request_name: &TypeName,
 ) {
-  // Emitted member by member because a hoisted body mixes `SchemaType`
-  // with `BodyFieldType`, which `interface_block` cannot take together.
-  // Member order is path → query → body → headers.
+  // Member order: path → query → body → headers.
   buffer.open_block(&format!("export interface {request_name}"));
 
   for field in &operation.request.fields {
@@ -139,10 +135,8 @@ pub(super) fn render_error_interface(
 }
 
 /// Emits the synthetic `headers` member: an inline object over the
-/// operation's `in: header` parameters, optional when every one of them is.
-///
-/// No member carries JSDoc: OpenAPI's Parameter Object has no
-/// `deprecated` for a header.
+/// operation's `in: header` parameters, optional when every one of them
+/// is. No member carries JSDoc.
 fn render_headers_member(buffer: &mut Writer, headers: &[PlannedHeader<'_>]) {
   buffer.push("headers");
   if headers.iter().all(|header| header.optional) {
@@ -159,10 +153,7 @@ fn render_headers_member(buffer: &mut Writer, headers: &[PlannedHeader<'_>]) {
 }
 
 /// Writes `params: httpParams({ … }),` when the operation declares query
-/// parameters.
-///
-/// Emitted even when every field is optional: `httpParams` skips an
-/// undefined value, so an all-undefined call yields empty params.
+/// parameters, including when every one of them is optional.
 fn write_params_line(buffer: &mut Writer, operation: &PlannedOperation<'_>) {
   let mut query = operation
     .request
@@ -192,9 +183,7 @@ fn write_body_line(buffer: &mut Writer, operation: &PlannedOperation<'_>) {
     return;
   };
   match body {
-    // Forwarded verbatim.
     PlannedRequestBody::Nested { .. } => buffer.push("body: body,\n"),
-    // Re-assembled from the hoisted properties, restoring the wire shape.
     PlannedRequestBody::FlatJson { properties, .. } => {
       buffer.push("body: { ");
       for (index, property) in properties.iter().enumerate() {
@@ -214,14 +203,9 @@ fn write_body_line(buffer: &mut Writer, operation: &PlannedOperation<'_>) {
   }
 }
 
-/// Writes the IIFE that materializes a form-body payload.
-///
-/// Each field is referenced by the bare identifier the outer builder
-/// destructured.
-///
-/// `append` takes only a string or a `Blob`, so a scalar is wrapped in
-/// `String(…)` and a binary passes through. An optional field is guarded,
-/// leaving its key out when the value is absent.
+/// Writes the IIFE that materializes a form-body payload. A scalar field
+/// is wrapped in `String(…)`, a binary passes through, and an optional
+/// one is guarded so an absent value leaves its key out.
 fn write_form_body(buffer: &mut Writer, fields: &[PlannedFormField<'_>], kind: FormKind) {
   let (constructor, variable, ts_type) = match kind {
     FormKind::Multipart => ("new FormData()", "fd", "FormData"),
@@ -261,12 +245,8 @@ fn write_form_body(buffer: &mut Writer, fields: &[PlannedFormField<'_>], kind: F
 }
 
 /// Writes `path` into `buffer`, expanding each `{name}` placeholder to
-/// `${encodeURIComponent(name)}`.
-///
-/// Braces are balanced on any path that reaches emit — normalize's
-/// `validate_path_template` rejects the rest. The unmatched-`{` branch
-/// emits the remainder verbatim so adversarial IR yields wrong output
-/// instead of a panic across the NAPI boundary.
+/// `${encodeURIComponent(name)}`. `validate_path_template` has already
+/// balanced the braces; an unmatched `{` emits the remainder verbatim.
 fn write_path_template_into(buffer: &mut Writer, path: &str) {
   let mut rest = path;
   while let Some(open) = rest.find('{') {
@@ -410,9 +390,8 @@ mod tests {
 
   #[test]
   fn requestful_builder_assembles_object_literal_for_flat_json_body() {
-    // Smart-flatten: inline JSON object bodies hoist properties to
-    // top-level fields. The builder re-assembles them into an object
-    // literal at the `body:` slot.
+    // Inline JSON object bodies hoist their properties to top-level
+    // fields, re-assembled into an object literal at the `body:` slot.
     let str_ty = string_ty();
     let bool_ty = SchemaType::Scalar(SchemaScalar::Boolean);
     let op = op_with(
@@ -487,8 +466,7 @@ mod tests {
     render_requestful_builder(&mut buf, &op, &type_name("UploadPayloadParams"));
     let out = buf.into_string();
 
-    // Non-object JSON bodies have no property structure to hoist, so they
-    // stay nested under `body` and forward via property shorthand.
+    // Non-object JSON bodies stay nested under `body`.
     assert!(out.contains("const { body } = request;"));
     assert!(out.contains("body: body,"));
   }
@@ -554,8 +532,7 @@ mod tests {
     assert!(out.contains("export interface CreatePetParams"));
     // Ref body keeps its named type nested under the literal `body` slot.
     assert!(out.contains("body: CreatePetPayload;"));
-    // Synthetic `headers` is required when any header is required, optional
-    // only when all headers are optional. Mixed (one required) ⇒ required.
+    // Synthetic `headers` is optional only when every header is.
     assert!(out.contains("headers: {"));
     // Header names with `-` are quoted via safe_property_name.
     assert!(out.contains("'X-Trace-Id': string;"));
@@ -748,9 +725,8 @@ mod tests {
     render_requestful_builder(&mut buf, &op, &type_name("OpParams"));
     let out = buf.into_string();
 
-    // Form fields are destructured directly from `request` (smart-flatten
-    // hoists them to top-level) and referenced by bare identifier in the
-    // FormData appends.
+    // Hoisted form fields destructure from `request` and are referenced
+    // by bare identifier in the appends.
     assert!(out.contains("const { status } = request;"));
     assert!(out.contains("const fd = new FormData();"));
     assert!(out.contains("fd.append('status', String(status));"));

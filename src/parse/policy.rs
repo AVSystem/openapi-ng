@@ -186,9 +186,7 @@ mod cap_tests {
 
   use super::validate_generation_policy;
 
-  // Build an OpenAPI YAML document on the fly with N empty-object schemas
-  // under components.schemas. Used to assert the schema-cap fires at the
-  // configured boundary.
+  // An OpenAPI document with N empty-object schemas.
   fn build_doc_with_schemas(n: usize) -> String {
     let mut s = String::from(
       "openapi: 3.0.3\ninfo:\n  title: Bulk\n  version: 1.0.0\npaths: {}\ncomponents:\n  schemas:\n",

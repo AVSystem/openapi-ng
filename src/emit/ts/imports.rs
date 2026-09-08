@@ -88,8 +88,7 @@ pub(crate) fn import_line<'a>(
   path: &str,
   statement: Statement,
 ) {
-  // Buffered so the joined width can be measured before a layout is
-  // chosen.
+  // Buffered to measure the joined width before choosing a layout.
   let bindings: Vec<Binding<'a>> = bindings.into_iter().collect();
   let names: usize = bindings.iter().map(|binding| binding.width()).sum();
   let separators = bindings.len().saturating_sub(1) * ", ".len();

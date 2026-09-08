@@ -1,5 +1,5 @@
-//! The semantic pass that runs once schema and operation lowering are
-//! done: schema sorting, discriminator narrowing and `$ref` validation.
+//! Schema sorting, discriminator narrowing and `$ref` validation, run
+//! once schema and operation lowering are done.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -20,8 +20,7 @@ pub(super) fn finalize(model: &mut ApiModel, reporter: &Reporter) -> Result<(), 
 }
 
 /// Narrows each discriminated union member's discriminator property to a
-/// single-value string literal, which is what lets the TypeScript compiler
-/// narrow the union to a concrete member.
+/// single-value string literal.
 ///
 /// Fails with `missing-discriminator-property` when a member does not
 /// declare the property, and `discriminator-property-must-be-string` when
@@ -30,8 +29,6 @@ fn narrow_discriminator_properties(
   symbols: &mut [ModelSymbol],
   reporter: &Reporter,
 ) -> Result<(), Diagnostic> {
-  // Per member: the literal value to assign to each of its discriminator
-  // properties.
   let mut narrowings: BTreeMap<Box<str>, BTreeMap<Box<str>, Box<str>>> = BTreeMap::new();
   for symbol in symbols.iter() {
     if let SchemaType::Union {
@@ -42,9 +39,8 @@ fn narrow_discriminator_properties(
     {
       for member in members {
         if let SchemaType::Ref(schema_name) = member {
-          // A `discriminator.mapping` entry whose target is this member
-          // supplies the wire value; without one it is the lowercased
-          // schema name.
+          // A `mapping` entry for this member supplies the wire value;
+          // without one it is the lowercased schema name.
           let literal_value: Box<str> = discriminator
             .mapping
             .iter()
@@ -66,8 +62,8 @@ fn narrow_discriminator_properties(
     return Ok(());
   }
 
-  // Validate every member before mutating any of them, so a rejected
-  // spec leaves the model untouched.
+  // Validate every member before mutating any: a rejected spec leaves
+  // the model untouched.
   let by_name: BTreeMap<&str, &SchemaType> = symbols
     .iter()
     .map(|symbol| (symbol.name.as_ref(), &symbol.body))
@@ -99,8 +95,8 @@ fn narrow_discriminator_properties(
     }
   }
 
-  // Only inline objects are mutated: a `Ref` member is narrowed when the
-  // symbol it names is reached by this same loop.
+  // Only inline objects are mutated; a `Ref` member is narrowed when
+  // this loop reaches the symbol it names.
   for symbol in symbols.iter_mut() {
     let Some(props) = narrowings.get(&symbol.name) else {
       continue;
@@ -145,10 +141,8 @@ const fn is_string_discriminator_shape(ty: &SchemaType) -> bool {
 }
 
 /// Narrows the named property to a single-value string literal, returning
-/// whether it was found.
-///
-/// A property reachable only through a `$ref` is left alone: it keeps its
-/// declared `string` type, which still compiles but narrows only partly.
+/// whether it was found. A property reachable only through a `$ref` keeps
+/// its declared `string` type.
 fn narrow_property_in_body(body: &mut SchemaType, name: &str, literal_value: &str) -> bool {
   match body {
     SchemaType::InlineObject { properties } => {
@@ -198,17 +192,14 @@ fn validate_references(document: &ApiModel, reporter: &Reporter) -> Result<(), D
     if let Some(body) = &operation.request.body {
       match &body.content {
         BodyContent::Json(ty) => collect_type_references(ty, &mut refs),
-        // A form body's fields are typed by `BodyFieldType`, which
-        // carries no schema reference; its `body_ref` was resolved
-        // against the schema index at lowering time.
+        // `BodyFieldType` carries no schema reference; `body_ref` was
+        // resolved at lowering time.
         BodyContent::Multipart { .. } | BodyContent::UrlEncoded { .. } => {}
       }
     }
     if let Some(response) = &operation.response {
       match response {
         ResponseContent::Json(Some(ty)) => collect_type_references(ty, &mut refs),
-        // `Json(None)` carries no schema, and the other variants carry
-        // no payload.
         ResponseContent::Json(None)
         | ResponseContent::Blob
         | ResponseContent::Text
@@ -300,7 +291,6 @@ mod tests {
     let SchemaType::Intersection(parts) = &cat.body else {
       panic!("Cat body should remain Intersection");
     };
-    // The InlineObject part should now have kind narrowed to 'cat'.
     let kind_ty = parts
       .iter()
       .find_map(|part| match part {
@@ -321,10 +311,8 @@ mod tests {
 
   #[test]
   fn validates_discriminator_via_ref_in_intersection() {
-    // Cat: allOf: [Animal] where only Animal declares 'kind'. Validation
-    // walks into the referenced Animal and finds 'kind' there — no
-    // missing-property diagnostic. (Mutation is partial in this shape;
-    // the validation pass is the security-relevant guarantee.)
+    // Cat: allOf: [Animal], where only Animal declares 'kind'.
+    // Validation walks into Animal and finds it; mutation stays partial.
     let mut symbols = vec![
       symbol(
         "Animal",
@@ -412,9 +400,7 @@ mod tests {
 
   #[test]
   fn accepts_string_literals_discriminator_property() {
-    // A spec that already constrains the discriminator to a single
-    // literal is fine — the mutation simply rewrites to the canonical
-    // single-value form.
+    // An already single-literal discriminator rewrites to the same shape.
     let mut symbols = vec![
       symbol(
         "Cat",

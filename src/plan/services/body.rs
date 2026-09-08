@@ -66,9 +66,8 @@ fn plan_form_fields<'ir>(fields: &'ir [BodyField]) -> Vec<PlannedFormField<'ir>>
 }
 
 /// Fails when a hoisted body field name clashes with a path or query
-/// parameter already on `fields`.
-///
-/// A nested body has nothing to clash: it occupies the single `body` key.
+/// parameter already on `fields`. A nested body occupies the single
+/// `body` key and cannot clash.
 pub(super) fn check_body_field_collisions(
   fields: &[PlannedRequestField],
   body: Option<&PlannedRequestBody>,
@@ -161,7 +160,6 @@ mod tests {
           assert!(!required, "envelope marked optional in fixture");
           assert_eq!(properties.len(), 1);
           assert_eq!(properties[0].name.as_ref(), "status");
-          // Required property under an optional envelope ⇒ field is optional.
           assert!(properties[0].optional);
         }
         other => panic!("expected FlatJson, got {other:?}"),
@@ -349,8 +347,7 @@ mod tests {
         }
         other => panic!("expected multipart body, got {other:?}"),
       }
-      // Path/query field list stays empty in this fixture; form fields
-      // hoist to top-level via the body slot, not via `fields`.
+      // Form fields hoist through the body slot, not through `fields`.
       assert!(op.request.fields.is_empty());
     }
 
@@ -371,9 +368,8 @@ mod tests {
 
     #[test]
     fn form_field_name_collision_with_path_param_emits_field_collision() {
-      // Path has {fileName} and the multipart body has a `fileName` field;
-      // smart-flatten hoists form fields to top-level so the duplicate
-      // surfaces on the request interface — reject at planning time.
+      // `{fileName}` in the path and a `fileName` form field would
+      // collide on the request interface.
       let ir = api_model_with_form_collision();
       let ctx = test_reporter();
       let err = resolve_service_plans(&ir, &NamingResolver::default(), &ctx)
@@ -384,10 +380,8 @@ mod tests {
 
     #[test]
     fn multipart_ref_body_still_flattens_fields_under_smart_rule() {
-      // Even when the multipart body carries a named source schema, we
-      // can't render the schema's name as a TS type — `BodyFieldType`
-      // (Blob | File, …) does not compose into the source `SchemaType`.
-      // So multipart bodies always flatten regardless of `body_ref`.
+      // Multipart always flattens: `BodyFieldType` does not compose
+      // into the source `SchemaType`, named schema or not.
       let ir = api_model_with_multipart_ref_body("UploadForm");
       let ctx = test_reporter();
       let services = resolve_service_plans(&ir, &NamingResolver::default(), &ctx).expect("ok");
