@@ -11,9 +11,8 @@ export declare const EmitTarget: {
 };
 
 /**
- * A single generated artifact. `contents` always carries the emitted
- * source; callers that only need on-disk output can pass `outputPath`
- * and ignore the array.
+ * One generated artifact. `contents` carries the emitted source whether
+ * or not the caller also asked for it on disk.
  */
 export interface GeneratedArtifact {
   path: string
@@ -85,10 +84,9 @@ export interface GenerateResult {
 
 export interface GenerateSummary {
   /**
-   * Display-normalized path of the source spec, as it appears in the
-   * generated-artifact banner and in diagnostics' `path` field. Lets
-   * consumers correlate a result with the input they passed; the value
-   * is the supplied path with separators normalized, never resolved.
+   * The source spec's path as supplied, with separators normalised and
+   * nothing resolved. The same string appears in every diagnostic's
+   * `path`.
    */
   normalizedSourcePath: string
   specVersion: string
@@ -99,12 +97,11 @@ export interface GenerateSummary {
 }
 
 /**
- * Boundary projection of `Diagnostic` for the NAPI surface — string-typed
- * `code` is what JS consumers see and compare against. `severity` is
- * either `"warning"` or `"error"`; the TS surface narrows it to the
- * `'warning' | 'error'` union via `scripts/patch-types.mjs`. `subcode`
- * is populated only for `PolicyViolation` today; consumers route on it
- * when they need finer-grained remediation than `code` alone.
+ * Boundary projection of [`Diagnostic`] for the NAPI surface, where
+ * `code` and `severity` are strings a JS consumer compares against.
+ *
+ * `severity` is `"warning"` or `"error"`. `subcode` is set only for
+ * `PolicyViolation`.
  */
 export interface GeneratorDiagnostic {
   code: DiagnosticCode
@@ -124,12 +121,11 @@ export declare const enum InputFormat {
 }
 
 /**
- * Canonical mapped-type record. Used as user input (from CLI/JS options)
- * and as the planning record (after schema-name validation).
+ * One caller-declared mapped type: replace the generated declaration for
+ * `schema` with `ty` imported from `import`.
  *
- * Field names match the CLI YAML config vocabulary (schema/import/type/
- * alias). `ty` is the Rust-side name; the NAPI surface renames it to
- * `type` so the JS API stays idiomatic.
+ * Field names match the config vocabulary. `ty` crosses the NAPI
+ * boundary as `type`.
  */
 export interface MappedType {
   schema: string
@@ -144,9 +140,8 @@ export interface NamingChainItem {
 }
 
 /**
- * User-facing naming config crossing the NAPI boundary. The JS wrapper
- * in `lib/index.js` unpacks each JS `RegExp` into the `{ source, flags
- * }` shape carried here, so Rust sees pure data on this side.
+ * The naming config as it crosses the NAPI boundary, where a JS `RegExp`
+ * arrives already unpacked into `{ source, flags }`.
  */
 export interface NamingOptions {
   methodName?: NamingValue
@@ -167,11 +162,10 @@ export interface NamingRuleEntry {
 }
 
 /**
- * Discriminated union: a string shorthand, a single rule, or a chain
- * of rules-or-shorthands. NAPI cannot express true sum types, so we
- * use exclusive fields: exactly one of `string`, `rule`, or `chain`
- * must be set. The JS wrapper enforces this; the Rust validator
- * double-checks at config resolution.
+ * A string shorthand, a single rule, or a chain of either.
+ *
+ * NAPI has no sum type, so the variants are exclusive fields: exactly
+ * one must be set, which `plan::naming::lower` enforces.
  */
 export interface NamingValue {
   /** `{ string: '...' }` — bare format-string shorthand. */
@@ -185,13 +179,7 @@ export interface NamingValue {
   chain?: Array<NamingChainItem>
 }
 
-/**
- * JS-facing response-kind values. Mirrors the names Angular's
- * `HttpClient.request({ responseType })` and `httpResource.<kind>()`
- * expose, so the config vocabulary stays in JS conventions. The emit
- * boundary translates `ArrayBuffer` to the lowercase `'arraybuffer'`
- * string `HttpClient.request` requires.
- */
+/** How a response body is decoded, named as the JS runtime names it. */
 export declare const enum ResponseType {
   Json = 'json',
   Blob = 'blob',
@@ -200,12 +188,10 @@ export declare const enum ResponseType {
 }
 
 /**
- * User mapping: override the response-kind decoded for a specific
- * response content-type. Pure data — Phase-3 normalize-side reads
- * this when picking the `responseKind` for an operation's response
- * content. Keys are matched case-insensitively against the lowercased
- * media-type from the spec; the `responseType` is one of the JS-facing
- * HttpClient response kinds (`'json' | 'blob' | 'text' | 'arrayBuffer'`).
+ * Overrides the response kind decoded for one content type.
+ *
+ * `content_type` is matched case-insensitively against the media type
+ * the spec declares.
  */
 export interface ResponseTypeMapping {
   contentType: string

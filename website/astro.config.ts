@@ -1,9 +1,14 @@
+import type { ViteUserConfig } from 'astro';
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
 // `astro dev` ignores public/_headers; mirror its COOP/COEP scope so the
 // playground page is cross-origin isolated and its wasm worker inherits COEP.
-const playgroundHeaders = {
+// Astro re-exports Vite's config type, so the plugin shape is available
+// without declaring a direct dependency on vite.
+type VitePlugin = NonNullable<ViteUserConfig['plugins']>[number];
+
+const playgroundHeaders: VitePlugin = {
   name: 'playground-headers',
   configureServer(server) {
     server.middlewares.use((req, res, next) => {
