@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use super::writer::Writer;
+use super::writer::{Writer, write_separated};
 
 /// Width above which a statement wraps to one identifier per line.
 ///
@@ -45,14 +45,14 @@ impl<'a> Binding<'a> {
 /// Emits one `import type { … } from '…';` per path, names in iteration
 /// order.
 pub(crate) fn type_import_block(out: &mut Writer, by_path: &BTreeMap<&str, BTreeSet<&str>>) {
-  for (path, names) in by_path {
+  by_path.iter().for_each(|(path, names)| {
     import_line(
       out,
       names.iter().copied().map(Binding::plain),
       path,
       Statement::TypeImport,
     );
-  }
+  });
 }
 
 /// Which statement keyword the bindings belong to.
@@ -96,12 +96,7 @@ pub(crate) fn import_line<'a>(
 
   if statement.open().len() + names + separators + tail <= INLINE_WIDTH || bindings.len() <= 1 {
     out.push(statement.open());
-    for (index, binding) in bindings.iter().enumerate() {
-      if index > 0 {
-        out.push(", ");
-      }
-      binding.write(out);
-    }
+    write_separated(out, &bindings, ", ", |out, binding| binding.write(out));
     out.push(" } from '");
     out.push(path);
     out.push("';\n");
@@ -110,10 +105,10 @@ pub(crate) fn import_line<'a>(
 
   out.push(statement.open_wrapped());
   out.indent();
-  for binding in &bindings {
+  bindings.iter().for_each(|binding| {
     binding.write(out);
     out.push(",\n");
-  }
+  });
   out.dedent();
   out.push("} from '");
   out.push(path);

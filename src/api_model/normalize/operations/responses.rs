@@ -2,18 +2,18 @@
 
 use std::collections::BTreeMap;
 
+use crate::api_model::canonical::{ErrorResponse, ResponseContent};
 use crate::error::{Context, Diagnostic};
-use crate::ir::canonical::{ErrorResponse, ResponseContent};
 use crate::options::{ResponseType, ResponseTypeMapping};
 use crate::parse::openapi_model::{MediaType, Response};
 
 use super::super::SchemaWalk;
 use super::super::schema::normalize_schema;
-use super::OperationCx;
+use super::LoweringContext;
 
 pub(super) fn normalize_success_response(
   responses: Option<&BTreeMap<String, Response>>,
-  cx: OperationCx<'_>,
+  context: LoweringContext<'_>,
 ) -> Result<Option<ResponseContent>, Diagnostic> {
   let Some(responses) = responses else {
     return Ok(None);
@@ -30,17 +30,17 @@ pub(super) fn normalize_success_response(
     return Ok(None);
   };
 
-  let Some((mime, media)) = pick_response_media(content, cx.response_types()) else {
+  let Some((mime, media)) = pick_response_media(content, context.response_types()) else {
     return Ok(None);
   };
 
-  let kind = classify_response_kind(mime, cx.response_types());
+  let kind = classify_response_kind(mime, context.response_types());
   let walk = SchemaWalk::root(
     Context::ResponseSchema {
-      method: cx.method(),
-      path: cx.path(),
+      method: context.method(),
+      path: context.path(),
     },
-    cx.reporter(),
+    context.reporter(),
   );
 
   Ok(Some(match kind {
@@ -63,7 +63,7 @@ pub(super) fn normalize_success_response(
 /// Skips a schemaless response, a non-JSON one, and the `default` key.
 pub(super) fn normalize_error_responses(
   responses: Option<&BTreeMap<String, Response>>,
-  cx: OperationCx<'_>,
+  context: LoweringContext<'_>,
 ) -> Result<Vec<ErrorResponse>, Diagnostic> {
   let Some(responses) = responses else {
     return Ok(Vec::new());
@@ -71,10 +71,10 @@ pub(super) fn normalize_error_responses(
 
   let walk = SchemaWalk::root(
     Context::ResponseSchema {
-      method: cx.method(),
-      path: cx.path(),
+      method: context.method(),
+      path: context.path(),
     },
-    cx.reporter(),
+    context.reporter(),
   );
   let mut errors = responses
     .iter()
@@ -174,15 +174,15 @@ fn classify_response_kind(
 
 #[cfg(test)]
 mod tests {
-  use super::super::OperationCx;
+  use super::super::LoweringContext;
 
   fn test_cx<'a>(
     response_types: &'a [ResponseTypeMapping],
     reporter: &'a crate::error::Reporter,
-  ) -> OperationCx<'a> {
-    static EMPTY: std::sync::LazyLock<BTreeMap<&str, &crate::ir::schema::SchemaType>> =
+  ) -> LoweringContext<'a> {
+    static EMPTY: std::sync::LazyLock<BTreeMap<&str, &crate::api_model::schema::SchemaType>> =
       std::sync::LazyLock::new(BTreeMap::new);
-    OperationCx::new("GET", "/x", &EMPTY, response_types, reporter)
+    LoweringContext::new("GET", "/x", &EMPTY, response_types, reporter)
   }
   use std::collections::BTreeMap;
 

@@ -22,9 +22,9 @@ pub(crate) use fixed::{
 pub(crate) use lower::lower;
 
 use crate::{
+  api_model::canonical::OperationDef,
   error::{Diagnostic, Reporter},
-  ident::MethodName,
-  ir::canonical::OperationDef,
+  identifier::MethodName,
 };
 use context::OperationContext;
 use defaults::{default_group, default_method_name};
@@ -125,11 +125,11 @@ mod tests {
   use super::parse_spec::compile as compile_parse_spec;
   use super::*;
   use crate::{
-    error::DiagnosticCode,
-    ir::{
+    api_model::{
       canonical::{HttpMethod, OperationDef, RequestDef, ResponseContent},
       schema::{SchemaScalar, SchemaType},
     },
+    error::DiagnosticCode,
     test_support::test_reporter,
   };
 

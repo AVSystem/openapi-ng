@@ -1,13 +1,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
+  api_model::{
+    canonical::ModelSymbol,
+    schema::{SchemaProperty, SchemaType},
+  },
   emit::ts::{
     Binding, Doc, Member, Position, Render, Statement, Writer, import_line, interface_block, jsdoc,
     string_union, type_alias, type_reexport_line, w,
-  },
-  ir::{
-    canonical::ModelSymbol,
-    schema::{SchemaProperty, SchemaType},
   },
   plan::artifact_plan::ResolvedMappedType,
 };
@@ -82,7 +82,7 @@ fn member(property: &SchemaProperty) -> Member<'_> {
   Member {
     name: property.name.as_ref(),
     optional: !property.required,
-    ty: &property.ty,
+    type_expr: &property.schema,
     doc: Doc::new(property.description.as_deref(), property.deprecated),
   }
 }
@@ -92,7 +92,7 @@ fn native_binding<'a>(mapped: &'a ResolvedMappedType<'_>) -> &'a str {
   mapped
     .alias
     .as_deref()
-    .unwrap_or_else(|| mapped.ty.as_ref())
+    .unwrap_or_else(|| mapped.type_name.as_ref())
 }
 
 /// True when the binding a mapped type introduces already equals the
@@ -114,7 +114,7 @@ fn emit_mapped_imports(mapped_types: &[ResolvedMappedType<'_>], out: &mut Writer
       grouped
         .entry(mapped.import.as_ref())
         .or_default()
-        .insert((mapped.ty.as_ref(), mapped.alias.as_deref()));
+        .insert((mapped.type_name.as_ref(), mapped.alias.as_deref()));
       grouped
     },
   );
@@ -124,18 +124,18 @@ fn emit_mapped_imports(mapped_types: &[ResolvedMappedType<'_>], out: &mut Writer
       grouped
         .entry(mapped.import.as_ref())
         .or_default()
-        .insert((mapped.ty.as_ref(), mapped.schema));
+        .insert((mapped.type_name.as_ref(), mapped.schema));
       grouped
     },
   );
 
-  for (path, bindings) in &imports {
+  imports.iter().for_each(|(path, bindings)| {
     let bindings = bindings
       .iter()
       .map(|&(name, alias)| Binding { name, alias });
     import_line(out, bindings, path, Statement::TypeImport);
-  }
-  for (path, entries) in &reexports {
+  });
+  reexports.iter().for_each(|(path, entries)| {
     type_reexport_line(out, entries, path);
-  }
+  });
 }

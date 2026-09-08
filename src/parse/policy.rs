@@ -27,6 +27,12 @@ pub(crate) fn validate_generation_policy(
   document: &OpenApiDocument,
   reporter: &Reporter,
 ) -> Result<(), Diagnostic> {
+  check_schema_cap(document, reporter)?;
+  check_operation_cap(document, reporter)?;
+  check_operation_ids_are_unique(document, reporter)
+}
+
+fn check_schema_cap(document: &OpenApiDocument, reporter: &Reporter) -> Result<(), Diagnostic> {
   let schema_count = document.components.schemas.len();
   let cap_schemas = MAX_SCHEMAS.get();
   if schema_count > cap_schemas {
@@ -37,7 +43,10 @@ pub(crate) fn validate_generation_policy(
          the per-document cap is {cap_schemas}. Set OPENAPI_NG_MAX_SCHEMAS to override.",
     );
   }
+  Ok(())
+}
 
+fn check_operation_cap(document: &OpenApiDocument, reporter: &Reporter) -> Result<(), Diagnostic> {
   let operation_count: usize = document
     .paths
     .values()
@@ -52,8 +61,15 @@ pub(crate) fn validate_generation_policy(
          the per-document cap is {cap_operations}. Set OPENAPI_NG_MAX_OPERATIONS to override.",
     );
   }
+  Ok(())
+}
 
-  // Each operationId, against the first operation that declared it.
+/// Fails on the second operation to declare an `operationId`, naming the
+/// first, and on an operation that declares none.
+fn check_operation_ids_are_unique(
+  document: &OpenApiDocument,
+  reporter: &Reporter,
+) -> Result<(), Diagnostic> {
   document
     .paths
     .iter()
@@ -62,38 +78,45 @@ pub(crate) fn validate_generation_policy(
         .operations()
         .map(move |(method, operation)| (path.as_str(), method, operation))
     })
-    .try_fold(
-      BTreeMap::<&str, (&'static str, &str)>::new(),
-      |mut declared, (path, method, operation)| {
-        let Some(operation_id) = operation.operation_id.as_deref() else {
-          bail_policy!(
-            reporter,
-            "missing-operation-id",
-            "Failed to plan services: operation {} {} must define operationId when service generation is enabled.",
-            method.to_ascii_uppercase(),
-            path
-          );
-        };
+    .try_fold(BTreeMap::new(), |declared, (path, method, operation)| {
+      let Some(operation_id) = operation.operation_id.as_deref() else {
+        bail_policy!(
+          reporter,
+          "missing-operation-id",
+          "Failed to plan services: operation {} {} must define operationId when service generation is enabled.",
+          method.to_ascii_uppercase(),
+          path
+        );
+      };
+      claim_operation_id(declared, operation_id, method, path, reporter)
+    })
+    .map(|_| ())
+}
 
-        if let Some(&(first_method, first_path)) = declared.get(operation_id) {
-          bail_policy!(
-            reporter,
-            "duplicate-operation-id",
-            "Failed to plan services: operationId '{}' is defined on both {} {} and {} {}. \
-               operationIds must be globally unique.",
-            operation_id,
-            first_method.to_ascii_uppercase(),
-            first_path,
-            method.to_ascii_uppercase(),
-            path,
-          );
-        }
-        declared.insert(operation_id, (method, path));
-        Ok(declared)
-      },
-    )?;
-
-  Ok(())
+/// Records `operation_id` against `method` and `path`, failing when another
+/// operation already claimed it.
+fn claim_operation_id<'a>(
+  mut declared: BTreeMap<&'a str, (&'static str, &'a str)>,
+  operation_id: &'a str,
+  method: &'static str,
+  path: &'a str,
+  reporter: &Reporter,
+) -> Result<BTreeMap<&'a str, (&'static str, &'a str)>, Diagnostic> {
+  if let Some(&(first_method, first_path)) = declared.get(operation_id) {
+    bail_policy!(
+      reporter,
+      "duplicate-operation-id",
+      "Failed to plan services: operationId '{}' is defined on both {} {} and {} {}. \
+         operationIds must be globally unique.",
+      operation_id,
+      first_method.to_ascii_uppercase(),
+      first_path,
+      method.to_ascii_uppercase(),
+      path,
+    );
+  }
+  declared.insert(operation_id, (method, path));
+  Ok(declared)
 }
 
 #[cfg(test)]

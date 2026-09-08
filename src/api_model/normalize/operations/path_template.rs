@@ -1,7 +1,7 @@
 //! Path-template validation.
 
 use crate::error::{Diagnostic, Reporter, bail_policy};
-use crate::ident::is_ident;
+use crate::identifier::is_identifier;
 
 use super::super::bail_unsupported;
 
@@ -27,7 +27,7 @@ pub(super) fn validate_path_template(path: &str, reporter: &Reporter) -> Result<
       );
     };
     let name = &after_open[..close];
-    if !is_ident(name) {
+    if !is_identifier(name) {
       bail_policy!(
         reporter,
         "invalid-path-parameter-name",

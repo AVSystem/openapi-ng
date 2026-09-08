@@ -3,7 +3,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::ir::canonical::OperationDef;
+use crate::api_model::canonical::OperationDef;
 
 #[derive(Debug)]
 pub(crate) struct OperationContext<'a> {
@@ -100,7 +100,7 @@ fn clean_path_segments(path: &str) -> Vec<&str> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::ir::{
+  use crate::api_model::{
     canonical::{HttpMethod, OperationDef, RequestDef, ResponseContent},
     schema::{SchemaScalar, SchemaType},
   };

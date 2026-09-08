@@ -1,6 +1,6 @@
 use napi_derive::napi;
 
-use crate::ir::canonical::ApiModel;
+use crate::api_model::canonical::ApiModel;
 
 #[napi(object)]
 #[derive(Clone, Debug, Eq, PartialEq)]

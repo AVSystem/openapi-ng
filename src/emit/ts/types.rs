@@ -1,10 +1,10 @@
 //! Type-expression rendering.
 
-use crate::ir::canonical::BodyFieldType;
-use crate::ir::schema::{SchemaProperty, SchemaScalar, SchemaType};
+use crate::api_model::canonical::BodyFieldType;
+use crate::api_model::schema::{SchemaProperty, SchemaScalar, SchemaType};
 
 use super::literal::safe_property_name;
-use super::writer::Writer;
+use super::writer::{Writer, write_separated};
 
 /// Syntactic position of a rendered type, which decides whether a composite
 /// needs parentheses so the surrounding operator binds correctly.
@@ -112,13 +112,24 @@ impl SchemaType {
 
 /// Appends `name`, its optional marker, and its type as an interface member
 /// — without the trailing `;`.
-pub(crate) fn property_declaration(out: &mut Writer, name: &str, optional: bool, ty: &impl Render) {
+fn property_declaration(out: &mut Writer, name: &str, optional: bool, type_expr: &impl Render) {
   out.push(&safe_property_name(name));
   if optional {
     out.push("?");
   }
   out.push(": ");
-  ty.render(out, Position::Standalone);
+  type_expr.render(out, Position::Standalone);
+}
+
+/// Writes `name{?}: {type};` and ends the line.
+pub(crate) fn member_declaration(
+  out: &mut Writer,
+  name: &str,
+  optional: bool,
+  type_expr: &impl Render,
+) {
+  property_declaration(out, name, optional, type_expr);
+  out.push(";\n");
 }
 
 const fn scalar_keyword(scalar: &SchemaScalar) -> &'static str {
@@ -130,21 +141,15 @@ const fn scalar_keyword(scalar: &SchemaScalar) -> &'static str {
 }
 
 fn render_composition(out: &mut Writer, members: &[SchemaType], separator: &str) {
-  for (index, member) in members.iter().enumerate() {
-    if index > 0 {
-      out.push(separator);
-    }
+  write_separated(out, members, separator, |out, member| {
     member.render(out, Position::Wrapped);
-  }
+  });
 }
 
 fn render_literal_union(out: &mut Writer, values: &[String]) {
-  for (index, value) in values.iter().enumerate() {
-    if index > 0 {
-      out.push(" | ");
-    }
+  write_separated(out, values, " | ", |out, value| {
     out.push(&super::literal::quoted(value));
-  }
+  });
 }
 
 fn render_inline_object(out: &mut Writer, properties: &[SchemaProperty]) {
@@ -152,14 +157,11 @@ fn render_inline_object(out: &mut Writer, properties: &[SchemaProperty]) {
     out.push("Record<string, never>");
     return;
   }
-  out.push("{\n");
-  out.indent();
-  for property in properties {
-    property_declaration(out, &property.name, !property.required, &property.ty);
-    out.push(";\n");
-  }
-  out.dedent();
-  out.push("}");
+  out.inline_block(|out| {
+    properties.iter().for_each(|property| {
+      member_declaration(out, &property.name, !property.required, &property.schema);
+    });
+  });
 }
 
 /// Renders `value` into a fresh `String`.

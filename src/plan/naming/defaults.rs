@@ -43,7 +43,7 @@ pub(crate) fn default_group(ctx: &OperationContext<'_>) -> String {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::ir::{
+  use crate::api_model::{
     canonical::{HttpMethod, OperationDef, RequestDef, ResponseContent},
     schema::{SchemaScalar, SchemaType},
   };

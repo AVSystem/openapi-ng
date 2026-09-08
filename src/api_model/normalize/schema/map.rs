@@ -1,7 +1,7 @@
 //! `additionalProperties` lowering into `Record<string, T>`.
 
+use crate::api_model::schema::SchemaType;
 use crate::error::Diagnostic;
-use crate::ir::schema::SchemaType;
 use crate::parse::openapi_model::{AdditionalProperties, Schema};
 
 use super::super::{SchemaWalk, bail_unsupported_rule};

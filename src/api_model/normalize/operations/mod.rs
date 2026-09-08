@@ -11,11 +11,11 @@ mod responses;
 
 use std::collections::BTreeMap;
 
-use crate::error::{Diagnostic, Reporter};
-use crate::ir::canonical::{
+use crate::api_model::canonical::{
   HttpMethod, OperationDef, RequestDef, RequestInputDef, RequestInputSource,
 };
-use crate::ir::schema::SchemaType;
+use crate::api_model::schema::SchemaType;
+use crate::error::{Diagnostic, Reporter};
 use crate::options::ResponseTypeMapping;
 use crate::parse::openapi_model::{Operation, PathItem};
 
@@ -25,13 +25,18 @@ use parameters::normalize_request_inputs;
 use path_template::validate_path_template;
 use responses::{normalize_error_responses, normalize_success_response};
 
+/// The media types a request body may declare.
+pub(super) const JSON: &str = "application/json";
+pub(super) const MULTIPART: &str = "multipart/form-data";
+pub(super) const URL_ENCODED: &str = "application/x-www-form-urlencoded";
+
 /// Everything an operation's lowering needs besides the operation itself:
 /// where it sits, the schemas its `$ref`s may resolve to, the caller's
 /// response-kind overrides, and the diagnostic sink.
 ///
 /// `method` is the canonical upper-case name.
 #[derive(Clone, Copy)]
-pub(super) struct OperationCx<'a> {
+pub(super) struct LoweringContext<'a> {
   method: &'a str,
   path: &'a str,
   schemas: &'a BTreeMap<&'a str, &'a SchemaType>,
@@ -39,7 +44,7 @@ pub(super) struct OperationCx<'a> {
   reporter: &'a Reporter,
 }
 
-impl<'a> OperationCx<'a> {
+impl<'a> LoweringContext<'a> {
   pub(super) const fn new(
     method: &'a str,
     path: &'a str,
@@ -114,7 +119,7 @@ fn normalize_operation(
     .clone()
     .unwrap_or_else(|| format!("{declared_method}_{}", path.replace(['/', '{', '}'], "_")));
 
-  let context = OperationCx::new(method.as_str(), path, schemas, response_types, reporter);
+  let context = LoweringContext::new(method.as_str(), path, schemas, response_types, reporter);
 
   Ok(OperationDef {
     request: normalize_request(operation, &operation_id, context)?,
@@ -142,13 +147,13 @@ fn unsupported_method_detail(declared_method: &str, path: &str) -> String {
 fn normalize_request(
   operation: &Operation,
   operation_id: &str,
-  cx: OperationCx<'_>,
+  context: LoweringContext<'_>,
 ) -> Result<RequestDef, Diagnostic> {
-  let (inputs, headers) = normalize_request_inputs(&operation.parameters, operation_id, cx)?;
+  let (inputs, headers) = normalize_request_inputs(&operation.parameters, operation_id, context)?;
   Ok(RequestDef {
     inputs,
     headers,
-    body: normalize_request_body(operation.request_body.as_ref(), cx)?,
+    body: normalize_request_body(operation.request_body.as_ref(), context)?,
   })
 }
 

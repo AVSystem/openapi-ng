@@ -1,21 +1,15 @@
-//! Validated identifier and name types shared by normalize, plan and emit.
-//!
-//! Every value here is checked at construction, so a holder may interpolate
-//! it into generated TypeScript without re-checking or quoting.
+//! Name types checked at construction, so a holder may interpolate one
+//! into generated TypeScript without quoting or escaping.
 
-/// A bare JavaScript / TypeScript identifier, restricted to the ASCII
-/// subset: `[A-Za-z_$][A-Za-z0-9_$]*`.
-///
-/// Holding one is the assertion that the name needs no quoting in property
-/// position and no escaping in expression position.
+/// An ASCII JavaScript identifier: `[A-Za-z_$][A-Za-z0-9_$]*`.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct Ident(Box<str>);
+pub(crate) struct Identifier(Box<str>);
 
-impl Ident {
+impl Identifier {
   /// Returns `None` when `name` is not a bare identifier — digits-first,
   /// kebab-case, dotted, empty, or whitespace-bearing names all reject.
   pub(crate) fn parse(name: &str) -> Option<Self> {
-    is_ident(name).then(|| Self(Box::from(name)))
+    is_identifier(name).then(|| Self(Box::from(name)))
   }
 
   pub(crate) fn as_str(&self) -> &str {
@@ -23,15 +17,15 @@ impl Ident {
   }
 }
 
-impl std::fmt::Display for Ident {
+impl std::fmt::Display for Identifier {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.write_str(&self.0)
   }
 }
 
-/// True when `name` is a bare identifier. Prefer [`Ident::parse`] where
+/// True when `name` is a bare identifier. Prefer [`Identifier::parse`] where
 /// the validated name is kept.
-pub(crate) fn is_ident(name: &str) -> bool {
+pub(crate) fn is_identifier(name: &str) -> bool {
   let mut chars = name.chars();
   chars
     .next()
@@ -85,26 +79,26 @@ impl std::fmt::Display for TypeName {
 
 #[cfg(test)]
 mod tests {
-  use super::{Ident, is_ident};
+  use super::{Identifier, is_identifier};
 
   #[test]
   fn accepts_the_bare_identifier_grammar() {
     for name in ["pet", "_pet", "$pet", "Pet2", "a_b$c9"] {
-      assert!(Ident::parse(name).is_some(), "{name} must parse");
+      assert!(Identifier::parse(name).is_some(), "{name} must parse");
     }
   }
 
   #[test]
   fn rejects_names_that_need_quoting() {
     for name in ["", "2pet", "pet-name", "pet.name", "pet name", "pét"] {
-      assert!(Ident::parse(name).is_none(), "{name} must reject");
-      assert!(!is_ident(name));
+      assert!(Identifier::parse(name).is_none(), "{name} must reject");
+      assert!(!is_identifier(name));
     }
   }
 
   #[test]
   fn parsed_identifier_round_trips_its_source() {
-    let ident = Ident::parse("listPets").expect("bare identifier");
+    let ident = Identifier::parse("listPets").expect("bare identifier");
     assert_eq!(ident.as_str(), "listPets");
     assert_eq!(ident.to_string(), "listPets");
   }

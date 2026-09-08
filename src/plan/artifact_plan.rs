@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 
 use crate::{
-  error::{Diagnostic, DiagnosticCode, Reporter},
-  ident::{Ident, MethodName, TypeName},
-  ir::canonical::{
+  api_model::canonical::{
     ApiModel, BodyFieldType, ErrorResponse, HttpMethod, ModelSymbol, ResponseContent,
   },
-  ir::schema::SchemaType,
+  api_model::schema::SchemaType,
+  error::{Diagnostic, DiagnosticCode, Reporter},
+  identifier::{Identifier, MethodName, TypeName},
   options::MappedType,
 };
 
@@ -22,7 +22,7 @@ use super::{
 pub(crate) struct ResolvedMappedType<'a> {
   pub(crate) schema: &'a str,
   pub(crate) import: Box<str>,
-  pub(crate) ty: Box<str>,
+  pub(crate) type_name: Box<str>,
   pub(crate) alias: Option<Box<str>>,
 }
 
@@ -31,31 +31,31 @@ impl<'a> ResolvedMappedType<'a> {
     Self {
       schema,
       import: Box::from(source.import.as_str()),
-      ty: Box::from(source.ty.as_str()),
+      type_name: Box::from(source.type_name.as_str()),
       alias: source.alias.as_deref().map(Box::from),
     }
   }
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct ServicePlan<'ir> {
+pub(crate) struct ServicePlan<'model> {
   pub(crate) group_name: String,
   pub(crate) class_name: TypeName,
   pub(crate) artifact_path: String,
-  pub(crate) operations: Vec<PlannedOperation<'ir>>,
+  pub(crate) operations: Vec<PlannedOperation<'model>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct PlannedOperation<'ir> {
+pub(crate) struct PlannedOperation<'model> {
   pub(crate) operation_id: String,
   pub(crate) method_name: MethodName,
   pub(crate) method: HttpMethod,
   pub(crate) path: String,
-  pub(crate) request: PlannedRequestContract<'ir>,
-  pub(crate) response: Option<&'ir ResponseContent>,
+  pub(crate) request: PlannedRequestContract<'model>,
+  pub(crate) response: Option<&'model ResponseContent>,
   /// The operation's typed error responses, empty when it declared
   /// none.
-  pub(crate) errors: &'ir [ErrorResponse],
+  pub(crate) errors: &'model [ErrorResponse],
   /// Name of the `{Pascal}Params` interface, or `None` when the operation
   /// declares no path, query, header or body input and so emits none.
   pub(crate) request_interface: Option<TypeName>,
@@ -76,64 +76,71 @@ pub(crate) enum RequestFieldKind {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct PlannedRequestContract<'ir> {
+pub(crate) struct PlannedRequestContract<'model> {
   /// Path and query parameters; a hoisted body property lives on
   /// [`PlannedRequestBody::FlatJson`].
-  pub(crate) fields: Vec<PlannedRequestField<'ir>>,
+  pub(crate) fields: Vec<PlannedRequestField<'model>>,
   /// Header parameters, empty when the operation declares none.
-  pub(crate) headers: Vec<PlannedHeader<'ir>>,
+  pub(crate) headers: Vec<PlannedHeader<'model>>,
   /// The body's layout, `None` when the operation declares no body.
-  pub(crate) body: Option<PlannedRequestBody<'ir>>,
+  pub(crate) body: Option<PlannedRequestBody<'model>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct PlannedRequestField<'ir> {
+pub(crate) struct PlannedRequestField<'model> {
   pub(crate) name: Box<str>,
   pub(crate) optional: bool,
-  pub(crate) ty: &'ir SchemaType,
+  pub(crate) schema: &'model SchemaType,
   pub(crate) kind: RequestFieldKind,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct PlannedHeader<'ir> {
+pub(crate) struct PlannedHeader<'model> {
   pub(crate) name: Box<str>,
   pub(crate) optional: bool,
-  pub(crate) ty: &'ir SchemaType,
+  pub(crate) schema: &'model SchemaType,
 }
 
 /// One field of a multipart or urlencoded body.
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct PlannedFormField<'ir> {
-  pub(crate) name: Ident,
+pub(crate) struct PlannedFormField<'model> {
+  pub(crate) name: Identifier,
   pub(crate) optional: bool,
-  pub(crate) ty: &'ir BodyFieldType,
+  pub(crate) field_type: &'model BodyFieldType,
 }
 
 /// How a request body is laid out on the request contract.
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum PlannedRequestBody<'ir> {
+pub(crate) enum PlannedRequestBody<'model> {
   /// A top-level `$ref`, scalar, array or union, under one `body` key.
-  Nested { ty: &'ir SchemaType, optional: bool },
+  Nested {
+    schema: &'model SchemaType,
+    optional: bool,
+  },
   /// An inline JSON object body, its properties hoisted to top level.
   /// Each `optional` already folds in the envelope's `required`.
   FlatJson {
-    properties: Vec<PlannedRequestField<'ir>>,
+    properties: Vec<PlannedRequestField<'model>>,
     required: bool,
   },
   /// A `multipart/form-data` body, its fields hoisted to top level.
-  Multipart { fields: Vec<PlannedFormField<'ir>> },
+  Multipart {
+    fields: Vec<PlannedFormField<'model>>,
+  },
   /// An `application/x-www-form-urlencoded` body, its fields hoisted to
   /// top level.
-  UrlEncoded { fields: Vec<PlannedFormField<'ir>> },
+  UrlEncoded {
+    fields: Vec<PlannedFormField<'model>>,
+  },
 }
 
 /// Resolves each mapped type against `model_symbols`, failing on the
 /// first `schema` the IR does not declare.
-pub(crate) fn validate_mapped_types_against_schemas<'ir>(
-  model_symbols: &'ir [ModelSymbol],
+pub(crate) fn validate_mapped_types_against_schemas<'model>(
+  model_symbols: &'model [ModelSymbol],
   mapped_types: &[MappedType],
   reporter: &Reporter,
-) -> Result<Vec<ResolvedMappedType<'ir>>, Diagnostic> {
+) -> Result<Vec<ResolvedMappedType<'model>>, Diagnostic> {
   let by_name = model_symbols
     .iter()
     .map(|symbol| (symbol.name.as_ref(), symbol))
@@ -156,11 +163,11 @@ pub(crate) fn validate_mapped_types_against_schemas<'ir>(
     .collect()
 }
 
-pub(crate) fn resolve_service_plans<'ir>(
-  ir: &'ir ApiModel,
+pub(crate) fn resolve_service_plans<'model>(
+  ir: &'model ApiModel,
   resolver: &crate::plan::naming::NamingResolver,
   reporter: &Reporter,
-) -> Result<Vec<ServicePlan<'ir>>, Diagnostic> {
+) -> Result<Vec<ServicePlan<'model>>, Diagnostic> {
   use super::services::group_operations;
 
   let mut services = group_operations(&ir.operations, resolver, reporter)?
@@ -185,11 +192,11 @@ pub(crate) fn resolve_service_plans<'ir>(
   Ok(services)
 }
 
-fn plan_operation<'ir>(
-  operation: &'ir crate::ir::canonical::OperationDef,
+fn plan_operation<'model>(
+  operation: &'model crate::api_model::canonical::OperationDef,
   method_name: MethodName,
   reporter: &Reporter,
-) -> Result<PlannedOperation<'ir>, Diagnostic> {
+) -> Result<PlannedOperation<'model>, Diagnostic> {
   let request = plan_request_contract(operation, reporter)?;
   Ok(PlannedOperation {
     operation_id: operation.operation_id.clone(),
@@ -219,7 +226,7 @@ mod tests {
     resolve_service_plans, validate_mapped_types_against_schemas,
   };
   use crate::{
-    ir::{
+    api_model::{
       canonical::{
         ApiInfo, ApiModel, BodyContent, BodyFieldType, HttpMethod, ModelSymbol, OperationDef,
         RequestBodyDef, RequestDef, RequestInputDef, RequestInputSource, ResponseContent,
@@ -286,21 +293,21 @@ mod tests {
             SchemaProperty {
               name: "status".into(),
               required: true,
-              ty: SchemaType::Ref("PetStatus".into()),
+              schema: SchemaType::Ref("PetStatus".into()),
               description: None,
               deprecated: false,
             },
             SchemaProperty {
               name: "tagIds".into(),
               required: true,
-              ty: SchemaType::Array(Box::new(SchemaType::Scalar(SchemaScalar::Number))),
+              schema: SchemaType::Array(Box::new(SchemaType::Scalar(SchemaScalar::Number))),
               description: None,
               deprecated: false,
             },
             SchemaProperty {
               name: "nickname".into(),
               required: false,
-              ty: SchemaType::Nullable(Box::new(SchemaType::Scalar(SchemaScalar::String))),
+              schema: SchemaType::Nullable(Box::new(SchemaType::Scalar(SchemaScalar::String))),
               description: None,
               deprecated: false,
             },
@@ -349,13 +356,13 @@ mod tests {
               name: "petId".into(),
               source: RequestInputSource::Path,
               required: true,
-              ty: SchemaType::Ref("PetId".into()),
+              schema: SchemaType::Ref("PetId".into()),
             },
             RequestInputDef {
               name: "includeHistory".into(),
               source: RequestInputSource::Query,
               required: false,
-              ty: SchemaType::Scalar(SchemaScalar::Boolean),
+              schema: SchemaType::Scalar(SchemaScalar::Boolean),
             },
           ],
           headers: Vec::new(),
@@ -383,7 +390,7 @@ mod tests {
               properties: vec![SchemaProperty {
                 name: "petId".into(),
                 required: true,
-                ty: SchemaType::Ref("PetId".into()),
+                schema: SchemaType::Ref("PetId".into()),
                 description: None,
                 deprecated: false,
               }],
@@ -421,7 +428,7 @@ mod tests {
       &[MappedType {
         schema: "UserId".to_string(),
         import: "./shared/user-id".to_string(),
-        ty: "ExternalUserId".to_string(),
+        type_name: "ExternalUserId".to_string(),
         alias: Some("UserId".to_string()),
       }],
       &ctx,
@@ -431,7 +438,7 @@ mod tests {
     assert_eq!(resolved.len(), 1);
     assert_eq!(resolved[0].schema, "UserId");
     assert_eq!(resolved[0].import.as_ref(), "./shared/user-id");
-    assert_eq!(resolved[0].ty.as_ref(), "ExternalUserId");
+    assert_eq!(resolved[0].type_name.as_ref(), "ExternalUserId");
     assert_eq!(resolved[0].alias.as_deref(), Some("UserId"));
   }
 
@@ -443,7 +450,7 @@ mod tests {
       &[MappedType {
         schema: "Missing".to_string(),
         import: "./missing".to_string(),
-        ty: "Missing".to_string(),
+        type_name: "Missing".to_string(),
         alias: None,
       }],
       &ctx,
@@ -503,11 +510,11 @@ mod tests {
       .collect();
     assert_eq!(kinds, vec![RequestFieldKind::Path, RequestFieldKind::Query]);
     match &update_pet.request.body {
-      Some(PlannedRequestBody::Nested { ty, optional }) => {
+      Some(PlannedRequestBody::Nested { schema, optional }) => {
         assert!(!optional, "body marked required in fixture");
         assert!(
-          matches!(ty, SchemaType::Ref(name) if name.as_ref() == "UpdatePetPayload"),
-          "expected body ty to remain the ref, got {ty:?}"
+          matches!(schema, SchemaType::Ref(name) if name.as_ref() == "UpdatePetPayload"),
+          "expected body schema to remain the ref, got {schema:?}"
         );
       }
       other => panic!("expected nested ref body, got {other:?}"),
@@ -533,7 +540,7 @@ mod tests {
           properties: vec![SchemaProperty {
             name: "petId".into(),
             required: true,
-            ty: SchemaType::Ref("PetId".into()),
+            schema: SchemaType::Ref("PetId".into()),
             description: None,
             deprecated: false,
           }],
@@ -552,7 +559,7 @@ mod tests {
             name: "petId".into(),
             source: RequestInputSource::Path,
             required: true,
-            ty: SchemaType::Ref("PetId".into()),
+            schema: SchemaType::Ref("PetId".into()),
           }],
           headers: Vec::new(),
           body: Some(RequestBodyDef {
@@ -674,9 +681,9 @@ mod tests {
       headers: vec![],
       body: Some(PlannedRequestBody::Multipart {
         fields: vec![PlannedFormField {
-          name: crate::ident::Ident::parse("status").expect("identifier"),
+          name: crate::identifier::Identifier::parse("status").expect("identifier"),
           optional: false,
-          ty: &scalar,
+          field_type: &scalar,
         }],
       }),
     };
@@ -689,9 +696,9 @@ mod tests {
 
   #[test]
   fn planned_request_body_carries_smart_flatten_variants() {
-    let ty = SchemaType::Scalar(SchemaScalar::String);
+    let schema = SchemaType::Scalar(SchemaScalar::String);
     let _: PlannedRequestBody<'_> = PlannedRequestBody::Nested {
-      ty: &ty,
+      schema: &schema,
       optional: false,
     };
     let _: PlannedRequestBody<'_> = PlannedRequestBody::FlatJson {

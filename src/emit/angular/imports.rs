@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use crate::api_model::canonical::ResponseContent;
+use crate::api_model::schema::{SchemaType, collect_type_references};
 use crate::emit::ts::{Writer, type_import_block};
-use crate::ir::canonical::ResponseContent;
-use crate::ir::schema::{SchemaType, collect_type_references};
 use crate::plan::artifact_plan::{PlannedOperation, PlannedRequestBody, RequestFieldKind};
 
 /// Path from a generated service file to the model artifact, one
@@ -34,8 +34,8 @@ pub(super) fn render_service_imports(
     operations
       .iter()
       .flat_map(operation_types)
-      .fold(BTreeSet::new(), |mut imports, ty| {
-        collect_type_references(ty, &mut imports);
+      .fold(BTreeSet::new(), |mut imports, schema| {
+        collect_type_references(schema, &mut imports);
         imports
       });
 
@@ -50,9 +50,9 @@ fn operation_types<'a>(
   operation: &'a PlannedOperation<'a>,
 ) -> impl Iterator<Item = &'a SchemaType> {
   let body: Box<dyn Iterator<Item = &'a SchemaType>> = match &operation.request.body {
-    Some(PlannedRequestBody::Nested { ty, .. }) => Box::new(std::iter::once(*ty)),
+    Some(PlannedRequestBody::Nested { schema, .. }) => Box::new(std::iter::once(*schema)),
     Some(PlannedRequestBody::FlatJson { properties, .. }) => {
-      Box::new(properties.iter().map(|property| property.ty))
+      Box::new(properties.iter().map(|property| property.schema))
     }
     Some(PlannedRequestBody::Multipart { .. } | PlannedRequestBody::UrlEncoded { .. }) | None => {
       Box::new(std::iter::empty())
@@ -62,7 +62,7 @@ fn operation_types<'a>(
     .response
     .as_ref()
     .and_then(|response| match response {
-      ResponseContent::Json(Some(ty)) => Some(ty),
+      ResponseContent::Json(Some(schema)) => Some(schema),
       ResponseContent::Json(None)
       | ResponseContent::Blob
       | ResponseContent::Text
@@ -73,8 +73,8 @@ fn operation_types<'a>(
     .request
     .fields
     .iter()
-    .map(|field| field.ty)
-    .chain(operation.request.headers.iter().map(|header| header.ty))
+    .map(|field| field.schema)
+    .chain(operation.request.headers.iter().map(|header| header.schema))
     .chain(body)
     .chain(response)
     .chain(operation.errors.iter().map(|error| &error.body))
@@ -83,8 +83,8 @@ fn operation_types<'a>(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::ir::canonical::HttpMethod;
-  use crate::ir::schema::{SchemaScalar, SchemaType};
+  use crate::api_model::canonical::HttpMethod;
+  use crate::api_model::schema::{SchemaScalar, SchemaType};
   use crate::plan::artifact_plan::{
     PlannedHeader, PlannedRequestContract, PlannedRequestField, RequestFieldKind,
   };
@@ -124,12 +124,12 @@ mod tests {
 
   #[test]
   fn helper_import_includes_http_params_when_any_operation_has_query_fields() {
-    let limit_ty = SchemaType::Scalar(SchemaScalar::Number);
+    let limit_schema = SchemaType::Scalar(SchemaScalar::Number);
     let request = PlannedRequestContract {
       fields: vec![PlannedRequestField {
         name: "limit".into(),
         optional: true,
-        ty: &limit_ty,
+        schema: &limit_schema,
         kind: RequestFieldKind::Query,
       }],
       headers: vec![],
@@ -169,13 +169,13 @@ mod tests {
 
   #[test]
   fn model_refs_from_headers_are_imported() {
-    let key_ty = SchemaType::Ref("IdempotencyKey".into());
+    let key_schema = SchemaType::Ref("IdempotencyKey".into());
     let request = PlannedRequestContract {
       fields: vec![],
       headers: vec![PlannedHeader {
         name: "X-Idempotency-Key".into(),
         optional: false,
-        ty: &key_ty,
+        schema: &key_schema,
       }],
       body: None,
     };

@@ -1,5 +1,5 @@
-use crate::ident::Ident;
-use crate::ir::schema::{SchemaScalar, SchemaType};
+use crate::api_model::schema::{SchemaScalar, SchemaType};
+use crate::identifier::Identifier;
 
 /// A named, top-level schema declaration.
 ///
@@ -30,7 +30,7 @@ pub(crate) struct RequestInputDef {
   pub(crate) name: Box<str>,
   pub(crate) source: RequestInputSource,
   pub(crate) required: bool,
-  pub(crate) ty: SchemaType,
+  pub(crate) schema: SchemaType,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -43,7 +43,7 @@ pub(crate) enum RequestInputSource {
 pub(crate) struct HeaderDef {
   pub(crate) name: Box<str>,
   pub(crate) required: bool,
-  pub(crate) ty: SchemaType,
+  pub(crate) schema: SchemaType,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -70,9 +70,9 @@ pub(crate) enum BodyContent {
 /// One field of a `multipart/form-data` or urlencoded body.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct BodyField {
-  pub(crate) name: Ident,
+  pub(crate) name: Identifier,
   pub(crate) required: bool,
-  pub(crate) ty: BodyFieldType,
+  pub(crate) field_type: BodyFieldType,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -229,23 +229,23 @@ mod tests {
 
   #[test]
   fn body_content_variants_have_distinct_payload_shapes() {
-    use crate::ir::schema::{SchemaScalar, SchemaType};
+    use crate::api_model::schema::{SchemaScalar, SchemaType};
 
     let json = BodyContent::Json(SchemaType::Scalar(SchemaScalar::String));
     let multipart = BodyContent::Multipart {
       body_ref: None,
       fields: vec![BodyField {
-        name: Ident::parse("avatar").expect("identifier"),
+        name: Identifier::parse("avatar").expect("identifier"),
         required: true,
-        ty: BodyFieldType::Binary,
+        field_type: BodyFieldType::Binary,
       }],
     };
     let url_encoded = BodyContent::UrlEncoded {
       body_ref: Some("LoginForm".into()),
       fields: vec![BodyField {
-        name: Ident::parse("username").expect("identifier"),
+        name: Identifier::parse("username").expect("identifier"),
         required: true,
-        ty: BodyFieldType::Scalar(SchemaScalar::String),
+        field_type: BodyFieldType::Scalar(SchemaScalar::String),
       }],
     };
 
@@ -256,7 +256,7 @@ mod tests {
 
   #[test]
   fn body_field_type_variants_cover_value_space() {
-    use crate::ir::schema::SchemaScalar;
+    use crate::api_model::schema::SchemaScalar;
 
     let scalar = BodyFieldType::Scalar(SchemaScalar::String);
     let array_of_scalar = BodyFieldType::ArrayOfScalar(SchemaScalar::Number);
@@ -270,7 +270,7 @@ mod tests {
 
   #[test]
   fn response_content_variants_carry_expected_payloads() {
-    use crate::ir::schema::{SchemaScalar, SchemaType};
+    use crate::api_model::schema::{SchemaScalar, SchemaType};
 
     let json_with_schema = ResponseContent::Json(Some(SchemaType::Scalar(SchemaScalar::String)));
     let json_without = ResponseContent::Json(None);

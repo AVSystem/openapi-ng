@@ -7,9 +7,9 @@ mod walk;
 
 use std::collections::BTreeMap;
 
+use crate::api_model::canonical::{ApiInfo, ApiModel};
+use crate::api_model::schema::SchemaType;
 use crate::error::{Diagnostic, DiagnosticCode, Reporter};
-use crate::ir::canonical::{ApiInfo, ApiModel};
-use crate::ir::schema::SchemaType;
 use crate::options::ResponseTypeMapping;
 use crate::parse::openapi_model::{OpenApiDocument, Schema};
 use operations::normalize_operations;
@@ -79,7 +79,7 @@ pub(crate) fn unsupported_rule(reporter: &Reporter, detail: impl AsRef<str>) -> 
 /// Returns an [`unsupported`] diagnostic from the enclosing function.
 macro_rules! bail_unsupported {
   ($reporter:expr, $($message:tt)*) => {
-    return ::core::result::Result::Err($crate::ir::normalize::unsupported(
+    return ::core::result::Result::Err($crate::api_model::normalize::unsupported(
       $reporter,
       ::std::format!($($message)*),
     ))
@@ -89,7 +89,7 @@ macro_rules! bail_unsupported {
 /// Returns an [`unsupported_rule`] diagnostic from the enclosing function.
 macro_rules! bail_unsupported_rule {
   ($reporter:expr, $($message:tt)*) => {
-    return ::core::result::Result::Err($crate::ir::normalize::unsupported_rule(
+    return ::core::result::Result::Err($crate::api_model::normalize::unsupported_rule(
       $reporter,
       ::std::format!($($message)*),
     ))

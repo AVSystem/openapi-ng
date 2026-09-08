@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use crate::ident::is_ident;
+use crate::identifier::is_identifier;
 
 /// Appends `value` to `out` as a single-quoted TypeScript string literal,
 /// quotes included.
@@ -42,7 +42,7 @@ pub(crate) fn quoted(value: &str) -> String {
 /// `IdentifierName` — so only names outside the
 /// `[A-Za-z_$][A-Za-z0-9_$]*` shape get quoted.
 pub(crate) fn safe_property_name(name: &str) -> Cow<'_, str> {
-  if is_ident(name) {
+  if is_identifier(name) {
     Cow::Borrowed(name)
   } else {
     Cow::Owned(quoted(name))

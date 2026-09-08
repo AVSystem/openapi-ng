@@ -11,7 +11,7 @@ const INTERNAL_SCHEMA_PREFIX: &str = "#/components/schemas/";
 ///
 /// Rejects a reference outside `components.schemas` — an external file, a
 /// URL, another component section — and one whose target name is empty.
-pub(in crate::ir::normalize::schema) fn normalize_reference(
+pub(in crate::api_model::normalize::schema) fn normalize_reference(
   reference: &str,
   walk: SchemaWalk<'_>,
 ) -> Result<Box<str>, Diagnostic> {

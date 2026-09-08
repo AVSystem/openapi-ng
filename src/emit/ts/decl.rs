@@ -1,7 +1,7 @@
 //! Declaration-level emit: JSDoc, interfaces, type aliases, literal unions.
 
 use super::literal::quoted;
-use super::types::{Render, property_declaration};
+use super::types::{Render, member_declaration};
 use super::writer::{Writer, wln};
 
 /// Width below which a top-level literal union stays on one line. Counts
@@ -47,14 +47,14 @@ pub(crate) fn jsdoc(out: &mut Writer, doc: Doc<'_>) {
   }
   out.line("/**");
   if let Some(text) = doc.prose() {
-    for line in text.lines() {
+    text.lines().for_each(|line| {
       let body = line.trim_end();
       if body.is_empty() {
         out.line(" *");
       } else {
         wln!(out, " * {}", body.replace("*/", "*\\/"));
       }
-    }
+    });
   }
   if doc.deprecated {
     out.line(" * @deprecated");
@@ -66,7 +66,7 @@ pub(crate) fn jsdoc(out: &mut Writer, doc: Doc<'_>) {
 pub(crate) struct Member<'a> {
   pub(crate) name: &'a str,
   pub(crate) optional: bool,
-  pub(crate) ty: &'a dyn Render,
+  pub(crate) type_expr: &'a dyn Render,
   pub(crate) doc: Doc<'a>,
 }
 
@@ -87,8 +87,7 @@ pub(crate) fn interface_block<'a>(
   out.open_block(&format!("{keyword}{name}"));
   members.into_iter().for_each(|member| {
     jsdoc(out, member.doc);
-    property_declaration(out, member.name, member.optional, &member.ty);
-    out.push(";\n");
+    member_declaration(out, member.name, member.optional, &member.type_expr);
   });
   out.close_block("");
 }
@@ -122,9 +121,9 @@ pub(crate) fn string_union(out: &mut Writer, name: &str, doc: Doc<'_>, values: &
   wln!(out, "export type {name} =");
   out.indent();
   let last = values.len().saturating_sub(1);
-  for (index, value) in values.iter().enumerate() {
+  values.iter().enumerate().for_each(|(index, value)| {
     let terminator = if index == last { ";" } else { "" };
     wln!(out, "| {}{terminator}", quoted(value));
-  }
+  });
   out.dedent();
 }

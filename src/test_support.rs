@@ -1,12 +1,12 @@
 use std::rc::Rc;
 
 use crate::{
-  error::Reporter,
-  ident::{Ident, MethodName},
-  ir::{
+  api_model::{
     canonical::{BodyFieldType, HttpMethod, ResponseContent},
     schema::{SchemaProperty, SchemaScalar, SchemaType},
   },
+  error::Reporter,
+  identifier::{Identifier, MethodName},
   plan::{
     artifact_plan::{
       PlannedFormField, PlannedHeader, PlannedOperation, PlannedRequestBody,
@@ -26,35 +26,35 @@ pub(crate) fn reporter_for(path: &str) -> Reporter {
   Reporter::new(Rc::from(path))
 }
 
-pub(crate) fn property(name: &str, required: bool, ty: SchemaType) -> SchemaProperty {
+pub(crate) fn property(name: &str, required: bool, schema: SchemaType) -> SchemaProperty {
   SchemaProperty {
     name: name.into(),
     required,
-    ty,
+    schema,
     description: None,
     deprecated: false,
   }
 }
 
-pub(crate) fn nullable_property(name: &str, required: bool, ty: SchemaType) -> SchemaProperty {
+pub(crate) fn nullable_property(name: &str, required: bool, schema: SchemaType) -> SchemaProperty {
   SchemaProperty {
     name: name.into(),
     required,
-    ty: SchemaType::Nullable(Box::new(ty)),
+    schema: SchemaType::Nullable(Box::new(schema)),
     description: None,
     deprecated: false,
   }
 }
 
-pub(crate) fn string_ty() -> SchemaType {
+pub(crate) fn string_schema() -> SchemaType {
   SchemaType::Scalar(SchemaScalar::String)
 }
 
-pub(crate) fn path_field<'a>(name: &str, ty: &'a SchemaType) -> PlannedRequestField<'a> {
+pub(crate) fn path_field<'a>(name: &str, schema: &'a SchemaType) -> PlannedRequestField<'a> {
   PlannedRequestField {
     name: name.into(),
     optional: false,
-    ty,
+    schema,
     kind: RequestFieldKind::Path,
   }
 }
@@ -62,12 +62,12 @@ pub(crate) fn path_field<'a>(name: &str, ty: &'a SchemaType) -> PlannedRequestFi
 pub(crate) fn query_field<'a>(
   name: &str,
   optional: bool,
-  ty: &'a SchemaType,
+  schema: &'a SchemaType,
 ) -> PlannedRequestField<'a> {
   PlannedRequestField {
     name: name.into(),
     optional,
-    ty,
+    schema,
     kind: RequestFieldKind::Query,
   }
 }
@@ -76,18 +76,18 @@ pub(crate) fn query_field<'a>(
 pub(crate) fn body_field<'a>(
   name: &str,
   optional: bool,
-  ty: &'a SchemaType,
+  schema: &'a SchemaType,
 ) -> PlannedRequestField<'a> {
   PlannedRequestField {
     name: name.into(),
     optional,
-    ty,
+    schema,
     kind: RequestFieldKind::Body,
   }
 }
 
-pub(crate) fn nested_body(ty: &SchemaType, optional: bool) -> PlannedRequestBody<'_> {
-  PlannedRequestBody::Nested { ty, optional }
+pub(crate) fn nested_body(schema: &SchemaType, optional: bool) -> PlannedRequestBody<'_> {
+  PlannedRequestBody::Nested { schema, optional }
 }
 
 /// A hoisted JSON body, `required` being the envelope's own flag.
@@ -139,7 +139,7 @@ pub(crate) fn op_with<'a>(
 /// An operation carrying `errors` and nothing else.
 pub(crate) fn op_with_errors<'a>(
   operation_id: &str,
-  errors: &'a [crate::ir::canonical::ErrorResponse],
+  errors: &'a [crate::api_model::canonical::ErrorResponse],
 ) -> PlannedOperation<'a> {
   let method_name = MethodName::new(operation_id.to_string());
   PlannedOperation {
@@ -162,15 +162,15 @@ fn build_form_fields<'a>(
 ) -> Vec<PlannedFormField<'a>> {
   fields
     .into_iter()
-    .map(|(name, optional, ty)| PlannedFormField {
-      name: Ident::parse(name).expect("test form-field name is an identifier"),
+    .map(|(name, optional, field_type)| PlannedFormField {
+      name: Identifier::parse(name).expect("test form-field name is an identifier"),
       optional,
-      ty,
+      field_type,
     })
     .collect()
 }
 
-/// An operation whose body is a multipart form of `(name, optional, ty)`
+/// An operation whose body is a multipart form of `(name, optional, schema)`
 /// fields.
 pub(crate) fn op_with_multipart_fields<'a>(
   fields: Vec<(&str, bool, &'a BodyFieldType)>,

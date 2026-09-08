@@ -4,7 +4,7 @@ pub(crate) mod emit_ts_models;
 mod tests {
   use super::emit_ts_models;
   use crate::{
-    ir::{
+    api_model::{
       canonical::ModelSymbol,
       schema::{SchemaScalar, SchemaType},
     },
@@ -89,7 +89,7 @@ mod tests {
       &[ResolvedMappedType {
         schema: "UserId",
         import: "./shared/user-id".into(),
-        ty: "ExternalUserId".into(),
+        type_name: "ExternalUserId".into(),
         alias: Some("Nickname".into()),
       }],
     );
@@ -118,7 +118,7 @@ mod tests {
       &[ResolvedMappedType {
         schema: "UserId",
         import: "./shared/user-id".into(),
-        ty: "ExternalUserId".into(),
+        type_name: "ExternalUserId".into(),
         alias: Some("UserId".into()),
       }],
     );
@@ -154,7 +154,7 @@ mod tests {
       &[ResolvedMappedType {
         schema: "UserId",
         import: "./shared/user-id".into(),
-        ty: "UserId".into(),
+        type_name: "UserId".into(),
         alias: None,
       }],
     );

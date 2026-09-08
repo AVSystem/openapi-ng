@@ -3,18 +3,18 @@
 //! shape. The final semantic step (discriminator narrowing + `$ref`
 //! validation) is exercised through `normalize_document` since it runs
 //! inside `normalize_api_model`. Two-stage tests that pair normalize
-//! with `render_type_reference` live in `crate::ir::tests` instead.
+//! with `render_type_reference` live in `crate::api_model::tests` instead.
 
 use serde_json::Value;
 
-use crate::error::DiagnosticCode;
-use crate::ir::canonical::{
+use crate::api_model::canonical::{
   ApiInfo, ApiModel, BodyContent, HeaderDef, HttpMethod, ModelSymbol, OperationDef, RequestBodyDef,
   RequestDef, RequestInputDef, RequestInputSource, ResponseContent,
 };
-use crate::ir::normalize::normalize_document;
-use crate::ir::normalize::semantic;
-use crate::ir::schema::SchemaType;
+use crate::api_model::normalize::normalize_document;
+use crate::api_model::normalize::semantic;
+use crate::api_model::schema::SchemaType;
+use crate::error::DiagnosticCode;
 use crate::test_support::{reporter_for, test_reporter};
 
 fn parse_fixture(source: &str) -> Value {
@@ -54,7 +54,7 @@ fn normalize_lowers_oneof_anyof_and_collapses_single_entry_composition() {
         .iter()
         .find(|property| property.name.as_ref() == "contact")
         .expect("contact property exists");
-      assert!(matches!(contact.ty, SchemaType::Union { .. }));
+      assert!(matches!(contact.schema, SchemaType::Union { .. }));
     }
     other => panic!("expected object schema, got {other:?}"),
   }
@@ -125,7 +125,7 @@ fn normalize_supports_inline_object_model_shapes_outside_allof() {
     .iter()
     .find(|property| property.name.as_ref() == "details")
     .expect("details property exists");
-  match &details.ty {
+  match &details.schema {
     SchemaType::InlineObject { properties } => {
       assert!(
         properties
@@ -136,7 +136,7 @@ fn normalize_supports_inline_object_model_shapes_outside_allof() {
         .iter()
         .find(|property| property.name.as_ref() == "address")
         .expect("address property exists");
-      assert!(matches!(address.ty, SchemaType::InlineObject { .. }));
+      assert!(matches!(address.schema, SchemaType::InlineObject { .. }));
     }
     other => panic!("expected inline object property, got {other:?}"),
   }
@@ -145,7 +145,7 @@ fn normalize_supports_inline_object_model_shapes_outside_allof() {
     .iter()
     .find(|property| property.name.as_ref() == "labelsByLocale")
     .expect("labelsByLocale property exists");
-  match &labels_by_locale.ty {
+  match &labels_by_locale.schema {
     SchemaType::Map(values) => {
       assert!(matches!(values.as_ref(), SchemaType::InlineObject { .. }));
     }
@@ -156,7 +156,7 @@ fn normalize_supports_inline_object_model_shapes_outside_allof() {
     .iter()
     .find(|property| property.name.as_ref() == "visits")
     .expect("visits property exists");
-  match &visits.ty {
+  match &visits.schema {
     SchemaType::Array(items) => {
       assert!(matches!(items.as_ref(), SchemaType::InlineObject { .. }));
     }
@@ -182,7 +182,7 @@ fn normalize_supports_typed_additional_properties_for_nested_and_named_object_ma
         .expect("scope property exists");
 
       assert!(matches!(
-        &scope.ty,
+        &scope.schema,
         SchemaType::StringLiterals { values }
           if values == &vec![
             "available".to_string(),
@@ -195,7 +195,7 @@ fn normalize_supports_typed_additional_properties_for_nested_and_named_object_ma
         .iter()
         .find(|property| property.name.as_ref() == "petsByBreed")
         .expect("petsByBreed property exists");
-      match &pets_by_breed.ty {
+      match &pets_by_breed.schema {
         SchemaType::Map(values) => match values.as_ref() {
           SchemaType::Array(items) => {
             assert!(matches!(items.as_ref(), SchemaType::Ref(name) if name.as_ref() == "Pet"));
@@ -387,19 +387,19 @@ fn semantic_finalize_lowers_operations_with_inputs_body_and_response() {
             name: "id".into(),
             source: RequestInputSource::Path,
             required: true,
-            ty: SchemaType::Scalar(crate::ir::schema::SchemaScalar::String),
+            schema: SchemaType::Scalar(crate::api_model::schema::SchemaScalar::String),
           },
           RequestInputDef {
             name: "includeInactive".into(),
             source: RequestInputSource::Query,
             required: false,
-            ty: SchemaType::Scalar(crate::ir::schema::SchemaScalar::Boolean),
+            schema: SchemaType::Scalar(crate::api_model::schema::SchemaScalar::Boolean),
           },
         ],
         headers: vec![HeaderDef {
           name: "xTrace".into(),
           required: false,
-          ty: SchemaType::Scalar(crate::ir::schema::SchemaScalar::String),
+          schema: SchemaType::Scalar(crate::api_model::schema::SchemaScalar::String),
         }],
         body: Some(RequestBodyDef {
           required: true,

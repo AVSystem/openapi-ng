@@ -8,10 +8,10 @@
 
 use serde_json::Value;
 
+use crate::api_model::canonical::ModelSymbol;
+use crate::api_model::normalize::normalize_document;
+use crate::api_model::schema::SchemaType;
 use crate::emit::ts::types::render_to_string;
-use crate::ir::canonical::ModelSymbol;
-use crate::ir::normalize::normalize_document;
-use crate::ir::schema::SchemaType;
 use crate::test_support::reporter_for;
 
 fn parse_fixture(source: &str) -> Value {
@@ -38,18 +38,20 @@ fn normalize_supports_empty_schema_any_type_and_empty_object_shapes() {
   assert!(!matches!(&any_value.body, SchemaType::Ref(_)));
   assert_eq!(render_to_string(&any_value.body), "unknown");
 
-  for schema_name in ["EmptyObject", "EmptyObjectWithProperties"] {
-    let empty_object = find_symbol(&ir.schemas, schema_name);
-    match &empty_object.body {
-      SchemaType::InlineObject { properties } => {
-        assert!(
-          properties.is_empty(),
-          "{schema_name} should have no properties"
-        );
+  ["EmptyObject", "EmptyObjectWithProperties"]
+    .iter()
+    .for_each(|schema_name| {
+      let empty_object = find_symbol(&ir.schemas, schema_name);
+      match &empty_object.body {
+        SchemaType::InlineObject { properties } => {
+          assert!(
+            properties.is_empty(),
+            "{schema_name} should have no properties"
+          );
+        }
+        other => panic!("expected object schema for {schema_name}, got {other:?}"),
       }
-      other => panic!("expected object schema for {schema_name}, got {other:?}"),
-    }
-  }
+    });
 
   let shape_container = find_symbol(&ir.schemas, "ShapeContainer");
   let properties = match &shape_container.body {
@@ -61,7 +63,7 @@ fn normalize_supports_empty_schema_any_type_and_empty_object_shapes() {
     .iter()
     .find(|property| property.name.as_ref() == "anything")
     .expect("anything property exists");
-  assert_eq!(render_to_string(&anything.ty), "unknown");
+  assert_eq!(render_to_string(&anything.schema), "unknown");
 
   let empty_inline = properties
     .iter()
@@ -80,24 +82,27 @@ fn normalize_supports_empty_schema_any_type_and_empty_object_shapes() {
     .find(|property| property.name.as_ref() == "emptyMap")
     .expect("emptyMap property exists");
 
-  for property in [empty_inline, empty_inline_with_properties] {
-    match &property.ty {
+  [empty_inline, empty_inline_with_properties]
+    .iter()
+    .for_each(|property| match &property.schema {
       SchemaType::InlineObject { properties } => assert!(properties.is_empty()),
       other => panic!("expected empty inline object, got {other:?}"),
-    }
-  }
+    });
 
-  match &empty_array.ty {
+  match &empty_array.schema {
     SchemaType::Array(items) => {
-      assert_eq!(render_to_string(&empty_array.ty), "unknown[]");
+      assert_eq!(render_to_string(&empty_array.schema), "unknown[]");
       assert!(!matches!(items.as_ref(), SchemaType::Ref(_)));
     }
     other => panic!("expected array, got {other:?}"),
-  }
+  };
 
-  match &empty_map.ty {
+  match &empty_map.schema {
     SchemaType::Map(values) => {
-      assert_eq!(render_to_string(&empty_map.ty), "Record<string, unknown>");
+      assert_eq!(
+        render_to_string(&empty_map.schema),
+        "Record<string, unknown>"
+      );
       assert!(!matches!(values.as_ref(), SchemaType::Ref(_)));
     }
     other => panic!("expected map, got {other:?}"),
@@ -151,7 +156,7 @@ fn ir_renders_union_and_intersection_type_fragments_from_normalized_composition(
       assert!(rendered.contains("nickname?: string | null;"));
     }
     other => panic!("expected IR intersection, got {other:?}"),
-  }
+  };
 
   let additional_properties_document = parse_fixture(include_str!(
     "../../test/fixtures/additional-properties.openapi.yaml"
@@ -167,7 +172,7 @@ fn ir_renders_union_and_intersection_type_fragments_from_normalized_composition(
       SchemaType::InlineObject { properties } if symbol.name.as_ref() == "PetCatalog" => properties
         .iter()
         .find(|property| property.name.as_ref() == "petsByBreed")
-        .map(|property| &property.ty),
+        .map(|property| &property.schema),
       _ => None,
     })
     .expect("PetCatalog.petsByBreed exists in IR");
@@ -183,7 +188,7 @@ fn ir_renders_union_and_intersection_type_fragments_from_normalized_composition(
       SchemaType::InlineObject { properties } if symbol.name.as_ref() == "PetCatalog" => properties
         .iter()
         .find(|property| property.name.as_ref() == "scope")
-        .map(|property| &property.ty),
+        .map(|property| &property.schema),
       _ => None,
     })
     .expect("PetCatalog.scope exists in IR");

@@ -3,14 +3,15 @@
 
 use std::collections::BTreeMap;
 
+use crate::api_model::canonical::{BodyField, BodyFieldType};
+use crate::api_model::schema::{SchemaProperty, SchemaScalar, SchemaType};
 use crate::error::{Context, Diagnostic, Reporter, bail_policy};
-use crate::ident::Ident;
-use crate::ir::canonical::{BodyField, BodyFieldType};
-use crate::ir::schema::{SchemaProperty, SchemaScalar, SchemaType};
+use crate::identifier::Identifier;
 use crate::parse::openapi_model::{AdditionalProperties, MediaType, Schema};
 
 use super::super::schema::normalize_schema;
 use super::super::{SchemaWalk, unsupported};
+use super::URL_ENCODED;
 
 /// The form flavour, the operation position and the diagnostic sink every
 /// rejection message needs.
@@ -84,6 +85,9 @@ impl FormKind {
   }
 }
 
+/// The `format` marking a binary field.
+const BINARY: &str = "binary";
+
 /// Subcode for a binary field in a urlencoded body, scalar or array.
 const URLENCODED_BINARY_FIELD: &str = "urlencoded-binary-field";
 
@@ -95,64 +99,41 @@ pub(super) fn normalize_form_body_fields(
   body: FormBody<'_>,
   schema_index: &BTreeMap<&str, &SchemaType>,
 ) -> Result<(Option<Box<str>>, Vec<BodyField>), Diagnostic> {
-  let FormBody {
-    kind,
-    method,
-    path,
-    reporter,
-  } = body;
-  let raw_schema = media.schema.as_ref().ok_or_else(|| {
-    Diagnostic::policy_violation(
-      reporter,
-      "missing-body-schema",
-      format!("requestBody for {method} {path} must define schema."),
-    )
-  })?;
+  let raw_schema = declared_schema(media, body)?;
+  reject_open_schema(raw_schema, body)?;
 
-  // Only `additionalProperties: false` and its absence leave the field
-  // set closed.
-  if let Some(ap) = &raw_schema.additional_properties
-    && !matches!(ap, AdditionalProperties::Boolean(false))
-  {
-    bail_policy!(
-      reporter,
-      kind.subcode(Reject::OpenSchema),
-      "requestBody for {method} {path}: {} bodies must not declare additionalProperties; every field must be enumerated.",
-      kind.label(),
-    );
-  }
-
-  let walk = SchemaWalk::root(Context::RequestBody { method, path }, reporter);
+  let walk = SchemaWalk::root(
+    Context::RequestBody {
+      method: body.method,
+      path: body.path,
+    },
+    body.reporter,
+  );
   let normalized = normalize_schema(raw_schema, walk)?;
-
-  let (body_ref, resolved_ty): (Option<Box<str>>, &SchemaType) = match &normalized {
-    SchemaType::Ref(name) => {
-      let resolved = schema_index.get(name.as_ref()).ok_or_else(|| {
-        unsupported(
-          reporter,
-          format!("requestBody for {method} {path} references unknown schema '{name}'.",),
-        )
-      })?;
-      (Some(name.clone()), *resolved)
-    }
+  let (body_ref, resolved) = match &normalized {
+    SchemaType::Ref(name) => (
+      Some(name.clone()),
+      referenced_schema(name.as_ref(), body, schema_index)?,
+    ),
     other => (None, other),
   };
 
-  let SchemaType::InlineObject { properties } = resolved_ty else {
+  let SchemaType::InlineObject { properties } = resolved else {
     bail_policy!(
-      reporter,
-      kind.subcode(Reject::NonObjectBody),
-      "requestBody for {method} {path}: {} body schema must resolve to an object.",
-      kind.label(),
+      body.reporter,
+      body.kind.subcode(Reject::NonObjectBody),
+      "requestBody for {} {}: {} body schema must resolve to an object.",
+      body.method,
+      body.path,
+      body.kind.label(),
     );
   };
 
-  let raw_property_lookup = collect_raw_property_formats(raw_schema);
-
+  let raw_formats = collect_raw_property_formats(raw_schema);
   let mut fields = properties
     .iter()
     .map(|property| {
-      let raw_format = raw_property_lookup
+      let raw_format = raw_formats
         .get(property.name.as_ref())
         .copied()
         .unwrap_or_default();
@@ -162,6 +143,54 @@ pub(super) fn normalize_form_body_fields(
 
   fields.sort_by(|left, right| left.name.cmp(&right.name));
   Ok((body_ref, fields))
+}
+
+fn declared_schema<'a>(media: &'a MediaType, body: FormBody<'_>) -> Result<&'a Schema, Diagnostic> {
+  media.schema.as_ref().ok_or_else(|| {
+    Diagnostic::policy_violation(
+      body.reporter,
+      "missing-body-schema",
+      format!(
+        "requestBody for {} {} must define schema.",
+        body.method, body.path
+      ),
+    )
+  })
+}
+
+/// Only `additionalProperties: false` and its absence leave the field set
+/// closed.
+fn reject_open_schema(raw_schema: &Schema, body: FormBody<'_>) -> Result<(), Diagnostic> {
+  if let Some(additional) = &raw_schema.additional_properties
+    && !matches!(additional, AdditionalProperties::Boolean(false))
+  {
+    bail_policy!(
+      body.reporter,
+      body.kind.subcode(Reject::OpenSchema),
+      "requestBody for {} {}: {} bodies must not declare additionalProperties; every field must be enumerated.",
+      body.method,
+      body.path,
+      body.kind.label(),
+    );
+  }
+  Ok(())
+}
+
+/// The schema a top-level `$ref` names, from the document's schema index.
+fn referenced_schema<'a>(
+  name: &str,
+  body: FormBody<'_>,
+  schema_index: &'a BTreeMap<&str, &'a SchemaType>,
+) -> Result<&'a SchemaType, Diagnostic> {
+  schema_index.get(name).copied().ok_or_else(|| {
+    unsupported(
+      body.reporter,
+      format!(
+        "requestBody for {} {} references unknown schema '{name}'.",
+        body.method, body.path
+      ),
+    )
+  })
 }
 
 /// Lowers one body property.
@@ -176,7 +205,7 @@ fn body_field(
     reporter,
     ..
   } = body;
-  let Some(name) = Ident::parse(property.name.as_ref()) else {
+  let Some(name) = Identifier::parse(property.name.as_ref()) else {
     bail_policy!(
       reporter,
       "invalid-form-field-name",
@@ -188,7 +217,12 @@ fn body_field(
   Ok(BodyField {
     name,
     required: property.required,
-    ty: classify_body_field_type(&property.ty, raw_format, property.name.as_ref(), body)?,
+    field_type: classify_body_field_type(
+      &property.schema,
+      raw_format,
+      property.name.as_ref(),
+      body,
+    )?,
   })
 }
 
@@ -223,89 +257,109 @@ fn collect_raw_property_formats(raw_schema: &Schema) -> BTreeMap<&str, RawProper
 /// Classifies one form-body property. Accepts a scalar, a binary, or an
 /// array of either; every other shape fails with the matching [`Reject`].
 fn classify_body_field_type(
-  ty: &SchemaType,
+  schema: &SchemaType,
   raw_format: RawPropertyFormat<'_>,
   field_name: &str,
   body: FormBody<'_>,
 ) -> Result<BodyFieldType, Diagnostic> {
-  let FormBody {
-    kind,
-    method,
-    path,
-    reporter,
-  } = body;
-  match ty {
-    SchemaType::Scalar(SchemaScalar::String) if raw_format.own == Some("binary") => match kind {
-      FormKind::Multipart => Ok(BodyFieldType::Binary),
-      FormKind::UrlEncoded => Err(Diagnostic::policy_violation(
-        reporter,
-        URLENCODED_BINARY_FIELD,
-        format!(
-          "body field '{field_name}' in {method} {path}: binary fields are not supported in application/x-www-form-urlencoded."
-        ),
-      )),
-    },
+  match schema {
+    SchemaType::Scalar(SchemaScalar::String) if raw_format.own == Some(BINARY) => {
+      binary_field(BodyFieldType::Binary, "binary", field_name, body)
+    }
     SchemaType::Array(inner)
       if matches!(inner.as_ref(), SchemaType::Scalar(SchemaScalar::String))
-        && raw_format.items == Some("binary") =>
+        && raw_format.items == Some(BINARY) =>
     {
-      match kind {
-        FormKind::Multipart => Ok(BodyFieldType::ArrayOfBinary),
-        FormKind::UrlEncoded => Err(Diagnostic::policy_violation(
-          reporter,
-          URLENCODED_BINARY_FIELD,
-          format!(
-            "body field '{field_name}' in {method} {path}: array-of-binary fields are not supported in application/x-www-form-urlencoded."
-          ),
-        )),
-      }
+      binary_field(
+        BodyFieldType::ArrayOfBinary,
+        "array-of-binary",
+        field_name,
+        body,
+      )
     }
     SchemaType::Scalar(scalar) => Ok(BodyFieldType::Scalar(scalar.clone())),
     SchemaType::Array(inner) => match inner.as_ref() {
       SchemaType::Scalar(scalar) => Ok(BodyFieldType::ArrayOfScalar(scalar.clone())),
-
-      _ => Err(Diagnostic::policy_violation(
-        reporter,
-        kind.subcode(Reject::ComposedField),
-        format!(
-          "body field '{field_name}' in {method} {path}: array items must be scalar or binary."
-        ),
+      _ => Err(reject_field(
+        Reject::ComposedField,
+        "array items must be scalar or binary.".to_string(),
+        field_name,
+        body,
       )),
     },
-    SchemaType::InlineObject { .. } | SchemaType::Ref(_) => Err(Diagnostic::policy_violation(
-      reporter,
-      kind.subcode(Reject::NestedObject),
+    SchemaType::InlineObject { .. } | SchemaType::Ref(_) => Err(reject_field(
+      Reject::NestedObject,
       format!(
-        "body field '{field_name}' in {method} {path}: nested objects are not supported in {} bodies.",
-        kind.label(),
+        "nested objects are not supported in {} bodies.",
+        body.kind.label()
       ),
+      field_name,
+      body,
     )),
-    _ => Err(Diagnostic::policy_violation(
-      reporter,
-      kind.subcode(Reject::ComposedField),
+    _ => Err(reject_field(
+      Reject::ComposedField,
       format!(
-        "body field '{field_name}' in {method} {path}: composed schemas are not supported in {} bodies.",
-        kind.label(),
+        "composed schemas are not supported in {} bodies.",
+        body.kind.label()
+      ),
+      field_name,
+      body,
+    )),
+  }
+}
+
+/// A binary field, which only multipart can carry.
+fn binary_field(
+  carried: BodyFieldType,
+  label: &str,
+  field_name: &str,
+  body: FormBody<'_>,
+) -> Result<BodyFieldType, Diagnostic> {
+  match body.kind {
+    FormKind::Multipart => Ok(carried),
+    FormKind::UrlEncoded => Err(Diagnostic::policy_violation(
+      body.reporter,
+      URLENCODED_BINARY_FIELD,
+      format!(
+        "body field '{field_name}' in {} {}: {label} fields are not supported in {URL_ENCODED}.",
+        body.method, body.path
       ),
     )),
   }
 }
 
+/// A rejected field, its `detail` appended to the field's position.
+fn reject_field(
+  reject: Reject,
+  detail: String,
+  field_name: &str,
+  body: FormBody<'_>,
+) -> Diagnostic {
+  Diagnostic::policy_violation(
+    body.reporter,
+    body.kind.subcode(reject),
+    format!(
+      "body field '{field_name}' in {} {}: {detail}",
+      body.method, body.path
+    ),
+  )
+}
+
 #[cfg(test)]
 mod tests {
-  use super::super::OperationCx;
+  use super::super::LoweringContext;
 
   fn test_cx<'a>(
     schemas: &'a BTreeMap<&'a str, &'a SchemaType>,
     reporter: &'a crate::error::Reporter,
-  ) -> OperationCx<'a> {
-    OperationCx::new("POST", "/x", schemas, &[], reporter)
+  ) -> LoweringContext<'a> {
+    LoweringContext::new("POST", "/x", schemas, &[], reporter)
   }
   use super::URLENCODED_BINARY_FIELD;
   use std::collections::BTreeMap;
 
-  use crate::ir::canonical::{BodyContent, BodyFieldType};
-  use crate::ir::schema::{SchemaProperty, SchemaScalar, SchemaType};
+  use crate::api_model::canonical::{BodyContent, BodyFieldType};
+  use crate::api_model::schema::{SchemaProperty, SchemaScalar, SchemaType};
   use crate::parse::openapi_model::RequestBody;
   use crate::test_support::test_reporter;
 
@@ -348,14 +402,14 @@ content:
           .iter()
           .find(|field| field.name.as_str() == "avatar")
           .unwrap();
-        assert_eq!(avatar.ty, BodyFieldType::Binary);
+        assert_eq!(avatar.field_type, BodyFieldType::Binary);
         assert!(avatar.required);
         let status = fields
           .iter()
           .find(|field| field.name.as_str() == "status")
           .unwrap();
         assert!(matches!(
-          status.ty,
+          status.field_type,
           BodyFieldType::Scalar(SchemaScalar::String)
         ));
         assert!(status.required);
@@ -369,7 +423,7 @@ content:
           .find(|field| field.name.as_str() == "tagIds")
           .unwrap();
         assert!(matches!(
-          tag_ids.ty,
+          tag_ids.field_type,
           BodyFieldType::ArrayOfScalar(SchemaScalar::Number)
         ));
       }
@@ -397,7 +451,7 @@ content:
     match result.content {
       BodyContent::Multipart { fields, .. } => {
         assert_eq!(fields.len(), 1);
-        assert_eq!(fields[0].ty, BodyFieldType::ArrayOfBinary);
+        assert_eq!(fields[0].field_type, BodyFieldType::ArrayOfBinary);
       }
       other => panic!("expected Multipart, got {other:?}"),
     }
@@ -416,7 +470,7 @@ content:
       properties: vec![SchemaProperty {
         name: "status".into(),
         required: true,
-        ty: SchemaType::Scalar(SchemaScalar::String),
+        schema: SchemaType::Scalar(SchemaScalar::String),
         description: None,
         deprecated: false,
       }],

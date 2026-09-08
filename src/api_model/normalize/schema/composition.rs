@@ -3,8 +3,8 @@
 
 use std::collections::BTreeMap;
 
+use crate::api_model::schema::{Discriminator, SchemaType};
 use crate::error::Diagnostic;
-use crate::ir::schema::{Discriminator, SchemaType};
 use crate::parse::openapi_model::{self, Schema};
 
 use super::super::{SchemaWalk, bail_unsupported};

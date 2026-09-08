@@ -46,10 +46,9 @@ proptest! {
 #[test]
 fn depth_exceeded_diagnostic_includes_breadcrumb_chain() {
   // Build a 40-level-deep schema by wrapping in array; MAX_NORMALIZE_DEPTH is 32.
-  let mut schema = Schema::default_string();
-  for _ in 0..40 {
-    schema = Schema::wrap_array(schema);
-  }
+  let schema = (0..40).fold(Schema::default_string(), |inner, _| {
+    Schema::wrap_array(inner)
+  });
 
   let path: Rc<str> = Rc::from("test");
   let reporter = Reporter::new(path);

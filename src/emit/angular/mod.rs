@@ -16,9 +16,9 @@ pub(crate) const REST_VALIDATE_TEMPLATE: &str =
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::ident::TypeName;
-  use crate::ir::canonical::HttpMethod;
-  use crate::ir::schema::{SchemaScalar, SchemaType};
+  use crate::api_model::canonical::HttpMethod;
+  use crate::api_model::schema::{SchemaScalar, SchemaType};
+  use crate::identifier::TypeName;
   use crate::plan::artifact_plan::{
     PlannedRequestContract, PlannedRequestField, RequestFieldKind, ServicePlan,
   };
@@ -62,7 +62,7 @@ mod tests {
 
   #[test]
   fn emit_service_includes_request_interface_when_operation_has_input_fields() {
-    let ty = SchemaType::Scalar(SchemaScalar::String);
+    let schema = SchemaType::Scalar(SchemaScalar::String);
     let plan = ServicePlan {
       group_name: "pet".into(),
       class_name: TypeName::new("PetRest".to_string()),
@@ -75,7 +75,7 @@ mod tests {
           fields: vec![PlannedRequestField {
             name: "id".into(),
             optional: false,
-            ty: &ty,
+            schema: &schema,
             kind: RequestFieldKind::Path,
           }],
           headers: vec![],

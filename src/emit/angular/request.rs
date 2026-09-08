@@ -1,8 +1,9 @@
+use crate::api_model::canonical::BodyFieldType;
 use crate::emit::ts::{
-  Doc, Member, Position, Render, Writer, interface_block, property_declaration, w, wln,
+  Doc, Member, Position, Render, Writer, interface_block, member_declaration, w, wln,
+  write_separated,
 };
-use crate::ident::TypeName;
-use crate::ir::canonical::BodyFieldType;
+use crate::identifier::TypeName;
 use crate::plan::artifact_plan::{
   PlannedFormField, PlannedHeader, PlannedOperation, PlannedRequestBody, PlannedRequestContract,
   PlannedRequestField, RequestFieldKind,
@@ -91,7 +92,7 @@ fn field_member<'a>(field: &'a PlannedRequestField<'a>) -> Member<'a> {
   Member {
     name: field.name.as_ref(),
     optional: field.optional,
-    ty: field.ty,
+    type_expr: field.schema,
     doc: Doc::default(),
   }
 }
@@ -100,7 +101,7 @@ fn form_member<'a>(field: &'a PlannedFormField<'a>) -> Member<'a> {
   Member {
     name: field.name.as_str(),
     optional: field.optional,
-    ty: field.ty,
+    type_expr: field.field_type,
     doc: Doc::default(),
   }
 }
@@ -108,10 +109,10 @@ fn form_member<'a>(field: &'a PlannedFormField<'a>) -> Member<'a> {
 /// The members a body contributes; at most one arm is non-empty.
 fn body_members<'a>(body: Option<&'a PlannedRequestBody<'a>>) -> impl Iterator<Item = Member<'a>> {
   let nested = body.and_then(|body| match body {
-    PlannedRequestBody::Nested { ty, optional } => Some(Member {
+    PlannedRequestBody::Nested { schema, optional } => Some(Member {
       name: "body",
       optional: *optional,
-      ty: *ty,
+      type_expr: *schema,
       doc: Doc::default(),
     }),
     _ => None,
@@ -163,7 +164,7 @@ impl<'a> HeaderObject<'a> {
     (!self.0.is_empty()).then(|| Member {
       name: "headers",
       optional: self.0.iter().all(|header| header.optional),
-      ty: self,
+      type_expr: self,
       doc: Doc::default(),
     })
   }
@@ -171,14 +172,11 @@ impl<'a> HeaderObject<'a> {
 
 impl Render for HeaderObject<'_> {
   fn render(&self, out: &mut Writer, _at: Position) {
-    out.push("{\n");
-    out.indent();
-    self.0.iter().for_each(|header| {
-      property_declaration(out, header.name.as_ref(), header.optional, &header.ty);
-      out.push(";\n");
+    out.inline_block(|out| {
+      self.0.iter().for_each(|header| {
+        member_declaration(out, header.name.as_ref(), header.optional, &header.schema);
+      });
     });
-    out.dedent();
-    out.push("}");
   }
 }
 
@@ -197,12 +195,7 @@ fn write_params_line(buffer: &mut Writer, operation: &PlannedOperation<'_>) {
   }
 
   buffer.push("params: httpParams({ ");
-  for (index, name) in query.enumerate() {
-    if index > 0 {
-      buffer.push(", ");
-    }
-    buffer.push(name);
-  }
+  write_separated(buffer, query, ", ", Writer::push);
   buffer.push(" }),\n");
 }
 
@@ -216,12 +209,9 @@ fn write_body_line(buffer: &mut Writer, operation: &PlannedOperation<'_>) {
     PlannedRequestBody::Nested { .. } => buffer.push("body: body,\n"),
     PlannedRequestBody::FlatJson { properties, .. } => {
       buffer.push("body: { ");
-      for (index, property) in properties.iter().enumerate() {
-        if index > 0 {
-          buffer.push(", ");
-        }
-        buffer.push(property.name.as_ref());
-      }
+      write_separated(buffer, properties, ", ", |out, property| {
+        out.push(property.name.as_ref());
+      });
       buffer.push(" },\n");
     }
     PlannedRequestBody::Multipart { fields } => {
@@ -245,12 +235,12 @@ fn write_form_body(buffer: &mut Writer, fields: &[PlannedFormField<'_>], kind: F
   wln!(buffer, "body: ((): {ts_type} => {{");
   buffer.indent();
   wln!(buffer, "const {variable} = {constructor};");
-  for field in fields {
+  fields.iter().for_each(|field| {
     let name = field.name.as_str();
     if field.optional {
       w!(buffer, "if ({name} !== undefined) ");
     }
-    match field.ty {
+    match field.field_type {
       BodyFieldType::Scalar(_) => {
         wln!(buffer, "{variable}.append('{name}', String({name}));");
       }
@@ -268,7 +258,7 @@ fn write_form_body(buffer: &mut Writer, fields: &[PlannedFormField<'_>], kind: F
         );
       }
     }
-  }
+  });
   wln!(buffer, "return {variable};");
   buffer.dedent();
   buffer.push("})(),\n");
@@ -305,12 +295,13 @@ mod tests {
   fn type_name(name: &str) -> TypeName {
     TypeName::new(name.to_string())
   }
-  use crate::ir::canonical::{BodyFieldType, ErrorResponse, HttpMethod};
-  use crate::ir::schema::{SchemaProperty, SchemaScalar, SchemaType};
+  use crate::api_model::canonical::{BodyFieldType, ErrorResponse, HttpMethod};
+  use crate::api_model::schema::{SchemaProperty, SchemaScalar, SchemaType};
   use crate::plan::artifact_plan::{PlannedHeader, PlannedRequestContract};
   use crate::test_support::{
     body_field, flat_json_body, nested_body, op_with, op_with_errors, op_with_multipart_fields,
-    op_with_multipart_fields_full, op_with_urlencoded_fields, path_field, query_field, string_ty,
+    op_with_multipart_fields_full, op_with_urlencoded_fields, path_field, query_field,
+    string_schema,
   };
 
   fn render_errors(error_name: &str, errors: &[ErrorResponse]) -> String {
@@ -345,7 +336,7 @@ mod tests {
       properties: vec![SchemaProperty {
         name: "code".into(),
         required: true,
-        ty: SchemaType::Scalar(SchemaScalar::String),
+        schema: SchemaType::Scalar(SchemaScalar::String),
         description: None,
         deprecated: false,
       }],
@@ -358,13 +349,13 @@ mod tests {
 
   #[test]
   fn requestful_builder_renders_get_with_path_param_only() {
-    let ty = string_ty();
+    let schema = string_schema();
     let op = op_with(
       "getPet",
       HttpMethod::Get,
       "/pets/{petId}",
       PlannedRequestContract {
-        fields: vec![path_field("petId", &ty)],
+        fields: vec![path_field("petId", &schema)],
         headers: vec![],
         body: None,
       },
@@ -387,7 +378,7 @@ mod tests {
 
   #[test]
   fn requestful_builder_renders_post_with_ref_body_and_headers() {
-    let str_ty = string_ty();
+    let str_schema = string_schema();
     let body_ref = SchemaType::Ref("CreatePetPayload".into());
     let op = op_with(
       "createPet",
@@ -398,7 +389,7 @@ mod tests {
         headers: vec![PlannedHeader {
           name: "X-Trace-Id".into(),
           optional: false,
-          ty: &str_ty,
+          schema: &str_schema,
         }],
         body: Some(nested_body(&body_ref, false)),
       },
@@ -422,7 +413,7 @@ mod tests {
   fn requestful_builder_assembles_object_literal_for_flat_json_body() {
     // Inline JSON object bodies hoist their properties to top-level
     // fields, re-assembled into an object literal at the `body:` slot.
-    let str_ty = string_ty();
+    let str_schema = string_schema();
     let bool_ty = SchemaType::Scalar(SchemaScalar::Boolean);
     let op = op_with(
       "decide",
@@ -433,7 +424,7 @@ mod tests {
         headers: vec![],
         body: Some(flat_json_body(
           vec![
-            body_field("csvImportId", false, &str_ty),
+            body_field("csvImportId", false, &str_schema),
             body_field("doImport", false, &bool_ty),
           ],
           true,
@@ -452,15 +443,15 @@ mod tests {
 
   #[test]
   fn requestful_builder_renders_query_params_via_http_params() {
-    let str_ty = string_ty();
+    let str_schema = string_schema();
     let op = op_with(
       "listPets",
       HttpMethod::Get,
       "/pets",
       PlannedRequestContract {
         fields: vec![
-          query_field("limit", true, &str_ty),
-          query_field("offset", true, &str_ty),
+          query_field("limit", true, &str_schema),
+          query_field("offset", true, &str_schema),
         ],
         headers: vec![],
         body: None,
@@ -530,7 +521,7 @@ mod tests {
 
   #[test]
   fn request_interface_renders_ref_body_as_nested_alongside_headers() {
-    let str_ty = string_ty();
+    let str_schema = string_schema();
     let payload_ref = SchemaType::Ref("CreatePetPayload".into());
     let op = op_with(
       "createPet",
@@ -542,12 +533,12 @@ mod tests {
           PlannedHeader {
             name: "X-Trace-Id".into(),
             optional: false,
-            ty: &str_ty,
+            schema: &str_schema,
           },
           PlannedHeader {
             name: "X-Idempotency-Key".into(),
             optional: true,
-            ty: &str_ty,
+            schema: &str_schema,
           },
         ],
         body: Some(nested_body(&payload_ref, false)),
@@ -571,7 +562,7 @@ mod tests {
 
   #[test]
   fn request_interface_hoists_flat_json_body_properties_to_top_level() {
-    let str_ty = string_ty();
+    let str_schema = string_schema();
     let bool_ty = SchemaType::Scalar(SchemaScalar::Boolean);
     let op = op_with(
       "decide",
@@ -582,7 +573,7 @@ mod tests {
         headers: vec![],
         body: Some(flat_json_body(
           vec![
-            body_field("csvImportId", false, &str_ty),
+            body_field("csvImportId", false, &str_schema),
             body_field("doImport", false, &bool_ty),
           ],
           true,
@@ -624,17 +615,17 @@ mod tests {
 
   #[test]
   fn request_interface_marks_headers_optional_when_all_headers_optional() {
-    let str_ty = string_ty();
+    let str_schema = string_schema();
     let op = op_with(
       "getPet",
       HttpMethod::Get,
       "/pets/{id}",
       PlannedRequestContract {
-        fields: vec![path_field("id", &str_ty)],
+        fields: vec![path_field("id", &str_schema)],
         headers: vec![PlannedHeader {
           name: "X-Trace-Id".into(),
           optional: true,
-          ty: &str_ty,
+          schema: &str_schema,
         }],
         body: None,
       },
@@ -651,13 +642,13 @@ mod tests {
 
   #[test]
   fn request_interface_omits_headers_block_when_absent() {
-    let str_ty = string_ty();
+    let str_schema = string_schema();
     let op = op_with(
       "getPet",
       HttpMethod::Get,
       "/pets/{id}",
       PlannedRequestContract {
-        fields: vec![path_field("id", &str_ty)],
+        fields: vec![path_field("id", &str_schema)],
         headers: vec![],
         body: None,
       },
@@ -674,12 +665,12 @@ mod tests {
 
   #[test]
   fn request_interface_renders_binary_as_blob_or_file_union() {
-    let str_ty = string_ty();
+    let str_schema = string_schema();
     let binary = BodyFieldType::Binary;
     let op = op_with_multipart_fields_full(
-      vec![path_field("petId", &str_ty)], // path
-      vec![],                             // headers
-      vec![("avatar", false, &binary)],   // form fields
+      vec![path_field("petId", &str_schema)], // path
+      vec![],                                 // headers
+      vec![("avatar", false, &binary)],       // form fields
     );
     let mut buf = Writer::with_capacity(512);
     render_request_interface(&mut buf, &op, &type_name("OpParams"));

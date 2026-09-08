@@ -1,11 +1,11 @@
 //! Request-body layout.
 
 use crate::{
-  error::{Diagnostic, Reporter},
-  ir::{
+  api_model::{
     canonical::{BodyContent, BodyField, RequestBodyDef},
     schema::SchemaType,
   },
+  error::{Diagnostic, Reporter},
   plan::artifact_plan::{
     PlannedFormField, PlannedRequestBody, PlannedRequestField, RequestFieldKind,
   },
@@ -18,9 +18,9 @@ use crate::{
 /// - any other JSON shape → `Nested`, under one `body` key;
 /// - a form body → `Multipart` / `UrlEncoded`, its fields hoisted and
 ///   sorted by name.
-pub(super) fn plan_request_body<'ir>(
-  body: Option<&'ir RequestBodyDef>,
-) -> Option<PlannedRequestBody<'ir>> {
+pub(super) fn plan_request_body<'model>(
+  body: Option<&'model RequestBodyDef>,
+) -> Option<PlannedRequestBody<'model>> {
   let body = body?;
   match &body.content {
     BodyContent::Json(SchemaType::InlineObject { properties }) => {
@@ -30,7 +30,7 @@ pub(super) fn plan_request_body<'ir>(
         .map(|property| PlannedRequestField {
           name: property.name.clone(),
           optional: !envelope_required || !property.required,
-          ty: &property.ty,
+          schema: &property.schema,
           kind: RequestFieldKind::Body,
         })
         .collect();
@@ -39,8 +39,8 @@ pub(super) fn plan_request_body<'ir>(
         required: envelope_required,
       })
     }
-    BodyContent::Json(ty) => Some(PlannedRequestBody::Nested {
-      ty,
+    BodyContent::Json(schema) => Some(PlannedRequestBody::Nested {
+      schema,
       optional: !body.required,
     }),
     BodyContent::Multipart { fields, .. } => Some(PlannedRequestBody::Multipart {
@@ -52,13 +52,13 @@ pub(super) fn plan_request_body<'ir>(
   }
 }
 
-fn plan_form_fields<'ir>(fields: &'ir [BodyField]) -> Vec<PlannedFormField<'ir>> {
-  let mut out: Vec<PlannedFormField<'ir>> = fields
+fn plan_form_fields<'model>(fields: &'model [BodyField]) -> Vec<PlannedFormField<'model>> {
+  let mut out: Vec<PlannedFormField<'model>> = fields
     .iter()
     .map(|field| PlannedFormField {
       name: field.name.clone(),
       optional: !field.required,
-      ty: &field.ty,
+      field_type: &field.field_type,
     })
     .collect();
   out.sort_by(|left, right| left.name.cmp(&right.name));
@@ -112,7 +112,7 @@ mod tests {
   mod body {
     use super::super::plan_request_body;
     use crate::{
-      ir::{
+      api_model::{
         canonical::{BodyContent, RequestBodyDef},
         schema::{SchemaProperty, SchemaScalar, SchemaType},
       },
@@ -131,9 +131,9 @@ mod tests {
         content: BodyContent::Json(SchemaType::Ref("CreatePetRequest".into())),
       };
       match plan_request_body(Some(&body)).expect("body present") {
-        PlannedRequestBody::Nested { ty, optional } => {
+        PlannedRequestBody::Nested { schema, optional } => {
           assert!(!optional);
-          assert!(matches!(ty, SchemaType::Ref(name) if name.as_ref() == "CreatePetRequest"));
+          assert!(matches!(schema, SchemaType::Ref(name) if name.as_ref() == "CreatePetRequest"));
         }
         other => panic!("expected nested ref body, got {other:?}"),
       }
@@ -147,7 +147,7 @@ mod tests {
           properties: vec![SchemaProperty {
             name: "status".into(),
             required: true,
-            ty: SchemaType::Scalar(SchemaScalar::String),
+            schema: SchemaType::Scalar(SchemaScalar::String),
             description: None,
             deprecated: false,
           }],
@@ -182,7 +182,7 @@ mod tests {
 
   mod form_body {
     use crate::{
-      ir::{
+      api_model::{
         canonical::{
           ApiInfo, ApiModel, BodyContent, BodyField, BodyFieldType, HttpMethod, ModelSymbol,
           OperationDef, RequestBodyDef, RequestDef, RequestInputDef, RequestInputSource,
@@ -247,14 +247,14 @@ mod tests {
           None,
           vec![
             BodyField {
-              name: crate::ident::Ident::parse("avatar").expect("identifier"),
+              name: crate::identifier::Identifier::parse("avatar").expect("identifier"),
               required: true,
-              ty: BodyFieldType::Binary,
+              field_type: BodyFieldType::Binary,
             },
             BodyField {
-              name: crate::ident::Ident::parse("caption").expect("identifier"),
+              name: crate::identifier::Identifier::parse("caption").expect("identifier"),
               required: false,
-              ty: BodyFieldType::Scalar(SchemaScalar::String),
+              field_type: BodyFieldType::Scalar(SchemaScalar::String),
             },
           ],
         )],
@@ -271,19 +271,19 @@ mod tests {
           None,
           vec![
             BodyField {
-              name: crate::ident::Ident::parse("zeta").expect("identifier"),
+              name: crate::identifier::Identifier::parse("zeta").expect("identifier"),
               required: true,
-              ty: BodyFieldType::Scalar(SchemaScalar::String),
+              field_type: BodyFieldType::Scalar(SchemaScalar::String),
             },
             BodyField {
-              name: crate::ident::Ident::parse("alpha").expect("identifier"),
+              name: crate::identifier::Identifier::parse("alpha").expect("identifier"),
               required: true,
-              ty: BodyFieldType::Scalar(SchemaScalar::String),
+              field_type: BodyFieldType::Scalar(SchemaScalar::String),
             },
             BodyField {
-              name: crate::ident::Ident::parse("mu").expect("identifier"),
+              name: crate::identifier::Identifier::parse("mu").expect("identifier"),
               required: true,
-              ty: BodyFieldType::Scalar(SchemaScalar::String),
+              field_type: BodyFieldType::Scalar(SchemaScalar::String),
             },
           ],
         )],
@@ -300,19 +300,19 @@ mod tests {
             name: "fileName".into(),
             source: RequestInputSource::Path,
             required: true,
-            ty: SchemaType::Scalar(SchemaScalar::String),
+            schema: SchemaType::Scalar(SchemaScalar::String),
           }],
           None,
           vec![
             BodyField {
-              name: crate::ident::Ident::parse("fileName").expect("identifier"),
+              name: crate::identifier::Identifier::parse("fileName").expect("identifier"),
               required: true,
-              ty: BodyFieldType::Scalar(SchemaScalar::String),
+              field_type: BodyFieldType::Scalar(SchemaScalar::String),
             },
             BodyField {
-              name: crate::ident::Ident::parse("blob").expect("identifier"),
+              name: crate::identifier::Identifier::parse("blob").expect("identifier"),
               required: true,
-              ty: BodyFieldType::Binary,
+              field_type: BodyFieldType::Binary,
             },
           ],
         )],
@@ -328,9 +328,9 @@ mod tests {
           Vec::new(),
           Some(body_ref),
           vec![BodyField {
-            name: crate::ident::Ident::parse("file").expect("identifier"),
+            name: crate::identifier::Identifier::parse("file").expect("identifier"),
             required: true,
-            ty: BodyFieldType::Binary,
+            field_type: BodyFieldType::Binary,
           }],
         )],
       )

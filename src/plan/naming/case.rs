@@ -1,14 +1,8 @@
-//! The one name tokenizer and set of case renderers, shared by the
-//! caller-facing `case` rule and by [`super::fixed`].
+//! The name tokenizer and case renderers.
 
 use crate::plan::naming::config::Case;
 
-/// Splits `name` into its casing tokens, borrowing each from `name`.
-///
-/// Separators are every non-alphanumeric character. A run of
-/// alphanumerics splits at two case transitions: after a lowercase or
-/// digit that precedes an uppercase (`listPets`), and at the last
-/// uppercase of a run that is followed by a lowercase (`URLPath`).
+/// Splits `name` into its casing tokens, each borrowed from `name`.
 pub(crate) const fn tokenize(name: &str) -> Tokens<'_> {
   Tokens { rest: name }
 }
@@ -29,27 +23,25 @@ impl<'a> Iterator for Tokens<'a> {
   }
 }
 
-/// Byte length of the token starting at `token`, whose first character
-/// is alphanumeric.
+/// Byte length of the token at the start of `token`.
 fn token_len(token: &str) -> usize {
-  let mut chars = token.char_indices();
-  let Some((_, first)) = chars.next() else {
-    return 0;
-  };
-  let mut previous = first;
-  for (offset, current) in chars.clone() {
-    let following = chars.clone().nth(1).map(|(_, ch)| ch);
-    if !current.is_alphanumeric() || splits_before(previous, current, following) {
-      return offset;
-    }
-    previous = current;
-    chars.next();
-  }
-  token.len()
+  let current = token.char_indices().skip(1);
+  let previous = token.chars();
+  let following = token.chars().skip(2).map(Some).chain(std::iter::once(None));
+
+  current
+    .zip(previous)
+    .zip(following)
+    .find(|(((_, current), previous), following)| {
+      !current.is_alphanumeric() || splits_before(*previous, *current, *following)
+    })
+    .map_or(token.len(), |(((offset, _), _), _)| offset)
 }
 
-/// True when a token boundary falls immediately before `current`.
-/// `following` is the character after `current`, if any.
+/// True when a token boundary falls immediately before `current`, which a
+/// run of alphanumerics reaches at two case transitions: after a lowercase
+/// or digit (`listPets`), and at the last uppercase of a run followed by a
+/// lowercase (`URLPath`).
 fn splits_before(previous: char, current: char, following: Option<char>) -> bool {
   let starts_after_lower = previous.is_ascii_lowercase() || previous.is_ascii_digit();
   let ends_upper_run = previous.is_ascii_uppercase()

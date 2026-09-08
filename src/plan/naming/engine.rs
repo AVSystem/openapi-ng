@@ -107,7 +107,7 @@ fn map_template_error(err: TemplateError) -> RuleFailure {
 mod tests {
   use super::*;
   use crate::{
-    ir::{
+    api_model::{
       canonical::{HttpMethod, OperationDef, RequestDef, ResponseContent},
       schema::{SchemaScalar, SchemaType},
     },

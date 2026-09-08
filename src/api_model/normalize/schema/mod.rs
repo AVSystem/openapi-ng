@@ -14,9 +14,9 @@ mod tests;
 
 use std::collections::{BTreeMap, HashSet};
 
+use crate::api_model::canonical::ModelSymbol;
+use crate::api_model::schema::{SchemaProperty, SchemaScalar, SchemaType};
 use crate::error::{Context, Diagnostic, Reporter};
-use crate::ir::canonical::ModelSymbol;
-use crate::ir::schema::{SchemaProperty, SchemaScalar, SchemaType};
 use crate::parse::openapi_model::{AdditionalProperties, Schema};
 
 use super::{SchemaWalk, bail_unsupported, bail_unsupported_rule, check_unsupported_not};
@@ -101,7 +101,7 @@ pub(super) fn normalize_properties(
       Ok(SchemaProperty {
         name: name.as_str().into(),
         required: required.contains(name.as_str()),
-        ty: apply_nullable_flag(base, property.nullable.unwrap_or(false)),
+        schema: apply_nullable_flag(base, property.nullable.unwrap_or(false)),
         description: property.description.clone(),
         deprecated: property.deprecated,
       })

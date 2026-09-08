@@ -4,13 +4,8 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-// Through the wrapper: a caught failure is a real `GenerateError`, whose
-// `path` and `warnings` the snapshots pin.
 import { generate, isGenerateError } from '../scripts/lib/engine.ts';
 import type { GenerateOptions } from '../scripts/lib/engine.ts';
-// Every fixture list, the banner regex and the static-template set come
-// from the module the regenerator writes with, so reader and writer cannot
-// drift from each other or from test/fixtures/.
 import {
   BANNER_RE,
   FAILURE_FIXTURES,
@@ -31,9 +26,6 @@ function readJsonSnapshot(name: string) {
   return JSON.parse(fs.readFileSync(snapshot(name), 'utf8'));
 }
 
-// Every fixture list, the banner regex and the static-template set come
-// from the module the regenerator writes with, so reader and writer cannot
-// drift from each other or from test/fixtures/.
 const STATIC_TEMPLATE_DIR = path.join(
   repoRoot,
   '__test__',

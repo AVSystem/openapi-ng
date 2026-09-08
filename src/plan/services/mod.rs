@@ -9,8 +9,8 @@ mod grouping;
 use std::collections::BTreeSet;
 
 use crate::{
+  api_model::canonical::{OperationDef, RequestInputSource},
   error::{Diagnostic, Reporter, bail_policy},
-  ir::canonical::{OperationDef, RequestInputSource},
   plan::artifact_plan::{
     PlannedHeader, PlannedRequestContract, PlannedRequestField, RequestFieldKind,
   },
@@ -48,18 +48,18 @@ fn check_path_query_collisions(
   Ok(())
 }
 
-pub(crate) fn plan_request_contract<'ir>(
-  operation: &'ir OperationDef,
+pub(crate) fn plan_request_contract<'model>(
+  operation: &'model OperationDef,
   reporter: &Reporter,
-) -> Result<PlannedRequestContract<'ir>, Diagnostic> {
-  let fields: Vec<PlannedRequestField<'ir>> = operation
+) -> Result<PlannedRequestContract<'model>, Diagnostic> {
+  let fields: Vec<PlannedRequestField<'model>> = operation
     .request
     .inputs
     .iter()
     .map(|input| PlannedRequestField {
       name: input.name.clone(),
       optional: !input.required,
-      ty: &input.ty,
+      schema: &input.schema,
       kind: match input.source {
         RequestInputSource::Path => RequestFieldKind::Path,
         RequestInputSource::Query => RequestFieldKind::Query,
@@ -67,14 +67,14 @@ pub(crate) fn plan_request_contract<'ir>(
     })
     .collect();
 
-  let headers: Vec<PlannedHeader<'ir>> = operation
+  let headers: Vec<PlannedHeader<'model>> = operation
     .request
     .headers
     .iter()
     .map(|header| PlannedHeader {
       name: header.name.clone(),
       optional: !header.required,
-      ty: &header.ty,
+      schema: &header.schema,
     })
     .collect();
 
@@ -95,7 +95,7 @@ pub(crate) fn plan_request_contract<'ir>(
 mod tests {
   mod contract {
     use crate::{
-      ir::{
+      api_model::{
         canonical::{
           BodyContent, HeaderDef, HttpMethod, OperationDef, RequestBodyDef, RequestDef,
           RequestInputDef, RequestInputSource,
@@ -120,7 +120,7 @@ mod tests {
             name: "petId".into(),
             source: RequestInputSource::Path,
             required: true,
-            ty: SchemaType::Ref("PetId".into()),
+            schema: SchemaType::Ref("PetId".into()),
           }],
           headers: Vec::new(),
           body: Some(RequestBodyDef {
@@ -143,9 +143,9 @@ mod tests {
         .collect();
       assert_eq!(path_fields, vec!["petId"]);
       match &request.body {
-        Some(PlannedRequestBody::Nested { ty, optional }) => {
+        Some(PlannedRequestBody::Nested { schema, optional }) => {
           assert!(!optional);
-          assert!(matches!(ty, SchemaType::Ref(name) if name.as_ref() == "UpdatePetPayload"));
+          assert!(matches!(schema, SchemaType::Ref(name) if name.as_ref() == "UpdatePetPayload"));
         }
         other => panic!("expected nested ref body, got {other:?}"),
       }
@@ -173,14 +173,14 @@ mod tests {
                 SchemaProperty {
                   name: "csvImportId".into(),
                   required: true,
-                  ty: SchemaType::Ref("CsvImportId".into()),
+                  schema: SchemaType::Ref("CsvImportId".into()),
                   description: None,
                   deprecated: false,
                 },
                 SchemaProperty {
                   name: "doImport".into(),
                   required: true,
-                  ty: SchemaType::Scalar(SchemaScalar::Boolean),
+                  schema: SchemaType::Scalar(SchemaScalar::Boolean),
                   description: None,
                   deprecated: false,
                 },
@@ -229,7 +229,7 @@ mod tests {
           headers: vec![HeaderDef {
             name: "x-trace".into(),
             required: false,
-            ty: SchemaType::Scalar(SchemaScalar::String),
+            schema: SchemaType::Scalar(SchemaScalar::String),
           }],
           body: None,
         },
@@ -258,7 +258,7 @@ mod tests {
             name: "petId".into(),
             source: RequestInputSource::Path,
             required: true,
-            ty: SchemaType::Ref("PetId".into()),
+            schema: SchemaType::Ref("PetId".into()),
           }],
           headers: Vec::new(),
           body: Some(RequestBodyDef {
@@ -267,7 +267,7 @@ mod tests {
               properties: vec![SchemaProperty {
                 name: "petId".into(),
                 required: true,
-                ty: SchemaType::Ref("PetId".into()),
+                schema: SchemaType::Ref("PetId".into()),
                 description: None,
                 deprecated: false,
               }],
@@ -301,7 +301,7 @@ mod tests {
             name: "petId".into(),
             source: RequestInputSource::Path,
             required: true,
-            ty: SchemaType::Ref("PetId".into()),
+            schema: SchemaType::Ref("PetId".into()),
           }],
           headers: Vec::new(),
           body: Some(RequestBodyDef {
@@ -338,13 +338,13 @@ mod tests {
                 name: "id".into(),
                 source: RequestInputSource::Path,
                 required: true,
-                ty: SchemaType::Scalar(SchemaScalar::String),
+                schema: SchemaType::Scalar(SchemaScalar::String),
               },
               RequestInputDef {
                 name: "id".into(),
                 source: RequestInputSource::Query,
                 required: false,
-                ty: SchemaType::Scalar(SchemaScalar::String),
+                schema: SchemaType::Scalar(SchemaScalar::String),
               },
             ],
             headers: Vec::new(),

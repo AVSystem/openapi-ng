@@ -11,5 +11,5 @@ pub(crate) mod writer;
 
 pub(crate) use decl::{Doc, Member, interface_block, jsdoc, string_union, type_alias};
 pub(crate) use imports::{Binding, Statement, import_line, type_import_block, type_reexport_line};
-pub(crate) use types::{Position, Render, property_declaration};
-pub(crate) use writer::{Writer, w, wln};
+pub(crate) use types::{Position, Render, member_declaration};
+pub(crate) use writer::{Writer, w, wln, write_separated};

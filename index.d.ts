@@ -111,11 +111,8 @@ export declare const InputFormat: {
 };
 
 /**
- * One caller-declared mapped type: replace the generated declaration for
- * `schema` with `ty` imported from `import`.
- *
- * Field names match the config vocabulary. `ty` crosses the NAPI
- * boundary as `type`.
+ * Replaces the generated declaration for `schema` with `type_name`,
+ * imported from `import`. Crosses the NAPI boundary as `type`.
  */
 export interface MappedType {
   schema: string

@@ -114,6 +114,16 @@ impl Writer {
     self.indent();
   }
 
+  /// Writes an inline `{ … }`, indenting whatever `members` writes. Leaves
+  /// the closing brace unterminated, for a type position.
+  pub(crate) fn inline_block(&mut self, members: impl FnOnce(&mut Self)) {
+    self.push("{\n");
+    self.indent();
+    members(self);
+    self.dedent();
+    self.push("}");
+  }
+
   /// Dedents, then writes `}` followed by `suffix`.
   pub(crate) fn close_block(&mut self, suffix: &str) {
     self.dedent();
@@ -154,6 +164,21 @@ impl Writer {
     self.buf.push_str(&self.indent_cache);
     self.line_start = false;
   }
+}
+
+/// Writes each of `items` through `write`, separated by `separator`.
+pub(crate) fn write_separated<T>(
+  out: &mut Writer,
+  items: impl IntoIterator<Item = T>,
+  separator: &str,
+  write: impl Fn(&mut Writer, T),
+) {
+  items.into_iter().enumerate().for_each(|(index, item)| {
+    if index > 0 {
+      out.push(separator);
+    }
+    write(out, item);
+  });
 }
 
 /// Appends formatted text to a [`Writer`].

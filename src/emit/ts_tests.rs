@@ -5,9 +5,9 @@ mod tests {
   use super::super::ts::literal::safe_property_name;
   use super::super::ts::types::render_to_string;
   use super::super::ts::*;
-  use crate::ident::is_ident;
-  use crate::ir::canonical::BodyFieldType;
-  use crate::ir::schema::{SchemaScalar, SchemaType};
+  use crate::api_model::canonical::BodyFieldType;
+  use crate::api_model::schema::{SchemaScalar, SchemaType};
+  use crate::identifier::is_identifier;
   use crate::test_support::{nullable_property, property};
 
   #[test]
@@ -361,7 +361,7 @@ mod tests {
     if out.is_empty() {
       return false;
     }
-    if is_ident(out) {
+    if is_identifier(out) {
       return true;
     }
     let bytes = out.as_bytes();

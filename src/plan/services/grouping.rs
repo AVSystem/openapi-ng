@@ -3,9 +3,9 @@
 use indexmap::IndexMap;
 
 use crate::{
+  api_model::canonical::OperationDef,
   error::{Diagnostic, Reporter},
-  ident::MethodName,
-  ir::canonical::OperationDef,
+  identifier::MethodName,
 };
 
 pub(crate) type GroupedOperations<'a> = Vec<(String, Vec<(&'a OperationDef, MethodName)>)>;
@@ -42,7 +42,7 @@ pub(crate) fn group_operations<'a>(
 mod tests {
   mod grouper {
     use crate::{
-      ir::{
+      api_model::{
         canonical::{HttpMethod, OperationDef, RequestDef, ResponseContent},
         schema::{SchemaScalar, SchemaType},
       },

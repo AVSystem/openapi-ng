@@ -84,7 +84,7 @@ mod tests {
   use std::collections::HashMap;
 
   use super::*;
-  use crate::ir::{
+  use crate::api_model::{
     canonical::{HttpMethod, OperationDef, RequestDef, ResponseContent},
     schema::{SchemaScalar, SchemaType},
   };

@@ -6,9 +6,9 @@ pub mod naming;
 pub(crate) mod services;
 
 use crate::{
+  api_model::canonical::{ApiModel, ModelSymbol},
   bindings::EmitTarget,
   error::{Diagnostic, Reporter},
-  ir::canonical::{ApiModel, ModelSymbol},
   options::GenerateConfig,
 };
 
@@ -21,18 +21,18 @@ use artifact_plan::{
 ///
 /// `services` is empty when Angular is not among the selected targets, and
 /// `mapped_types` is empty when the caller declared none.
-pub(crate) struct GenerationPlan<'ir> {
-  pub(crate) schemas: &'ir [ModelSymbol],
-  pub(crate) mapped_types: Vec<ResolvedMappedType<'ir>>,
-  pub(crate) services: Vec<ServicePlan<'ir>>,
+pub(crate) struct GenerationPlan<'model> {
+  pub(crate) schemas: &'model [ModelSymbol],
+  pub(crate) mapped_types: Vec<ResolvedMappedType<'model>>,
+  pub(crate) services: Vec<ServicePlan<'model>>,
 }
 
 /// Builds the plan for the targets `config` selects.
-pub(crate) fn plan_generation<'ir>(
+pub(crate) fn plan_generation<'model>(
   config: &GenerateConfig,
-  ir: &'ir ApiModel,
+  ir: &'model ApiModel,
   reporter: &Reporter,
-) -> Result<GenerationPlan<'ir>, Diagnostic> {
+) -> Result<GenerationPlan<'model>, Diagnostic> {
   let emit_models = config.emit.contains(&EmitTarget::Models);
   let emit_angular = config.emit.contains(&EmitTarget::Angular);
 

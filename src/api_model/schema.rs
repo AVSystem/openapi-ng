@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub(crate) struct SchemaProperty {
   pub(crate) name: Box<str>,
   pub(crate) required: bool,
-  pub(crate) ty: SchemaType,
+  pub(crate) schema: SchemaType,
   /// Emitted as JSDoc above the declaration in named interfaces only.
   pub(crate) description: Option<String>,
   /// Emitted as `@deprecated` in named interfaces only.
@@ -54,12 +54,15 @@ pub(crate) enum SchemaScalar {
   Boolean,
 }
 
-pub(crate) fn collect_type_references<'ir>(ty: &'ir SchemaType, imports: &mut BTreeSet<&'ir str>) {
-  walk_refs(ty, imports);
+pub(crate) fn collect_type_references<'model>(
+  schema: &'model SchemaType,
+  imports: &mut BTreeSet<&'model str>,
+) {
+  walk_refs(schema, imports);
 }
 
-fn walk_refs<'ir>(ty: &'ir SchemaType, refs: &mut BTreeSet<&'ir str>) {
-  match ty {
+fn walk_refs<'model>(schema: &'model SchemaType, refs: &mut BTreeSet<&'model str>) {
+  match schema {
     SchemaType::Any | SchemaType::Scalar(_) | SchemaType::StringLiterals { .. } => {}
     SchemaType::Array(items) | SchemaType::Map(items) | SchemaType::Nullable(items) => {
       walk_refs(items, refs);
@@ -73,7 +76,7 @@ fn walk_refs<'ir>(ty: &'ir SchemaType, refs: &mut BTreeSet<&'ir str>) {
     SchemaType::InlineObject { properties } => {
       properties
         .iter()
-        .for_each(|property| walk_refs(&property.ty, refs));
+        .for_each(|property| walk_refs(&property.schema, refs));
     }
   }
 }

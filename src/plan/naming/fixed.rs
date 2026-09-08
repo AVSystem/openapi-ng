@@ -1,5 +1,5 @@
 use crate::{
-  ident::{MethodName, TypeName},
+  identifier::{MethodName, TypeName},
   plan::naming::{case::apply as apply_case, config::Case},
 };
 
@@ -82,7 +82,7 @@ mod tests {
 
   use proptest::prelude::*;
 
-  /// ASCII-only TS identifier shape, matching `ident::is_ident`.
+  /// ASCII-only TS identifier shape, matching `ident::is_identifier`.
   fn is_ts_identifier(value: &str) -> bool {
     let mut chars = value.chars();
     let Some(first) = chars.next() else {

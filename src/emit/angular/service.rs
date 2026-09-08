@@ -1,6 +1,6 @@
+use crate::api_model::canonical::ResponseContent;
 use crate::emit::ts::{Doc, Position, Render, Writer, jsdoc, w};
-use crate::ident::TypeName;
-use crate::ir::canonical::ResponseContent;
+use crate::identifier::TypeName;
 use crate::plan::artifact_plan::{PlannedOperation, ServicePlan};
 
 use super::imports::render_service_imports;
@@ -22,10 +22,10 @@ pub(crate) fn emit_service(service_plan: &ServicePlan<'_>) -> String {
   buffer.line("})");
   buffer.open_block(&format!("export class {}", service_plan.class_name));
 
-  for operation in &service_plan.operations {
+  service_plan.operations.iter().for_each(|operation| {
     buffer.blank_line();
     render_operation_property(&mut buffer, operation);
-  }
+  });
 
   buffer.close_block("");
 
@@ -113,8 +113,8 @@ fn write_response_call_site(
 
 fn write_response_type(buffer: &mut Writer, response: Option<&ResponseContent>) {
   match response {
-    Some(ResponseContent::Json(Some(ty))) => {
-      ty.render(buffer, Position::Standalone);
+    Some(ResponseContent::Json(Some(schema))) => {
+      schema.render(buffer, Position::Standalone);
     }
     Some(ResponseContent::Json(None)) | None => {
       buffer.push("void");
@@ -128,10 +128,10 @@ fn write_response_type(buffer: &mut Writer, response: Option<&ResponseContent>) 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::ir::canonical::{HttpMethod, ResponseContent};
-  use crate::ir::schema::{SchemaScalar, SchemaType};
+  use crate::api_model::canonical::{HttpMethod, ResponseContent};
+  use crate::api_model::schema::{SchemaScalar, SchemaType};
   use crate::plan::artifact_plan::PlannedRequestContract;
-  use crate::test_support::{op_with, path_field, string_ty};
+  use crate::test_support::{op_with, path_field, string_schema};
 
   // The four tests below pin the helper expression emitted by
   // render_operation_property across every ResponseContent variant.
@@ -165,9 +165,9 @@ mod tests {
 
   #[test]
   fn request_factory_call_uses_bare_helper_for_json_response() {
-    let str_ty = string_ty();
+    let str_schema = string_schema();
     let json = ResponseContent::Json(Some(SchemaType::Scalar(SchemaScalar::String)));
-    let op = op_with_response_and_path("listPets", &str_ty, &json);
+    let op = op_with_response_and_path("listPets", &str_schema, &json);
     let out = render_property(&op);
 
     assert!(
@@ -188,8 +188,8 @@ mod tests {
 
   #[test]
   fn request_factory_call_uses_blob_variant_for_blob_response() {
-    let str_ty = string_ty();
-    let op = op_with_response_and_path("download", &str_ty, &ResponseContent::Blob);
+    let str_schema = string_schema();
+    let op = op_with_response_and_path("download", &str_schema, &ResponseContent::Blob);
     let out = render_property(&op);
 
     assert!(
@@ -208,8 +208,8 @@ mod tests {
 
   #[test]
   fn request_factory_call_uses_text_variant_for_text_response() {
-    let str_ty = string_ty();
-    let op = op_with_response_and_path("rawConfig", &str_ty, &ResponseContent::Text);
+    let str_schema = string_schema();
+    let op = op_with_response_and_path("rawConfig", &str_schema, &ResponseContent::Text);
     let out = render_property(&op);
 
     assert!(
@@ -228,8 +228,8 @@ mod tests {
 
   #[test]
   fn request_factory_call_uses_array_buffer_variant_for_array_buffer_response() {
-    let str_ty = string_ty();
-    let op = op_with_response_and_path("fetch", &str_ty, &ResponseContent::ArrayBuffer);
+    let str_schema = string_schema();
+    let op = op_with_response_and_path("fetch", &str_schema, &ResponseContent::ArrayBuffer);
     let out = render_property(&op);
 
     assert!(

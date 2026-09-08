@@ -49,22 +49,23 @@ fs.mkdirSync(outDir, { recursive: true });
 const loaderName = 'openapi-ng.wasi-browser.js';
 const loaderSource = fs.readFileSync(path.join(packageDir, loaderName), 'utf8');
 
-await build({
-  ...shared,
-  stdin: {
-    contents: localiseWorkerUrl(loaderSource),
-    resolveDir: packageDir,
-    sourcefile: loaderName,
-    loader: 'js',
-  },
-  outfile: path.join(outDir, loaderName),
-});
-
-await build({
-  ...shared,
-  entryPoints: [path.join(packageDir, 'wasi-worker-browser.mjs')],
-  outfile: path.join(outDir, 'wasi-worker-browser.mjs'),
-});
+await Promise.all([
+  build({
+    ...shared,
+    stdin: {
+      contents: localiseWorkerUrl(loaderSource),
+      resolveDir: packageDir,
+      sourcefile: loaderName,
+      loader: 'js',
+    },
+    outfile: path.join(outDir, loaderName),
+  }),
+  build({
+    ...shared,
+    entryPoints: [path.join(packageDir, 'wasi-worker-browser.mjs')],
+    outfile: path.join(outDir, 'wasi-worker-browser.mjs'),
+  }),
+]);
 
 fs.copyFileSync(
   path.join(packageDir, 'openapi-ng.wasm32-wasi.wasm'),

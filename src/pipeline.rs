@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use crate::{
+  api_model::canonical::ApiModel,
   emit::{emitters_for, render_generated_banner},
   error::{Diagnostic, Reporter},
-  ir::canonical::ApiModel,
   options::{GenerateConfig, validate_generate_config},
   plan::plan_generation,
   result::{GenerateSummary, GeneratedArtifact},
@@ -44,7 +44,7 @@ pub(crate) fn build_ir(
   };
   crate::parse::validate_openapi_version(&document, reporter)?;
   crate::parse::validate_generation_policy(&document, reporter)?;
-  crate::ir::normalize_api_model(&document, &config.response_type_mapping, reporter)
+  crate::api_model::normalize_api_model(&document, &config.response_type_mapping, reporter)
 }
 
 pub fn execute_generate(config: GenerateConfig) -> Result<GenerateResult, GenerateFailure> {

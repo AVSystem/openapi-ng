@@ -15,11 +15,9 @@ pub(crate) fn write_generated_artifacts(
     return Ok(());
   };
 
-  for artifact in artifacts {
-    write_artifact(output_path, artifact, reporter)?;
-  }
-
-  Ok(())
+  artifacts
+    .iter()
+    .try_for_each(|artifact| write_artifact(output_path, artifact, reporter))
 }
 
 fn write_artifact(

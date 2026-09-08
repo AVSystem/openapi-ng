@@ -5,21 +5,18 @@ use napi_derive::napi;
 use crate::{
   bindings::{EmitTarget, InputFormat, NamingOptions},
   error::{Diagnostic, DiagnosticCode, Reporter, bail},
-  ident::is_ident,
+  identifier::is_identifier,
 };
 
-/// One caller-declared mapped type: replace the generated declaration for
-/// `schema` with `ty` imported from `import`.
-///
-/// Field names match the config vocabulary. `ty` crosses the NAPI
-/// boundary as `type`.
+/// Replaces the generated declaration for `schema` with `type_name`,
+/// imported from `import`. Crosses the NAPI boundary as `type`.
 #[napi(object)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MappedType {
   pub schema: String,
   pub import: String,
   #[napi(js_name = "type")]
-  pub ty: String,
+  pub type_name: String,
   pub alias: Option<String>,
 }
 
@@ -153,7 +150,7 @@ fn validate_mapped_types(
 fn validate_mapped_type(mapped_type: &MappedType, reporter: &Reporter) -> Result<(), Diagnostic> {
   if mapped_type.schema.trim().is_empty()
     || mapped_type.import.trim().is_empty()
-    || mapped_type.ty.trim().is_empty()
+    || mapped_type.type_name.trim().is_empty()
   {
     return Err(reporter.error(
       DiagnosticCode::InvalidOption,
@@ -161,17 +158,17 @@ fn validate_mapped_type(mapped_type: &MappedType, reporter: &Reporter) -> Result
     ));
   }
 
-  if !is_ident(&mapped_type.ty) {
+  if !is_identifier(&mapped_type.type_name) {
     bail!(
       reporter,
       DiagnosticCode::InvalidOption,
       "Failed to resolve generation options: mapped type type '{}' is not a valid TypeScript identifier (expected /^[A-Za-z_$][A-Za-z0-9_$]*$/).",
-      mapped_type.ty,
+      mapped_type.type_name,
     );
   }
 
   if let Some(alias) = mapped_type.alias.as_deref()
-    && !is_ident(alias)
+    && !is_identifier(alias)
   {
     bail!(
       reporter,
@@ -344,7 +341,7 @@ mod tests {
       mapped_types: vec![MappedType {
         schema: "UserId".to_string(),
         import: "   ".to_string(),
-        ty: "ExternalUserId".to_string(),
+        type_name: "ExternalUserId".to_string(),
         alias: None,
       }],
       ..config("spec.yaml")

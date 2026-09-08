@@ -1,11 +1,11 @@
 #![deny(clippy::all)]
 
+mod api_model;
 mod bindings;
 mod emit;
 mod error;
-mod ident;
+mod identifier;
 mod io;
-mod ir;
 mod options;
 mod parse;
 mod pipeline;
