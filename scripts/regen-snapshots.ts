@@ -24,28 +24,18 @@ import {
   SNAPSHOT_EMIT,
   STATIC_TEMPLATE_PATHS,
   SUCCESS_FIXTURES,
-  UNSNAPSHOTTED,
   snapshotDir,
+  unclassifiedFixtures,
 } from './lib/snapshot-layout.ts';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const fixturesDir = path.join(repoRoot, 'test', 'fixtures');
 const snapshots = snapshotDir(repoRoot);
 const staticTemplateDir = path.join(snapshots, 'static-template');
 const staticTemplateIndex = path.join(snapshots, 'static-template.json');
 
 /** Fails when a fixture on disk appears in none of the three sets. */
 function assertEveryFixtureIsClassified(): void {
-  const classified = new Set<string>([
-    ...SUCCESS_FIXTURES.map(entry => entry.fixture),
-    ...FAILURE_FIXTURES.map(entry => entry.fixture),
-    ...UNSNAPSHOTTED,
-  ]);
-  const unclassified = fs
-    .readdirSync(fixturesDir)
-    .filter(name => /\.(ya?ml|json)$/u.test(name))
-    .filter(name => !classified.has(name));
-
+  const unclassified = unclassifiedFixtures(repoRoot);
   if (unclassified.length > 0) {
     console.error(
       `regen-snapshots: ${unclassified.length} fixture(s) appear in none of ` +

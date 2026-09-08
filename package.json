@@ -81,6 +81,7 @@
     "typecheck:runtime": "tsc -p tsconfig.runtime.json",
     "typecheck:test": "tsc -p __test__/tsconfig.json",
     "prepublishOnly": "bun scripts/check-version-not-placeholder.ts && napi prepublish -t npm",
+    "check-fixture-coverage": "bun scripts/check-fixture-coverage.ts",
     "regen-snapshots": "bun scripts/regen-snapshots.ts",
     "test": "ava",
     "version": "napi version"

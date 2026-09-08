@@ -50,7 +50,7 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
       - name: Snapshot fixture coverage
-        run: bun run regen-snapshots
+        run: bun run check-fixture-coverage
       - name: Cargo fmt
         run: cargo fmt -- --check
       - name: Clippy

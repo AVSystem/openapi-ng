@@ -2,6 +2,7 @@
 // laid out. Read by both scripts/regen-snapshots.ts and
 // __test__/generate.snapshot.spec.ts.
 
+import fs from 'node:fs';
 import path from 'node:path';
 
 import type { GenerateOptions } from '../../index.js';
@@ -171,3 +172,19 @@ export const FAILURE_FIXTURES: readonly FailureFixture[] = [
  * parser's line and column output; the spec asserts it by regex.
  */
 export const UNSNAPSHOTTED: readonly string[] = ['malformed.yaml'];
+
+/** Extensions a fixture file carries. */
+const FIXTURE_RE = /\.(?:ya?ml|json)$/u;
+
+/** Fixtures on disk that appear in none of the three sets, in disk order. */
+export function unclassifiedFixtures(repoRoot: string): readonly string[] {
+  const classified = new Set<string>([
+    ...SUCCESS_FIXTURES.map(entry => entry.fixture),
+    ...FAILURE_FIXTURES.map(entry => entry.fixture),
+    ...UNSNAPSHOTTED,
+  ]);
+  return fs
+    .readdirSync(path.join(repoRoot, 'test', 'fixtures'))
+    .filter(name => FIXTURE_RE.test(name))
+    .filter(name => !classified.has(name));
+}
