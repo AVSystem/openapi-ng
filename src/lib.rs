@@ -3,6 +3,7 @@
 mod bindings;
 mod emit;
 mod error;
+mod ident;
 mod io;
 mod ir;
 mod options;

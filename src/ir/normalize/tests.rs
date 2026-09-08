@@ -15,7 +15,7 @@ use crate::ir::canonical::{
 use crate::ir::normalize::normalize_document;
 use crate::ir::normalize::semantic;
 use crate::ir::schema::SchemaType;
-use crate::test_support::{TestReporter, test_ctx};
+use crate::test_support::{reporter_for, test_reporter};
 
 fn parse_fixture(source: &str) -> Value {
   serde_yml::from_str(source).expect("fixture parses as YAML")
@@ -33,8 +33,8 @@ fn normalize_lowers_oneof_anyof_and_collapses_single_entry_composition() {
   let document = parse_fixture(include_str!(
     "../../../test/fixtures/oneof-anyof-composition.openapi.yaml"
   ));
-  let mut sink = TestReporter::new("test/fixtures/oneof-anyof-composition.openapi.yaml");
-  let normalized = normalize_document(&document, &mut sink.reporter())
+  let sink = reporter_for("test/fixtures/oneof-anyof-composition.openapi.yaml");
+  let normalized = normalize_document(&document, &sink)
     .expect("normalize succeeds for supported oneOf/anyOf fixture");
 
   let pet_union = find_symbol(&normalized.schemas, "PetUnion");
@@ -62,8 +62,8 @@ fn normalize_lowers_oneof_anyof_and_collapses_single_entry_composition() {
   let single_entry = parse_fixture(include_str!(
     "../../../test/fixtures/single-entry-composition.openapi.yaml"
   ));
-  let mut sink = TestReporter::new("test/fixtures/single-entry-composition.openapi.yaml");
-  let normalized_single = normalize_document(&single_entry, &mut sink.reporter())
+  let sink = reporter_for("test/fixtures/single-entry-composition.openapi.yaml");
+  let normalized_single = normalize_document(&single_entry, &sink)
     .expect("normalize succeeds for single-entry composition fixture");
 
   let animal_view = find_symbol(&normalized_single.schemas, "AnimalView");
@@ -78,9 +78,9 @@ fn normalize_supports_inline_object_allof_members_and_preserves_additional_prope
   let document = parse_fixture(include_str!(
     "../../../test/fixtures/allof-composition.openapi.yaml"
   ));
-  let mut sink = TestReporter::new("test/fixtures/allof-composition.openapi.yaml");
-  let normalized = normalize_document(&document, &mut sink.reporter())
-    .expect("normalize succeeds for supported allOf fixture");
+  let sink = reporter_for("test/fixtures/allof-composition.openapi.yaml");
+  let normalized =
+    normalize_document(&document, &sink).expect("normalize succeeds for supported allOf fixture");
 
   let adopter_profile = find_symbol(&normalized.schemas, "AdopterProfile");
   match &adopter_profile.body {
@@ -96,8 +96,8 @@ fn normalize_supports_inline_object_allof_members_and_preserves_additional_prope
   let unsupported = parse_fixture(include_str!(
     "../../../test/fixtures/unsupported-semantic.openapi.yaml"
   ));
-  let mut sink = TestReporter::new("test/fixtures/unsupported-semantic.openapi.yaml");
-  let error = normalize_document(&unsupported, &mut sink.reporter())
+  let sink = reporter_for("test/fixtures/unsupported-semantic.openapi.yaml");
+  let error = normalize_document(&unsupported, &sink)
     .expect_err("unsupported fixture should fail at additionalProperties boundary");
 
   assert_eq!(error.code, DiagnosticCode::UnsupportedSemantic);
@@ -110,9 +110,9 @@ fn normalize_supports_inline_object_model_shapes_outside_allof() {
   let document = parse_fixture(include_str!(
     "../../../test/fixtures/inline-model.openapi.yaml"
   ));
-  let mut sink = TestReporter::new("test/fixtures/inline-model.openapi.yaml");
-  let normalized = normalize_document(&document, &mut sink.reporter())
-    .expect("normalize succeeds for inline model fixture");
+  let sink = reporter_for("test/fixtures/inline-model.openapi.yaml");
+  let normalized =
+    normalize_document(&document, &sink).expect("normalize succeeds for inline model fixture");
 
   let pet_profile = find_symbol(&normalized.schemas, "PetProfile");
 
@@ -169,8 +169,8 @@ fn normalize_supports_typed_additional_properties_for_nested_and_named_object_ma
   let document = parse_fixture(include_str!(
     "../../../test/fixtures/additional-properties.openapi.yaml"
   ));
-  let mut sink = TestReporter::new("test/fixtures/additional-properties.openapi.yaml");
-  let normalized = normalize_document(&document, &mut sink.reporter())
+  let sink = reporter_for("test/fixtures/additional-properties.openapi.yaml");
+  let normalized = normalize_document(&document, &sink)
     .expect("normalize succeeds for typed additionalProperties fixture");
 
   let pet_catalog = find_symbol(&normalized.schemas, "PetCatalog");
@@ -243,9 +243,9 @@ components:
 "#,
   );
 
-  let mut sink = TestReporter::new("test/fixtures/required-fields.yaml");
-  let normalized = normalize_document(&document, &mut sink.reporter())
-    .expect("normalize succeeds for required fields fixture");
+  let sink = reporter_for("test/fixtures/required-fields.yaml");
+  let normalized =
+    normalize_document(&document, &sink).expect("normalize succeeds for required fields fixture");
 
   let schema = find_symbol(&normalized.schemas, "RequiredExample");
 
@@ -268,8 +268,8 @@ fn normalize_rejects_non_string_enums_and_invalid_enum_values() {
   let non_string_enum = parse_fixture(include_str!(
     "../../../test/fixtures/invalid-enum-type.openapi.yaml"
   ));
-  let mut sink = TestReporter::new("test/fixtures/invalid-enum-type.openapi.yaml");
-  let non_string_error = normalize_document(&non_string_enum, &mut sink.reporter())
+  let sink = reporter_for("test/fixtures/invalid-enum-type.openapi.yaml");
+  let non_string_error = normalize_document(&non_string_enum, &sink)
     .expect_err("non-string enum should fail normalization");
 
   assert_eq!(non_string_error.code, DiagnosticCode::UnsupportedSemantic);
@@ -280,8 +280,8 @@ fn normalize_rejects_non_string_enums_and_invalid_enum_values() {
     "../../../test/fixtures/invalid-enum-value.openapi.json"
   ))
   .expect("fixture parses as JSON");
-  let mut sink = TestReporter::new("test/fixtures/invalid-enum-value.openapi.json");
-  let invalid_value_error = normalize_document(&invalid_enum_value, &mut sink.reporter())
+  let sink = reporter_for("test/fixtures/invalid-enum-value.openapi.json");
+  let invalid_value_error = normalize_document(&invalid_enum_value, &sink)
     .expect_err("enum value with null byte should fail normalization");
 
   assert_eq!(
@@ -297,8 +297,8 @@ fn normalize_rejects_empty_schema_parameters_outside_model_generation_scope() {
   let document = parse_fixture(include_str!(
     "../../../test/fixtures/empty-parameter.openapi.yaml"
   ));
-  let mut sink = TestReporter::new("test/fixtures/empty-parameter.openapi.yaml");
-  let error = normalize_document(&document, &mut sink.reporter())
+  let sink = reporter_for("test/fixtures/empty-parameter.openapi.yaml");
+  let error = normalize_document(&document, &sink)
     .expect_err("empty parameter schema should fail normalization");
 
   assert_eq!(error.code, DiagnosticCode::UnsupportedSemantic);
@@ -321,8 +321,8 @@ components:
 "#,
   );
 
-  let mut sink = TestReporter::new("test/fixtures/empty-ref-target.yaml");
-  let error = normalize_document(&document, &mut sink.reporter())
+  let sink = reporter_for("test/fixtures/empty-ref-target.yaml");
+  let error = normalize_document(&document, &sink)
     .expect_err("$ref with empty target name should fail normalization");
 
   assert_eq!(error.code, DiagnosticCode::UnsupportedSemantic);
@@ -335,9 +335,9 @@ fn normalize_rejects_trace_operations_with_specific_diagnostic() {
   let document = parse_fixture(include_str!(
     "../../../test/fixtures/unsupported-trace.openapi.yaml"
   ));
-  let mut sink = TestReporter::new("test/fixtures/unsupported-trace.openapi.yaml");
-  let error = normalize_document(&document, &mut sink.reporter())
-    .expect_err("trace operations should fail normalization");
+  let sink = reporter_for("test/fixtures/unsupported-trace.openapi.yaml");
+  let error =
+    normalize_document(&document, &sink).expect_err("trace operations should fail normalization");
 
   assert_eq!(error.code, DiagnosticCode::UnsupportedSemantic);
   assert!(error.message.contains("TRACE"));
@@ -352,16 +352,14 @@ fn normalize_rejects_paths_with_unbalanced_braces() {
   let document = parse_fixture(include_str!(
     "../../../test/fixtures/unbalanced-path-template.openapi.yaml"
   ));
-  let mut sink = TestReporter::new("test/fixtures/unbalanced-path-template.openapi.yaml");
-  let error = normalize_document(&document, &mut sink.reporter())
+  let sink = reporter_for("test/fixtures/unbalanced-path-template.openapi.yaml");
+  let error = normalize_document(&document, &sink)
     .expect_err("unbalanced path template should fail normalization");
 
   assert_eq!(error.code, DiagnosticCode::UnsupportedSemantic);
   assert!(error.message.contains("unbalanced"));
   assert!(error.message.contains("/pets/{id"));
 }
-
-// ── semantic finalize (discriminator narrowing + ref validation) ─────────
 
 #[test]
 fn semantic_finalize_lowers_operations_with_inputs_body_and_response() {
@@ -419,8 +417,8 @@ fn semantic_finalize_lowers_operations_with_inputs_body_and_response() {
     }],
   };
 
-  let mut ctx = test_ctx();
-  semantic::finalize(&mut model, &ctx.reporter()).expect("semantic finalize succeeds");
+  let ctx = test_reporter();
+  semantic::finalize(&mut model, &ctx).expect("semantic finalize succeeds");
   let operation = model.operations.first().expect("operation lowered");
 
   assert_eq!(operation.operation_id, "createExample");
@@ -471,8 +469,8 @@ fn semantic_finalize_rejects_unresolved_schema_reference() {
     operations: Vec::new(),
   };
 
-  let mut ctx = test_ctx();
-  let err = semantic::finalize(&mut model, &ctx.reporter()).expect_err("unresolved ref must error");
+  let ctx = test_reporter();
+  let err = semantic::finalize(&mut model, &ctx).expect_err("unresolved ref must error");
   assert_eq!(err.code, crate::error::DiagnosticCode::InvalidReference);
   assert!(err.message.contains("Missing"));
 }

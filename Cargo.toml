@@ -17,9 +17,8 @@ napi-derive = "=3.5.10"
 regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-# Pinned: 0.0.13 swapped its YAML backend and dropped error line/column plus
-# duplicate-mapping-key rejection, which the duplicate-schema-name and
-# mapping-expansion-exceeded diagnostics both read out of serde_yml errors.
+# Pinned: 0.0.13 swapped its YAML backend and dropped the line/column suffix
+# from decode errors, which every `E_INPUT_INVALID` message forwards verbatim.
 serde_yml = "=0.0.12"
 
 [build-dependencies]

@@ -1,9 +1,7 @@
-use std::fmt::Write as _;
-
-use crate::emit::typescript::{Position, Writer, render_type};
+use crate::emit::ts::{Doc, Position, Render, Writer, jsdoc, w};
+use crate::ident::TypeName;
 use crate::ir::canonical::ResponseContent;
 use crate::plan::artifact_plan::{PlannedOperation, ServicePlan};
-use crate::plan::naming::{error_interface_name, request_interface_name};
 
 use super::imports::render_service_imports;
 use super::request::{
@@ -12,9 +10,8 @@ use super::request::{
 };
 
 pub(crate) fn emit_service(service_plan: &ServicePlan<'_>) -> String {
-  // Each operation produces ~512 bytes (request interface + factory
-  // triplet + URL/body construction); 2KB floor covers the @Injectable
-  // header + import block.
+  // Roughly 512 bytes per operation, over a floor covering the class
+  // header and the import block.
   let capacity = (service_plan.operations.len() * 512).max(2048);
   let mut buffer = Writer::with_capacity(capacity);
 
@@ -25,75 +22,48 @@ pub(crate) fn emit_service(service_plan: &ServicePlan<'_>) -> String {
   buffer.line("})");
   buffer.open_block(&format!("export class {}", service_plan.class_name));
 
-  // Cache request interface names computed once per operation
-  let request_names: std::collections::HashMap<&str, String> = service_plan
-    .operations
-    .iter()
-    .filter(|operation| has_request_interface(operation))
-    .map(|operation| {
-      (
-        operation.method_name.as_str(),
-        request_interface_name(&operation.method_name),
-      )
-    })
-    .collect();
-
   for operation in &service_plan.operations {
     buffer.blank_line();
-    render_operation_property(
-      &mut buffer,
-      operation,
-      request_names.get(operation.method_name.as_str()),
-    );
+    render_operation_property(&mut buffer, operation);
   }
 
   buffer.close_block("");
 
-  // Per-operation tail: for each operation, emit its `{Pascal}Params`
-  // interface (when the operation has any inputs) followed by its
-  // `{Pascal}Error` interface (when it declares any 4xx/5xx with a JSON
-  // schema). Per-operation grouping beats kind-grouping when the file
-  // grows long — a reader searching for "UpdatePet" finds the property,
-  // its params, and its error map contiguously.
+  // Each operation's interfaces follow the class, grouped so that one
+  // operation's declarations stay contiguous.
   for operation in &service_plan.operations {
-    let request_name = request_names.get(operation.method_name.as_str());
-    let has_errors = !operation.errors.is_empty();
-    if request_name.is_none() && !has_errors {
+    if operation.request_interface.is_none() && operation.error_interface.is_none() {
       continue;
     }
     buffer.blank_line();
-    if let Some(name) = request_name {
+    if let Some(name) = &operation.request_interface {
       render_request_interface(&mut buffer, operation, name);
     }
-    if has_errors {
-      if request_name.is_some() {
+    if let Some(name) = &operation.error_interface {
+      if operation.request_interface.is_some() {
         buffer.blank_line();
       }
-      let error_name = error_interface_name(&operation.method_name);
-      render_error_interface(&mut buffer, operation, &error_name);
+      render_error_interface(&mut buffer, operation, name);
     }
   }
 
   buffer.into_string()
 }
 
-fn render_operation_property(
-  buffer: &mut Writer,
-  operation: &PlannedOperation<'_>,
-  request_name: Option<&String>,
-) {
-  let property_name = &operation.method_name;
-
-  crate::emit::typescript::jsdoc(
+fn render_operation_property(buffer: &mut Writer, operation: &PlannedOperation<'_>) {
+  jsdoc(
     buffer,
-    operation.description.as_deref(),
-    operation.deprecated,
+    Doc::new(operation.description.as_deref(), operation.deprecated),
   );
-  write!(buffer, "readonly {property_name} = ").unwrap();
-  write_response_call_site(buffer, operation.response, request_name);
+  w!(buffer, "readonly {} = ", operation.method_name);
+  write_response_call_site(
+    buffer,
+    operation.response,
+    operation.request_interface.as_ref(),
+  );
   buffer.push("(\n");
   buffer.indent();
-  match request_name {
+  match &operation.request_interface {
     Some(name) => render_requestful_builder(buffer, operation, name),
     None => render_zero_arg_builder(buffer, operation),
   }
@@ -101,29 +71,19 @@ fn render_operation_property(
   buffer.line(");");
 }
 
-const fn has_request_interface(operation: &PlannedOperation<'_>) -> bool {
-  !operation.request.fields.is_empty()
-    || operation.request.body.is_some()
-    || !operation.request.headers.is_empty()
-}
-
-/// Writes the full helper call prefix into `buffer`. The arity of the
-/// operation (does it take a typed `Request`?) and the response variant
-/// pick one of four call shapes — explicit at the generator boundary,
-/// so the runtime no longer needs the `reqFn.length === 0` probe.
+/// Writes the helper call prefix. The operation's arity (does it take a
+/// typed request?) and its response variant pick one of four call shapes:
 ///
-/// Mapping (see docs/superpowers/specs/2026-05-19-request-factory-variants-design.md):
-///
-/// |                | Requestful                    | Zero-arg                              |
-/// |----------------|-------------------------------|----------------------------------------|
-/// | JSON / void    | `requestFactory<Req, Res>`    | `requestFactory.zeroArg<Res>`          |
-/// | Blob           | `requestFactory.blob<Req>`    | `requestFactory.zeroArg.blob`          |
-/// | Text           | `requestFactory.text<Req>`    | `requestFactory.zeroArg.text`          |
+/// |                | Requestful                        | Zero-arg                             |
+/// |----------------|-----------------------------------|--------------------------------------|
+/// | JSON / void    | `requestFactory<Req, Res>`        | `requestFactory.zeroArg<Res>`        |
+/// | Blob           | `requestFactory.blob<Req>`        | `requestFactory.zeroArg.blob`        |
+/// | Text           | `requestFactory.text<Req>`        | `requestFactory.zeroArg.text`        |
 /// | ArrayBuffer    | `requestFactory.arrayBuffer<Req>` | `requestFactory.zeroArg.arrayBuffer` |
 fn write_response_call_site(
   buffer: &mut Writer,
   response: Option<&ResponseContent>,
-  request_name: Option<&String>,
+  request_name: Option<&TypeName>,
 ) {
   let variant = match response {
     Some(ResponseContent::Blob) => Some("blob"),
@@ -134,13 +94,13 @@ fn write_response_call_site(
 
   match (variant, request_name) {
     (Some(kind), Some(request)) => {
-      write!(buffer, "requestFactory.{kind}<{request}>").unwrap();
+      w!(buffer, "requestFactory.{kind}<{request}>");
     }
     (Some(kind), None) => {
-      write!(buffer, "requestFactory.zeroArg.{kind}").unwrap();
+      w!(buffer, "requestFactory.zeroArg.{kind}");
     }
     (None, Some(request)) => {
-      write!(buffer, "requestFactory<{request}, ").unwrap();
+      w!(buffer, "requestFactory<{request}, ");
       write_response_type(buffer, response);
       buffer.push(">");
     }
@@ -155,7 +115,7 @@ fn write_response_call_site(
 fn write_response_type(buffer: &mut Writer, response: Option<&ResponseContent>) {
   match response {
     Some(ResponseContent::Json(Some(ty))) => {
-      render_type(buffer, ty, Position::Standalone);
+      ty.render(buffer, Position::Standalone);
     }
     Some(ResponseContent::Json(None)) | None => {
       buffer.push("void");
@@ -180,10 +140,9 @@ mod tests {
   // use the static-method variant (requestFactory.blob<Req>(…) etc.) —
   // no Response generic and no { responseKind: '…' } option line.
 
-  fn render_property(op: &PlannedOperation<'_>, request_name: &str) -> String {
+  fn render_property(op: &PlannedOperation<'_>) -> String {
     let mut buf = Writer::with_capacity(512);
-    let owned = request_name.to_string();
-    render_operation_property(&mut buf, op, Some(&owned));
+    render_operation_property(&mut buf, op);
     buf.into_string()
   }
 
@@ -210,7 +169,7 @@ mod tests {
     let str_ty = string_ty();
     let json = ResponseContent::Json(Some(SchemaType::Scalar(SchemaScalar::String)));
     let op = op_with_response_and_path("listPets", &str_ty, &json);
-    let out = render_property(&op, "ListPetsParams");
+    let out = render_property(&op);
 
     assert!(
       out.contains("requestFactory<ListPetsParams, string>"),
@@ -232,7 +191,7 @@ mod tests {
   fn request_factory_call_uses_blob_variant_for_blob_response() {
     let str_ty = string_ty();
     let op = op_with_response_and_path("download", &str_ty, &ResponseContent::Blob);
-    let out = render_property(&op, "DownloadParams");
+    let out = render_property(&op);
 
     assert!(
       out.contains("requestFactory.blob<DownloadParams>"),
@@ -252,7 +211,7 @@ mod tests {
   fn request_factory_call_uses_text_variant_for_text_response() {
     let str_ty = string_ty();
     let op = op_with_response_and_path("rawConfig", &str_ty, &ResponseContent::Text);
-    let out = render_property(&op, "RawConfigParams");
+    let out = render_property(&op);
 
     assert!(
       out.contains("requestFactory.text<RawConfigParams>"),
@@ -272,7 +231,7 @@ mod tests {
   fn request_factory_call_uses_array_buffer_variant_for_array_buffer_response() {
     let str_ty = string_ty();
     let op = op_with_response_and_path("fetch", &str_ty, &ResponseContent::ArrayBuffer);
-    let out = render_property(&op, "FetchParams");
+    let out = render_property(&op);
 
     assert!(
       out.contains("requestFactory.arrayBuffer<FetchParams>"),
@@ -312,7 +271,7 @@ mod tests {
 
   fn render_zero_arg_property(op: &PlannedOperation<'_>) -> String {
     let mut buf = Writer::with_capacity(512);
-    render_operation_property(&mut buf, op, None);
+    render_operation_property(&mut buf, op);
     buf.into_string()
   }
 

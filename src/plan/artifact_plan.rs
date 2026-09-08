@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::{
   error::{Diagnostic, DiagnosticCode, Reporter},
+  ident::{Ident, MethodName, TypeName},
   ir::canonical::{
     ApiModel, BodyFieldType, ErrorResponse, HttpMethod, ModelSymbol, ResponseContent,
   },
@@ -10,17 +11,14 @@ use crate::{
 };
 
 use super::{
-  naming::{service_class_name, service_file_stem},
+  naming::{error_interface_name, request_interface_name, service_class_name, service_file_stem},
   services::plan_request_contract,
 };
 
-/// `MappedType` after schema-name validation. The `schema` field borrows
-/// from the IR's model symbol that was matched, encoding the validated
-/// lifecycle in the type system: callers receive `ResolvedMappedType`
-/// only after `validate_mapped_types_against_schemas` confirmed the
-/// schema exists. `import`, `ty`, and `alias` are owned `Box<str>`
-/// (cloned from the input `MappedType`) since they are short identifier
-/// strings consumed by emit.
+/// A [`MappedType`] whose `schema` was found in the IR, borrowed from the
+/// model symbol that matched.
+///
+/// Only [`validate_mapped_types_against_schemas`] constructs one.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ResolvedMappedType<'a> {
   pub(crate) schema: &'a str,
@@ -43,7 +41,7 @@ impl<'a> ResolvedMappedType<'a> {
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct ServicePlan<'ir> {
   pub(crate) group_name: String,
-  pub(crate) class_name: String,
+  pub(crate) class_name: TypeName,
   pub(crate) artifact_path: String,
   pub(crate) operations: Vec<PlannedOperation<'ir>>,
 }
@@ -51,27 +49,28 @@ pub(crate) struct ServicePlan<'ir> {
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct PlannedOperation<'ir> {
   pub(crate) operation_id: String,
-  pub(crate) method_name: String,
+  pub(crate) method_name: MethodName,
   pub(crate) method: HttpMethod,
   pub(crate) path: String,
   pub(crate) request: PlannedRequestContract<'ir>,
   pub(crate) response: Option<&'ir ResponseContent>,
-  /// Borrowed from the IR's `OperationDef.errors`. Empty when the
-  /// operation declared no 4xx/5xx response with a JSON schema. The
-  /// angular emit walks this to render a `{Pascal}Error` interface
-  /// alongside the operation's `{Pascal}Params`.
+  /// The operation's typed error responses, empty when it declared
+  /// none.
   pub(crate) errors: &'ir [ErrorResponse],
+  /// Name of the `{Pascal}Params` interface, or `None` when the operation
+  /// declares no path, query, header or body input and so emits none.
+  pub(crate) request_interface: Option<TypeName>,
+  /// Name of the `{Pascal}Error` interface, or `None` when the operation
+  /// declares no 4xx/5xx response with a JSON schema.
+  pub(crate) error_interface: Option<TypeName>,
   pub(crate) description: Option<String>,
   pub(crate) deprecated: bool,
 }
 
-/// Per-field discriminator for `PlannedRequestField` that tells emit code
-/// which slot of the HTTP request a field maps to. Headers live on
-/// `PlannedRequestContract.headers` and the request body lives on
-/// `PlannedRequestContract.body`; `Body` here marks the body properties
-/// hoisted into top-level fields by the smart-flatten rule (inline JSON
-/// object bodies). Nested-body operations carry no `Body`-kinded entries
-/// — their body sits on the dedicated slot.
+/// Which slot of the HTTP request a [`PlannedRequestField`] fills.
+///
+/// `Body` marks a property hoisted out of an inline JSON body; a nested
+/// body has no fields of this kind.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum RequestFieldKind {
   Path,
@@ -81,16 +80,12 @@ pub(crate) enum RequestFieldKind {
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct PlannedRequestContract<'ir> {
-  /// Path and query parameters. Inline-JSON-body properties are not stored
-  /// here — they live inside `PlannedRequestBody::FlatJson` so emit can
-  /// dispatch on the body kind without filtering by `RequestFieldKind`.
+  /// Path and query parameters. A hoisted body property lives on
+  /// [`PlannedRequestBody::FlatJson`], not here.
   pub(crate) fields: Vec<PlannedRequestField<'ir>>,
-  /// Header parameters surfaced on the request interface as a nested
-  /// `headers: { ... }` field. Empty when the operation declares no
-  /// `in: header` parameters.
+  /// Header parameters, empty when the operation declares none.
   pub(crate) headers: Vec<PlannedHeader<'ir>>,
-  /// The request body's planned layout. `None` when the operation
-  /// declares no body.
+  /// The body's layout, `None` when the operation declares no body.
   pub(crate) body: Option<PlannedRequestBody<'ir>>,
 }
 
@@ -109,124 +104,119 @@ pub(crate) struct PlannedHeader<'ir> {
   pub(crate) ty: &'ir SchemaType,
 }
 
-/// A single form-body field for multipart/form-data or
-/// application/x-www-form-urlencoded request bodies. Borrows the
-/// `BodyFieldType` from the IR; the emit type-printer dispatches on that
-/// enum to render the right TS type (string / Blob / number[] / Blob[] …).
+/// One field of a multipart or urlencoded body.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct PlannedFormField<'ir> {
-  pub(crate) name: Box<str>,
+  pub(crate) name: Ident,
   pub(crate) optional: bool,
   pub(crate) ty: &'ir BodyFieldType,
 }
 
-/// The request body's planned layout. The smart-flatten rule splits JSON
-/// bodies in two: a top-level `$ref` (or any non-object schema) stays
-/// `Nested`, preserving the spec author's named type as `body: T` on the
-/// request interface; an inline `type: object` body becomes `FlatJson`,
-/// hoisting its properties to top-level fields beside path/query. Form
-/// bodies always flatten — their `BodyFieldType`-typed fields can't
-/// compose back under the source schema name anyway.
+/// How a request body is laid out on the request contract.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum PlannedRequestBody<'ir> {
-  /// Renders as a nested `body: T` field on the request interface and
-  /// forwards verbatim via shorthand from the builder. Produced for JSON
-  /// bodies whose schema is a top-level `$ref` or any non-object shape
-  /// (scalar, array, union) where there is no property structure to
-  /// hoist.
+  /// A JSON body with no properties to hoist: a top-level `$ref`, or a
+  /// scalar, array or union. Keeps the spec author's type under one
+  /// `body` key.
   Nested { ty: &'ir SchemaType, optional: bool },
-  /// Body was an inline JSON object; its properties are hoisted as
-  /// `RequestFieldKind::Body` entries on this variant. Each property's
-  /// `optional` already accounts for the body envelope's `required`
-  /// flag (an `required: false` body downgrades every property to
-  /// optional regardless of its individual schema flag).
+  /// An inline JSON object body, its properties hoisted to top level.
+  ///
+  /// Each `optional` already folds in the envelope's `required`: under a
+  /// `required: false` body every property is optional.
   FlatJson {
     properties: Vec<PlannedRequestField<'ir>>,
     required: bool,
   },
-  /// `multipart/form-data` body. Fields render as top-level entries on
-  /// the request interface (typed via `BodyFieldType`); builder
-  /// materializes them into a `FormData` at runtime.
+  /// A `multipart/form-data` body, its fields hoisted to top level.
   Multipart { fields: Vec<PlannedFormField<'ir>> },
-  /// `application/x-www-form-urlencoded` body. Fields render as
-  /// top-level entries on the request interface; builder materializes
-  /// them into `URLSearchParams`.
+  /// An `application/x-www-form-urlencoded` body, its fields hoisted to
+  /// top level.
   UrlEncoded { fields: Vec<PlannedFormField<'ir>> },
 }
 
-/// Verifies that each `mapped_types[].schema` resolves to a top-level
-/// model symbol and returns a `Vec<ResolvedMappedType<'_>>` borrowing
-/// the matched symbol names from the IR. Pre-emit gate so a typo
-/// doesn't silently produce an emit that omits the placeholder for the
-/// missing schema. The return type encodes the validated lifecycle:
-/// `MappedType` is user input, `ResolvedMappedType` is what emit consumes.
+/// Resolves each mapped type against `model_symbols`, failing on the
+/// first `schema` the IR does not declare.
 pub(crate) fn validate_mapped_types_against_schemas<'ir>(
   model_symbols: &'ir [ModelSymbol],
   mapped_types: &[MappedType],
-  reporter: &Reporter<'_>,
+  reporter: &Reporter,
 ) -> Result<Vec<ResolvedMappedType<'ir>>, Diagnostic> {
   let by_name = model_symbols
     .iter()
     .map(|symbol| (symbol.name.as_ref(), symbol))
     .collect::<BTreeMap<&str, &ModelSymbol>>();
 
-  let mut resolved = Vec::with_capacity(mapped_types.len());
-  for mapped_type in mapped_types {
-    let symbol = by_name.get(mapped_type.schema.as_str()).ok_or_else(|| {
-      reporter.error(
-        DiagnosticCode::InvalidOption,
-        format!(
-          "Failed to resolve generation options: mapped schema {} does not exist in the IR.",
-          mapped_type.schema
-        ),
-      )
-    })?;
-    resolved.push(ResolvedMappedType::new(symbol.name.as_ref(), mapped_type));
-  }
-
-  Ok(resolved)
+  mapped_types
+    .iter()
+    .map(|mapped_type| {
+      let symbol = by_name.get(mapped_type.schema.as_str()).ok_or_else(|| {
+        reporter.error(
+          DiagnosticCode::InvalidOption,
+          format!(
+            "Failed to resolve generation options: mapped schema {} does not exist in the IR.",
+            mapped_type.schema
+          ),
+        )
+      })?;
+      Ok(ResolvedMappedType::new(symbol.name.as_ref(), mapped_type))
+    })
+    .collect()
 }
 
 pub(crate) fn resolve_service_plans<'ir>(
   ir: &'ir ApiModel,
   resolver: &crate::plan::naming::NamingResolver,
-  reporter: &Reporter<'_>,
+  reporter: &Reporter,
 ) -> Result<Vec<ServicePlan<'ir>>, Diagnostic> {
   use super::services::group_operations;
 
-  let grouped_operations = group_operations(&ir.operations, resolver, reporter)?;
-  let mut services = Vec::with_capacity(grouped_operations.len());
-  for (group_name, group_operations) in grouped_operations {
-    let mut operations: Vec<PlannedOperation<'ir>> = group_operations
-      .iter()
-      .map(|(operation, method_name)| {
-        Ok(PlannedOperation {
-          operation_id: operation.operation_id.clone(),
-          method_name: method_name.clone(),
-          method: operation.method,
-          path: operation.path.clone(),
-          request: plan_request_contract(operation, reporter)?,
-          response: operation.response.as_ref(),
-          errors: operation.errors.as_slice(),
-          description: operation.description.clone(),
-          deprecated: operation.deprecated,
-        })
+  let mut services = group_operations(&ir.operations, resolver, reporter)?
+    .into_iter()
+    .map(|(group_name, group)| {
+      let mut operations = group
+        .into_iter()
+        .map(|(operation, method_name)| plan_operation(operation, method_name, reporter))
+        .collect::<Result<Vec<_>, Diagnostic>>()?;
+      operations.sort_by(|left, right| left.method_name.cmp(&right.method_name));
+
+      Ok(ServicePlan {
+        class_name: service_class_name(&group_name),
+        artifact_path: format!("rest/{}.rest.generated.ts", service_file_stem(&group_name)),
+        group_name,
+        operations,
       })
-      .collect::<Result<Vec<_>, Diagnostic>>()?;
-    operations.sort_by(|a, b| a.method_name.cmp(&b.method_name));
-
-    let artifact_path = format!("rest/{}.rest.generated.ts", service_file_stem(&group_name));
-
-    services.push(ServicePlan {
-      group_name: group_name.clone(),
-      class_name: service_class_name(&group_name),
-      artifact_path,
-      operations,
-    });
-  }
-  services.sort_by(|a, b| a.class_name.cmp(&b.class_name));
+    })
+    .collect::<Result<Vec<_>, Diagnostic>>()?;
+  services.sort_by(|left, right| left.class_name.cmp(&right.class_name));
 
   Ok(services)
+}
+
+fn plan_operation<'ir>(
+  operation: &'ir crate::ir::canonical::OperationDef,
+  method_name: MethodName,
+  reporter: &Reporter,
+) -> Result<PlannedOperation<'ir>, Diagnostic> {
+  let request = plan_request_contract(operation, reporter)?;
+  Ok(PlannedOperation {
+    operation_id: operation.operation_id.clone(),
+    request_interface: takes_input(&request).then(|| request_interface_name(&method_name)),
+    error_interface: (!operation.errors.is_empty()).then(|| error_interface_name(&method_name)),
+    method_name,
+    method: operation.method,
+    path: operation.path.clone(),
+    request,
+    response: operation.response.as_ref(),
+    errors: operation.errors.as_slice(),
+    description: operation.description.clone(),
+    deprecated: operation.deprecated,
+  })
+}
+
+/// True when the operation declares any path, query, header or body
+/// input.
+const fn takes_input(request: &PlannedRequestContract<'_>) -> bool {
+  !request.fields.is_empty() || request.body.is_some() || !request.headers.is_empty()
 }
 
 #[cfg(test)]
@@ -246,7 +236,7 @@ mod tests {
     options::MappedType,
   };
 
-  use crate::test_support::test_ctx;
+  use crate::test_support::test_reporter;
 
   fn api_model(schemas: Vec<ModelSymbol>, operations: Vec<OperationDef>) -> ApiModel {
     ApiModel {
@@ -431,7 +421,7 @@ mod tests {
 
   #[test]
   fn validate_mapped_types_accepts_schemas_that_exist_in_the_ir() {
-    let mut ctx = test_ctx();
+    let ctx = test_reporter();
     let symbols = test_model_symbols();
     let resolved = validate_mapped_types_against_schemas(
       &symbols,
@@ -441,7 +431,7 @@ mod tests {
         ty: "ExternalUserId".to_string(),
         alias: Some("UserId".to_string()),
       }],
-      &ctx.reporter(),
+      &ctx,
     )
     .expect("mapped types validate against IR");
 
@@ -454,7 +444,7 @@ mod tests {
 
   #[test]
   fn validate_mapped_types_rejects_schemas_missing_from_the_ir() {
-    let mut ctx = test_ctx();
+    let ctx = test_reporter();
     let err = validate_mapped_types_against_schemas(
       &test_model_symbols(),
       &[MappedType {
@@ -463,7 +453,7 @@ mod tests {
         ty: "Missing".to_string(),
         alias: None,
       }],
-      &ctx.reporter(),
+      &ctx,
     )
     .expect_err("missing schema should fail validation");
 
@@ -474,13 +464,10 @@ mod tests {
   #[test]
   fn resolve_service_plans_groups_operations_and_builds_request_contracts() {
     let ir = service_test_ir();
-    let mut ctx = test_ctx();
-    let services = resolve_service_plans(
-      &ir,
-      &crate::plan::naming::NamingResolver::default(),
-      &ctx.reporter(),
-    )
-    .expect("service plan resolves");
+    let ctx = test_reporter();
+    let services =
+      resolve_service_plans(&ir, &crate::plan::naming::NamingResolver::default(), &ctx)
+        .expect("service plan resolves");
 
     assert_eq!(services.len(), 2);
     // Services are sorted alphabetically by class_name (AdoptionRequestRest
@@ -494,7 +481,7 @@ mod tests {
     );
 
     let pet_service = &services[1];
-    assert_eq!(pet_service.class_name, "PetRest");
+    assert_eq!(pet_service.class_name.to_string(), "PetRest");
     assert_eq!(pet_service.artifact_path, "rest/pet.rest.generated.ts");
     assert_eq!(
       pet_service
@@ -589,13 +576,10 @@ mod tests {
       }],
     );
 
-    let mut ctx = test_ctx();
-    let services = resolve_service_plans(
-      &ir,
-      &crate::plan::naming::NamingResolver::default(),
-      &ctx.reporter(),
-    )
-    .expect("ref body stays nested even when it resolves to an inline object");
+    let ctx = test_reporter();
+    let services =
+      resolve_service_plans(&ir, &crate::plan::naming::NamingResolver::default(), &ctx)
+        .expect("ref body stays nested even when it resolves to an inline object");
     let create_pet = &services[0].operations[0];
     assert!(matches!(
       create_pet.request.body,
@@ -653,18 +637,15 @@ mod tests {
     ];
     let ir = api_model(Vec::new(), operations);
 
-    let mut ctx = test_ctx();
-    let services = resolve_service_plans(
-      &ir,
-      &crate::plan::naming::NamingResolver::default(),
-      &ctx.reporter(),
-    )
-    .expect("plans resolve");
+    let ctx = test_reporter();
+    let services =
+      resolve_service_plans(&ir, &crate::plan::naming::NamingResolver::default(), &ctx)
+        .expect("plans resolve");
 
     assert_eq!(
       services
         .iter()
-        .map(|service| service.class_name.as_str())
+        .map(|service| service.class_name.to_string())
         .collect::<Vec<_>>(),
       vec!["AdoptionRest", "ZooRest"]
     );
@@ -702,7 +683,7 @@ mod tests {
       headers: vec![],
       body: Some(PlannedRequestBody::Multipart {
         fields: vec![PlannedFormField {
-          name: "status".into(),
+          name: crate::ident::Ident::parse("status").expect("identifier"),
           optional: false,
           ty: &scalar,
         }],
@@ -712,7 +693,7 @@ mod tests {
       panic!("expected multipart body");
     };
     assert_eq!(fields.len(), 1);
-    assert_eq!(fields[0].name.as_ref(), "status");
+    assert_eq!(fields[0].name.as_str(), "status");
   }
 
   #[test]

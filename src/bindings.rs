@@ -16,9 +16,8 @@ pub enum EmitTarget {
   Angular,
 }
 
-/// User-facing naming config crossing the NAPI boundary. The JS wrapper
-/// in `lib/index.js` unpacks each JS `RegExp` into the `{ source, flags
-/// }` shape carried here, so Rust sees pure data on this side.
+/// The naming config as it crosses the NAPI boundary, where a JS `RegExp`
+/// arrives already unpacked into `{ source, flags }`.
 #[napi(object)]
 #[derive(Clone, Debug)]
 pub struct NamingOptions {
@@ -26,11 +25,10 @@ pub struct NamingOptions {
   pub group: Option<NamingValue>,
 }
 
-/// Discriminated union: a string shorthand, a single rule, or a chain
-/// of rules-or-shorthands. NAPI cannot express true sum types, so we
-/// use exclusive fields: exactly one of `string`, `rule`, or `chain`
-/// must be set. The JS wrapper enforces this; the Rust validator
-/// double-checks at config resolution.
+/// A string shorthand, a single rule, or a chain of either.
+///
+/// NAPI has no sum type, so the variants are exclusive fields: exactly
+/// one must be set, which `plan::naming::lower` enforces.
 #[napi(object)]
 #[derive(Clone, Debug)]
 pub struct NamingValue {
@@ -129,9 +127,10 @@ pub struct GenerateErrorPayload {
   pub warnings: Vec<GeneratorDiagnostic>,
 }
 
-/// Return shape of the native export. Exactly one field is set. The JS
-/// wrapper turns `error` into a thrown `GenerateError`; returning data
-/// instead of throwing keeps native and WASI runtimes identical.
+/// Return shape of the native export, with exactly one field set.
+///
+/// Returning the failure as data keeps the native and WASI runtimes
+/// identical.
 #[napi(object)]
 pub struct GenerateOutcome {
   pub result: Option<GenerateResult>,
@@ -171,10 +170,7 @@ pub(crate) fn map_failure(failure: GenerateFailure) -> GenerateErrorPayload {
   }
 }
 
-/// Boundary projection: take the wire-shaped `GenerateOptions` from the
-/// JS caller and lower it into the resolved `GenerateConfig` the domain
-/// pipeline consumes. Lives in `bindings.rs` (not `options.rs`) so the
-/// domain doesn't depend on the NAPI boundary types.
+/// Lowers the wire-shaped options into the config the pipeline consumes.
 impl From<GenerateOptions> for GenerateConfig {
   fn from(value: GenerateOptions) -> Self {
     Self {
@@ -195,8 +191,7 @@ impl From<GenerateOptions> for GenerateConfig {
 pub(crate) fn map_generate_result(value: ApplicationGenerateResult) -> GenerateResult {
   GenerateResult {
     summary: value.summary,
-    // Pipeline-collected diagnostics are warnings — fatals exit via the
-    // `Err(GenerateFailure)` arm and are projected in `map_failure`.
+    // A success carries warnings only.
     diagnostics: value
       .diagnostics
       .iter()

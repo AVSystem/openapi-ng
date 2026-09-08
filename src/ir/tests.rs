@@ -8,11 +8,11 @@
 
 use serde_json::Value;
 
-use crate::emit::typescript::render_type_reference;
+use crate::emit::ts::types::render_to_string;
 use crate::ir::canonical::ModelSymbol;
 use crate::ir::normalize::normalize_document;
 use crate::ir::schema::SchemaType;
-use crate::test_support::TestReporter;
+use crate::test_support::reporter_for;
 
 fn parse_fixture(source: &str) -> Value {
   serde_yml::from_str(source).expect("fixture parses as YAML")
@@ -30,13 +30,13 @@ fn normalize_supports_empty_schema_any_type_and_empty_object_shapes() {
   let document = parse_fixture(include_str!(
     "../../test/fixtures/empty-shapes.openapi.yaml"
   ));
-  let mut sink = TestReporter::new("test/fixtures/empty-shapes.openapi.yaml");
-  let ir = normalize_document(&document, &mut sink.reporter())
-    .expect("normalize succeeds for empty schema fixture");
+  let sink = reporter_for("test/fixtures/empty-shapes.openapi.yaml");
+  let ir =
+    normalize_document(&document, &sink).expect("normalize succeeds for empty schema fixture");
 
   let any_value = find_symbol(&ir.schemas, "AnyValue");
   assert!(!matches!(&any_value.body, SchemaType::Ref(_)));
-  assert_eq!(render_type_reference(&any_value.body), "unknown");
+  assert_eq!(render_to_string(&any_value.body), "unknown");
 
   for schema_name in ["EmptyObject", "EmptyObjectWithProperties"] {
     let empty_object = find_symbol(&ir.schemas, schema_name);
@@ -61,7 +61,7 @@ fn normalize_supports_empty_schema_any_type_and_empty_object_shapes() {
     .iter()
     .find(|property| property.name.as_ref() == "anything")
     .expect("anything property exists");
-  assert_eq!(render_type_reference(&anything.ty), "unknown");
+  assert_eq!(render_to_string(&anything.ty), "unknown");
 
   let empty_inline = properties
     .iter()
@@ -89,7 +89,7 @@ fn normalize_supports_empty_schema_any_type_and_empty_object_shapes() {
 
   match &empty_array.ty {
     SchemaType::Array(items) => {
-      assert_eq!(render_type_reference(&empty_array.ty), "unknown[]");
+      assert_eq!(render_to_string(&empty_array.ty), "unknown[]");
       assert!(!matches!(items.as_ref(), SchemaType::Ref(_)));
     }
     other => panic!("expected array, got {other:?}"),
@@ -97,10 +97,7 @@ fn normalize_supports_empty_schema_any_type_and_empty_object_shapes() {
 
   match &empty_map.ty {
     SchemaType::Map(values) => {
-      assert_eq!(
-        render_type_reference(&empty_map.ty),
-        "Record<string, unknown>"
-      );
+      assert_eq!(render_to_string(&empty_map.ty), "Record<string, unknown>");
       assert!(!matches!(values.as_ref(), SchemaType::Ref(_)));
     }
     other => panic!("expected map, got {other:?}"),
@@ -112,9 +109,8 @@ fn ir_renders_union_and_intersection_type_fragments_from_normalized_composition(
   let oneof_document = parse_fixture(include_str!(
     "../../test/fixtures/oneof-anyof-composition.openapi.yaml"
   ));
-  let mut sink = TestReporter::new("test/fixtures/oneof-anyof-composition.openapi.yaml");
-  let oneof_ir =
-    normalize_document(&oneof_document, &mut sink.reporter()).expect("normalize succeeds");
+  let sink = reporter_for("test/fixtures/oneof-anyof-composition.openapi.yaml");
+  let oneof_ir = normalize_document(&oneof_document, &sink).expect("normalize succeeds");
 
   let pet_union = oneof_ir
     .schemas
@@ -127,14 +123,13 @@ fn ir_renders_union_and_intersection_type_fragments_from_normalized_composition(
       }
     })
     .expect("PetUnion alias exists in IR");
-  assert_eq!(render_type_reference(pet_union), "Cat | Dog");
+  assert_eq!(render_to_string(pet_union), "Cat | Dog");
 
   let allof_document = parse_fixture(include_str!(
     "../../test/fixtures/allof-composition.openapi.yaml"
   ));
-  let mut sink = TestReporter::new("test/fixtures/allof-composition.openapi.yaml");
-  let allof_ir =
-    normalize_document(&allof_document, &mut sink.reporter()).expect("normalize succeeds");
+  let sink = reporter_for("test/fixtures/allof-composition.openapi.yaml");
+  let allof_ir = normalize_document(&allof_document, &sink).expect("normalize succeeds");
 
   let adopter_profile = allof_ir
     .schemas
@@ -151,7 +146,7 @@ fn ir_renders_union_and_intersection_type_fragments_from_normalized_composition(
   match adopter_profile {
     SchemaType::Intersection(members) => {
       assert_eq!(members.len(), 3);
-      let rendered = render_type_reference(adopter_profile);
+      let rendered = render_to_string(adopter_profile);
       assert!(rendered.contains("AuditFields & ContactFields & {"));
       assert!(rendered.contains("nickname?: string | null;"));
     }
@@ -161,10 +156,9 @@ fn ir_renders_union_and_intersection_type_fragments_from_normalized_composition(
   let additional_properties_document = parse_fixture(include_str!(
     "../../test/fixtures/additional-properties.openapi.yaml"
   ));
-  let mut sink = TestReporter::new("test/fixtures/additional-properties.openapi.yaml");
+  let sink = reporter_for("test/fixtures/additional-properties.openapi.yaml");
   let additional_properties_ir =
-    normalize_document(&additional_properties_document, &mut sink.reporter())
-      .expect("normalize succeeds");
+    normalize_document(&additional_properties_document, &sink).expect("normalize succeeds");
 
   let pet_catalog_pets_by_breed = additional_properties_ir
     .schemas
@@ -178,7 +172,7 @@ fn ir_renders_union_and_intersection_type_fragments_from_normalized_composition(
     })
     .expect("PetCatalog.petsByBreed exists in IR");
   assert_eq!(
-    render_type_reference(pet_catalog_pets_by_breed),
+    render_to_string(pet_catalog_pets_by_breed),
     "Record<string, Pet[]>"
   );
 
@@ -194,7 +188,7 @@ fn ir_renders_union_and_intersection_type_fragments_from_normalized_composition(
     })
     .expect("PetCatalog.scope exists in IR");
   assert_eq!(
-    render_type_reference(pet_catalog_scope),
+    render_to_string(pet_catalog_scope),
     "'available' | 'adopted' | 'foster'"
   );
 
@@ -210,7 +204,7 @@ fn ir_renders_union_and_intersection_type_fragments_from_normalized_composition(
     })
     .expect("PetMetadataByTag alias exists in IR");
   assert_eq!(
-    render_type_reference(pet_metadata_by_tag),
+    render_to_string(pet_metadata_by_tag),
     "Record<string, PetMetadata>"
   );
 }

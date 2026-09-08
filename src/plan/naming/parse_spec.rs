@@ -1,7 +1,5 @@
-//! Compiled user-supplied `parse` regex. The NAPI boundary delivers the
-//! source pattern and flags string (split out from the JS RegExp on the
-//! wrapper side); we compile here once at config time so per-operation
-//! evaluation is a cheap `regex.captures()` call.
+//! A caller's `parse` regex, compiled once so evaluating a rule is a
+//! `captures` call.
 
 use regex::{Regex, RegexBuilder};
 
@@ -10,20 +8,17 @@ pub(crate) struct CompiledParseSpec {
   pub(crate) regex: Regex,
 }
 
-/// Why a `parse` spec could not be compiled. Surfaced at config-validation
-/// time as an `E_INVALID_OPTION` diagnostic so the user sees the error
-/// before any generation work runs.
+/// Why a `parse` spec could not be compiled.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum CompileError {
   UnsupportedFlag(char),
   InvalidPattern(String),
 }
 
-/// Compile a user `parse` regex. Supported flags: `i`, `m`, `s` (subset
-/// of JS RegExp that maps cleanly to Rust's `regex` crate). Any other
-/// flag — including `g`/`y`/`u` — is rejected loudly rather than
-/// silently ignored, so JS authors don't get surprised when their JS
-/// pattern relies on a flag the Rust engine cannot honour.
+/// Compiles a `parse` regex, accepting the flags `i`, `m` and `s`.
+///
+/// Every other flag fails, `g`, `y` and `u` included: Rust's engine has
+/// no equivalent, and ignoring one would silently change the match.
 pub(crate) fn compile(source: &str, flags: &str) -> Result<CompiledParseSpec, CompileError> {
   let mut builder = RegexBuilder::new(source);
   for ch in flags.chars() {

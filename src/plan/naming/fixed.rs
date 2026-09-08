@@ -1,61 +1,62 @@
-use crate::plan::naming::{case::apply as apply_case, config::Case};
+use crate::{
+  ident::{MethodName, TypeName},
+  plan::naming::{case::apply as apply_case, config::Case},
+};
 
-/// Returns the PascalCase class name for a service tag, e.g. "pet" → "PetRest".
-pub(crate) fn service_class_name(tag: &str) -> String {
-  format!("{}Rest", apply_case(tag, Case::Pascal))
+/// PascalCase service class name for a group, e.g. `"pet"` → `PetRest`.
+pub(crate) fn service_class_name(group: &str) -> TypeName {
+  TypeName::new(format!("{}Rest", apply_case(group, Case::Pascal)))
 }
 
-/// Returns the kebab-case file stem for a service tag, e.g. "PetOrder" → "pet-order".
-pub(crate) fn service_file_stem(tag: &str) -> String {
-  apply_case(tag, Case::Kebab)
+/// Kebab-case file stem for a group, e.g. `"PetOrder"` → `pet-order`.
+pub(crate) fn service_file_stem(group: &str) -> String {
+  apply_case(group, Case::Kebab)
 }
 
-/// Returns the PascalCase synthesized envelope name for an operation's
-/// path/query/header/body fields, e.g. "listPets" → "ListPetsParams".
+/// PascalCase name of the interface carrying an operation's path, query,
+/// header and body fields, e.g. `listPets` → `ListPetsParams`.
 ///
-/// Suffixed with `Params` (not `Request`) to avoid colliding with body
-/// schemas named `<OperationId>Request` declared in the spec.
-///
-/// Input is the resolved `method_name` (post user naming-rules), not the
-/// raw spec `operationId`. Naming rules can rewrite e.g.
-/// `Pet_listPets` → `listPets`, and the emitted `*Params` interface
-/// must follow that rewrite so the per-operation surfaces stay
-/// aligned with the property name on the service class.
-pub(crate) fn request_interface_name(method_name: &str) -> String {
-  format!("{}Params", apply_case(method_name, Case::Pascal))
+/// Suffixed `Params`: a spec may already declare a schema named
+/// `<OperationId>Request`.
+pub(crate) fn request_interface_name(method_name: &MethodName) -> TypeName {
+  TypeName::new(format!(
+    "{}Params",
+    apply_case(method_name.as_str(), Case::Pascal)
+  ))
 }
 
-/// Returns the PascalCase error-body interface name for an operation,
-/// e.g. "updatePet" → "UpdatePetError". Suffixed with `Error` (not
-/// `ErrorBody`) for ergonomics — the user-facing access pattern is
-/// `UpdatePetError[400]`, so the shorter suffix reads better at the
-/// call site. Risk of colliding with a spec schema named
-/// `<OperationId>Error` is real but uncommon; if it bites consumers we
-/// can switch to `ErrorBody` later.
+/// PascalCase name of the interface mapping an operation's 4xx/5xx statuses
+/// to their body types, e.g. `updatePet` → `UpdatePetError`.
 ///
-/// Input is the resolved `method_name` (post user naming-rules), same
-/// as `request_interface_name`.
-pub(crate) fn error_interface_name(method_name: &str) -> String {
-  format!("{}Error", apply_case(method_name, Case::Pascal))
+/// Read at the call site as `UpdatePetError[400]`.
+pub(crate) fn error_interface_name(method_name: &MethodName) -> TypeName {
+  TypeName::new(format!(
+    "{}Error",
+    apply_case(method_name.as_str(), Case::Pascal)
+  ))
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
 
+  fn method(name: &str) -> MethodName {
+    MethodName::new(name.to_string())
+  }
+
   #[test]
   fn service_class_name_converts_lowercase_tag_to_pascal_case_rest_suffix() {
-    assert_eq!(service_class_name("pet"), "PetRest");
+    assert_eq!(service_class_name("pet").to_string(), "PetRest");
   }
 
   #[test]
   fn service_class_name_converts_camel_case_tag_to_pascal_case_rest_suffix() {
-    assert_eq!(service_class_name("petOrder"), "PetOrderRest");
+    assert_eq!(service_class_name("petOrder").to_string(), "PetOrderRest");
   }
 
   #[test]
   fn service_class_name_converts_kebab_tag_to_pascal_case_rest_suffix() {
-    assert_eq!(service_class_name("pet-order"), "PetOrderRest");
+    assert_eq!(service_class_name("pet-order").to_string(), "PetOrderRest");
   }
 
   #[test]
@@ -70,15 +71,20 @@ mod tests {
 
   #[test]
   fn request_interface_name_converts_camel_case_method_name_to_pascal_params() {
-    assert_eq!(request_interface_name("listPets"), "ListPetsParams");
+    assert_eq!(
+      request_interface_name(&method("listPets")).to_string(),
+      "ListPetsParams"
+    );
   }
 
   #[test]
   fn request_interface_name_converts_lower_method_name_to_pascal_params() {
-    assert_eq!(request_interface_name("updatePet"), "UpdatePetParams");
+    assert_eq!(
+      request_interface_name(&method("updatePet")).to_string(),
+      "UpdatePetParams"
+    );
   }
 
-  // ── Property-based: naming helpers ──────────────────────────────────────
   //
   // service_class_name and service_file_stem are pure case-conversions
   // over arbitrary tag strings sourced from the spec. The example tests
@@ -90,7 +96,7 @@ mod tests {
 
   /// First char must satisfy TS IdentifierStart (we restrict to ASCII
   /// alphabetic + `_` + `$`); subsequent chars must be IdentifierPart.
-  /// Matches `is_valid_identifier` in `emit::typescript`.
+  /// Matches `is_ident` in `emit::typescript`.
   fn is_ts_identifier(value: &str) -> bool {
     let mut chars = value.chars();
     let Some(first) = chars.next() else {
@@ -139,10 +145,11 @@ mod tests {
     fn service_class_name_emits_valid_ts_identifier_with_rest_suffix(
       tag in "[a-zA-Z][a-zA-Z0-9_-]{0,31}"
     ) {
-      let class_name = service_class_name(&tag);
+      let class_name = service_class_name(&tag).to_string();
+      let class_name = class_name.as_str();
       prop_assert!(class_name.ends_with("Rest"));
       prop_assert!(
-        is_ts_identifier(&class_name),
+        is_ts_identifier(class_name),
         "service_class_name produced non-identifier {class_name:?} for tag {tag:?}",
       );
     }

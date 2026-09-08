@@ -1,15 +1,14 @@
-// Tests for src/emit/typescript.rs — kept in a sibling file to keep typescript.rs
-// focused on production logic.
+//! Tests for the `emit::ts` primitives.
 
 #[cfg(test)]
 mod tests {
-  use super::super::typescript::*;
+  use super::super::ts::literal::safe_property_name;
+  use super::super::ts::types::render_to_string;
+  use super::super::ts::*;
+  use crate::ident::is_ident;
   use crate::ir::canonical::BodyFieldType;
-  use crate::ir::identifier::is_valid_identifier;
   use crate::ir::schema::{SchemaScalar, SchemaType};
   use crate::test_support::{nullable_property, property};
-
-  // ── Writer buffer ──────────────────────────────────────────────────────────
 
   #[test]
   fn open_and_close_block_manage_indentation() {
@@ -40,8 +39,6 @@ mod tests {
       "export type PetId = string;\n\nexport type PetName = string;\n"
     );
   }
-
-  // ── safe_property_name ─────────────────────────────────────────────────────
 
   #[test]
   fn leaves_valid_identifiers_unquoted() {
@@ -83,8 +80,6 @@ mod tests {
     assert_eq!(safe_property_name("a\rb").as_ref(), "'a\\rb'");
     assert_eq!(safe_property_name("a\tb").as_ref(), "'a\\tb'");
   }
-
-  // ── render_type ────────────────────────────────────────────────────────────
 
   #[test]
   fn render_type_reference_covers_every_type_expression_variant() {
@@ -140,7 +135,7 @@ mod tests {
     ];
 
     for (value, expected) in cases {
-      assert_eq!(render_type_reference(&value), expected);
+      assert_eq!(render_to_string(&value), expected);
     }
   }
 
@@ -162,9 +157,9 @@ mod tests {
       },
     ]);
 
-    assert_eq!(render_type_reference(&array_of_union), "(Cat | Dog)[]");
+    assert_eq!(render_to_string(&array_of_union), "(Cat | Dog)[]");
     assert_eq!(
-      render_type_reference(&intersection_with_inline),
+      render_to_string(&intersection_with_inline),
       "AuditFields & {\n  nickname?: string;\n}"
     );
   }
@@ -199,51 +194,49 @@ mod tests {
     };
 
     assert_eq!(
-      render_type_reference(&nested_inline_object),
+      render_to_string(&nested_inline_object),
       "{\n  profile: {\n    displayName: string;\n    metadata: {\n      active: boolean;\n    };\n  };\n}"
     );
   }
 
-  // ── render_body_field_type ─────────────────────────────────────────────────
-
   #[test]
   fn render_body_field_type_for_each_variant() {
     assert_eq!(
-      render_body_field_type(&BodyFieldType::Scalar(SchemaScalar::String)),
+      render_to_string(&BodyFieldType::Scalar(SchemaScalar::String)),
       "string"
     );
     assert_eq!(
-      render_body_field_type(&BodyFieldType::Scalar(SchemaScalar::Number)),
+      render_to_string(&BodyFieldType::Scalar(SchemaScalar::Number)),
       "number"
     );
     assert_eq!(
-      render_body_field_type(&BodyFieldType::Scalar(SchemaScalar::Boolean)),
+      render_to_string(&BodyFieldType::Scalar(SchemaScalar::Boolean)),
       "boolean"
     );
     assert_eq!(
-      render_body_field_type(&BodyFieldType::ArrayOfScalar(SchemaScalar::String)),
+      render_to_string(&BodyFieldType::ArrayOfScalar(SchemaScalar::String)),
       "string[]"
     );
     assert_eq!(
-      render_body_field_type(&BodyFieldType::ArrayOfScalar(SchemaScalar::Number)),
+      render_to_string(&BodyFieldType::ArrayOfScalar(SchemaScalar::Number)),
       "number[]"
     );
+    assert_eq!(render_to_string(&BodyFieldType::Binary), "Blob | File");
     assert_eq!(
-      render_body_field_type(&BodyFieldType::Binary),
-      "Blob | File"
-    );
-    assert_eq!(
-      render_body_field_type(&BodyFieldType::ArrayOfBinary),
+      render_to_string(&BodyFieldType::ArrayOfBinary),
       "(Blob | File)[]"
     );
   }
 
-  // ── write_import_line wrapping ─────────────────────────────────────────────
-
   #[test]
   fn write_import_line_emits_single_line_when_under_budget() {
     let mut out = Writer::with_capacity(4096);
-    write_import_line(&mut out, [("Pet", None), ("PetId", None)], "./models", true);
+    import_line(
+      &mut out,
+      [Binding::plain("Pet"), Binding::plain("PetId")],
+      "./models",
+      Statement::TypeImport,
+    );
     assert_eq!(
       out.into_string(),
       "import type { Pet, PetId } from './models';\n"
@@ -253,11 +246,14 @@ mod tests {
   #[test]
   fn write_import_line_emits_alias_form() {
     let mut out = Writer::with_capacity(4096);
-    write_import_line(
+    import_line(
       &mut out,
-      [("ExternalPetId", Some("PetId"))],
+      [Binding {
+        name: "ExternalPetId",
+        alias: Some("PetId"),
+      }],
       "@demo/types",
-      true,
+      Statement::TypeImport,
     );
     assert_eq!(
       out.into_string(),
@@ -271,16 +267,16 @@ mod tests {
     // writer should switch to one-identifier-per-line with trailing
     // commas (prettier-friendly).
     let mut out = Writer::with_capacity(4096);
-    let names: Vec<(&str, Option<&str>)> = vec![
-      ("ResourceOneInterfaceWithExtraLongName", None),
-      ("ResourceTwoInterfaceWithExtraLongName", None),
-      ("ResourceThreeInterfaceWithExtraLongName", None),
+    let names = vec![
+      Binding::plain("ResourceOneInterfaceWithExtraLongName"),
+      Binding::plain("ResourceTwoInterfaceWithExtraLongName"),
+      Binding::plain("ResourceThreeInterfaceWithExtraLongName"),
     ];
-    write_import_line(&mut out, names, "./models", false);
+    import_line(&mut out, names, "./models", Statement::TypeImport);
     assert_eq!(
       out.into_string(),
       concat!(
-        "import {\n",
+        "import type {\n",
         "  ResourceOneInterfaceWithExtraLongName,\n",
         "  ResourceTwoInterfaceWithExtraLongName,\n",
         "  ResourceThreeInterfaceWithExtraLongName,\n",
@@ -294,14 +290,13 @@ mod tests {
     // A single identifier always stays on one line — wrapping a single
     // name is just noise.
     let mut out = Writer::with_capacity(4096);
-    write_import_line(
+    import_line(
       &mut out,
-      [(
+      [Binding::plain(
         "ExtremelyLongIdentifierNameThatWouldOtherwiseTriggerTheWrapHeuristicYesItWould",
-        None,
       )],
       "./models",
-      true,
+      Statement::TypeImport,
     );
     let rendered = out.into_string();
     assert!(rendered.starts_with("import type { ExtremelyLongIdentifier"));
@@ -310,16 +305,13 @@ mod tests {
     assert_eq!(rendered.matches('\n').count(), 1);
   }
 
-  // ── string_union ───────────────────────────────────────────────────────────
-
   #[test]
   fn string_union_escapes_embedded_quotes_and_control_chars_inline() {
     let mut out = Writer::with_capacity(4096);
     string_union(
       &mut out,
       "Tricky",
-      None,
-      false,
+      Doc::new(None, false),
       &["it's".to_string(), "a\\b".to_string(), "x\ny".to_string()],
     );
     assert_eq!(
@@ -340,7 +332,7 @@ mod tests {
       format!("{long}-3"),
     ];
     let mut out = Writer::with_capacity(4096);
-    string_union(&mut out, "Long", None, false, &values);
+    string_union(&mut out, "Long", Doc::new(None, false), &values);
     let rendered = out.into_string();
     assert!(rendered.contains("| 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-1\\'a'\n"));
     assert!(rendered.contains("| 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2\\\\b'\n"));
@@ -356,18 +348,9 @@ mod tests {
       discriminator: None,
     }))));
     let mut buf = Writer::with_capacity(4096);
-    render_type(&mut buf, &nested, Position::Standalone);
+    nested.render(&mut buf, Position::Standalone);
     assert_eq!(buf.into_string(), "(Cat | Dog)[][]");
   }
-
-  // ── Property-based: safe_property_name ─────────────────────────────────────
-  //
-  // The function lives in the path that converts arbitrary OpenAPI
-  // property names into TS-shaped output. The example tests above lock in
-  // representative cases; the properties here assert invariants over the
-  // full input space so an adversarial spec (mixed scripts, control
-  // characters, embedded quotes/backslashes) can't sneak in malformed
-  // output.
 
   use proptest::prelude::*;
 
@@ -378,7 +361,7 @@ mod tests {
     if out.is_empty() {
       return false;
     }
-    if is_valid_identifier(out) {
+    if is_ident(out) {
       return true;
     }
     let bytes = out.as_bytes();
@@ -433,12 +416,10 @@ mod tests {
     }
   }
 
-  // ── jsdoc ──────────────────────────────────────────────────────────────────
-
   #[test]
   fn jsdoc_escapes_close_comment_sequence() {
     let mut out = Writer::with_capacity(4096);
-    jsdoc(&mut out, Some("Crafted */ injection /*"), false);
+    jsdoc(&mut out, Doc::new(Some("Crafted */ injection /*"), false));
     let s = out.into_string();
     // The only allowed `*/` is the trailing JSDoc closer on its own line.
     // Strip exactly the opener and closer lines, then assert no `*/` remains

@@ -1,6 +1,5 @@
-//! Single-rule evaluator and fallback-chain runner. Failure modes per
-//! spec §"Failure modes": empty `from` + present `parse`, regex
-//! mismatch, or any unbound name reference in `from`/`format`.
+//! Evaluates one rule, and runs a fallback chain until an entry
+//! succeeds. [`RuleFailure`] enumerates every way an entry can fail.
 
 use std::collections::HashMap;
 
@@ -19,9 +18,7 @@ pub(crate) enum RuleFailure {
   ParseMismatch,
   /// A template referenced an unbound name (field, indexed slot, or capture).
   Unbound(String),
-  /// Template was malformed at parse time. This is technically a
-  /// config-time error caught by validation, but evaluation still has
-  /// to handle it defensively.
+  /// A template was malformed.
   Malformed(String),
 }
 
@@ -54,13 +51,11 @@ fn evaluate_entry(entry: &RuleEntry, ctx: &OperationContext<'_>) -> Result<Strin
 }
 
 fn evaluate_rule(rule: &Rule, ctx: &OperationContext<'_>) -> Result<String, RuleFailure> {
-  // Step 1: expand `from` (default "" if omitted).
   let from_expanded = match &rule.from {
     Some(template) => expand(template, ctx, &HashMap::new()).map_err(map_template_error)?,
     None => String::new(),
   };
 
-  // Step 2: parse — only runs when present.
   let captures: HashMap<String, String> = match &rule.parse {
     Some(spec) => {
       if from_expanded.is_empty() {
@@ -84,14 +79,13 @@ fn evaluate_rule(rule: &Rule, ctx: &OperationContext<'_>) -> Result<String, Rule
     None => HashMap::new(),
   };
 
-  // Step 3: format — defaults to the expanded `from` when omitted (only
-  // legal when `parse` is also absent; config-time validation enforces).
+  // Without a `format` the result is the expanded `from`, which
+  // `plan::naming::lower` allows only when `parse` is absent too.
   let raw = match &rule.format {
     Some(template) => expand(template, ctx, &captures).map_err(map_template_error)?,
     None => from_expanded,
   };
 
-  // Step 4: case transformation.
   let final_value = match rule.case {
     Some(case) => apply_case(&raw, case),
     None => raw,
@@ -124,7 +118,7 @@ mod tests {
   fn op(id: &str, method: HttpMethod, path: &str, tags: &[&str]) -> OperationDef {
     OperationDef {
       operation_id: id.to_string(),
-      tags: tags.iter().map(|s| s.to_string()).collect(),
+      tags: tags.iter().map(ToString::to_string).collect(),
       method,
       path: path.to_string(),
       request: RequestDef::default(),

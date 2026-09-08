@@ -1,5 +1,4 @@
 pub(crate) mod canonical;
-pub(crate) mod identifier;
 pub(crate) mod normalize;
 pub(crate) mod schema;
 

@@ -1,11 +1,10 @@
-//! Template expander. Supports exactly three productions:
-//! * `{fieldName}`         — context field by name
-//! * `{arrayField[N]}`     — array index (negative allowed)
-//! * `{capture.name}`      — regex named capture (explicit namespace)
+//! Template expander for `Rule.from` and `Rule.format`.
 //!
-//! Unbound references and malformed templates surface as
-//! `TemplateError`; the rule evaluator converts these into rule failures
-//! per spec §"Failure modes".
+//! Three productions, and nothing else:
+//! * `{fieldName}`     — a context field
+//! * `{arrayField[N]}` — an array element, negative indexes counting from
+//!   the tail
+//! * `{capture.name}`  — a named capture from the rule's `parse`
 
 use std::collections::HashMap;
 
@@ -13,68 +12,71 @@ use crate::plan::naming::context::OperationContext;
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum TemplateError {
-  /// `{...}` referenced a name not in the context.
+  /// A `{...}` named something the context does not bind.
   Unbound(String),
-  /// Malformed template: unclosed `{`, malformed index, etc.
+  /// Unclosed `{`, or an index that is not an integer.
   Malformed(String),
 }
 
+/// Expands every `{...}` in `template`.
 pub(crate) fn expand(
   template: &str,
   ctx: &OperationContext<'_>,
   captures: &HashMap<String, String>,
 ) -> Result<String, TemplateError> {
   let mut out = String::with_capacity(template.len());
-  let chars: Vec<char> = template.chars().collect();
-  let mut i = 0;
-  while i < chars.len() {
-    let ch = chars[i];
-    if ch == '{' {
-      let end = chars[i..]
-        .iter()
-        .position(|c| *c == '}')
-        .ok_or_else(|| TemplateError::Malformed(format!("unclosed `{{` at offset {i}")))?;
-      let token: String = chars[i + 1..i + end].iter().collect();
-      out.push_str(&resolve_token(&token, ctx, captures)?);
-      i += end + 1;
-    } else {
-      out.push(ch);
-      i += 1;
-    }
+  let mut rest = template;
+
+  while let Some(open) = rest.find('{') {
+    out.push_str(&rest[..open]);
+    let after = &rest[open + 1..];
+    let Some(close) = after.find('}') else {
+      return Err(TemplateError::Malformed(format!(
+        "unclosed `{{` in `{template}`"
+      )));
+    };
+    out.push_str(&resolve(&after[..close], ctx, captures)?);
+    rest = &after[close + 1..];
   }
+
+  out.push_str(rest);
   Ok(out)
 }
 
-fn resolve_token(
+fn resolve(
   token: &str,
   ctx: &OperationContext<'_>,
   captures: &HashMap<String, String>,
 ) -> Result<String, TemplateError> {
-  if let Some(rest) = token.strip_prefix("capture.") {
+  if let Some(name) = token.strip_prefix("capture.") {
     return captures
-      .get(rest)
+      .get(name)
       .cloned()
       .ok_or_else(|| TemplateError::Unbound(token.to_string()));
   }
-  if let Some((array_name, idx_str)) = parse_indexed(token) {
-    let idx: i32 = idx_str
+
+  if let Some((array, index)) = split_index(token) {
+    let index: i32 = index
       .parse()
       .map_err(|_| TemplateError::Malformed(format!("invalid index in `{token}`")))?;
     return ctx
-      .lookup_indexed(array_name, idx)
+      .lookup_indexed(array, index)
+      .map(str::to_string)
       .ok_or_else(|| TemplateError::Unbound(token.to_string()));
   }
+
   ctx
     .lookup(token)
+    .map(str::to_string)
     .ok_or_else(|| TemplateError::Unbound(token.to_string()))
 }
 
-fn parse_indexed(token: &str) -> Option<(&str, &str)> {
+/// Splits `tags[-1]` into `("tags", "-1")`, or `None` when the token is not
+/// an indexed reference.
+fn split_index(token: &str) -> Option<(&str, &str)> {
   let open = token.find('[')?;
-  if !token.ends_with(']') {
-    return None;
-  }
-  Some((&token[..open], &token[open + 1..token.len() - 1]))
+  let index = token[open + 1..].strip_suffix(']')?;
+  Some((&token[..open], index))
 }
 
 #[cfg(test)]

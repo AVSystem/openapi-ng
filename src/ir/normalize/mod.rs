@@ -3,33 +3,31 @@ pub(crate) mod schema;
 mod semantic;
 #[cfg(test)]
 mod tests;
+mod walk;
 
 use std::collections::BTreeMap;
 
-use crate::error::{Context, Diagnostic, DiagnosticCode, Reporter};
+use crate::error::{Diagnostic, DiagnosticCode, Reporter};
 use crate::ir::canonical::{ApiInfo, ApiModel};
 use crate::ir::schema::SchemaType;
 use crate::options::ResponseTypeMapping;
 use crate::parse::openapi_model::{OpenApiDocument, Schema};
 use operations::normalize_operations;
 use schema::normalize_schemas;
+pub(crate) use walk::SchemaWalk;
 
-/// Hard cap on `Schema` recursion during normalize. Realistic OpenAPI
-/// specs nest a handful of levels (the deepest committed fixture is
-/// 5 layers of allOf); a value of 32 leaves a healthy margin above that
-/// while still rejecting pathological / cyclic specs before they
-/// overflow the thread stack. The cap sits below the serde YAML/JSON
-/// recursion limit (~60), so any spec that reaches this guard already
-/// represents an unsupported shape rather than a parser-rejected one.
+/// Hard cap on `Schema` nesting, enforced by [`SchemaWalk::check_depth`].
 ///
-/// Threaded as a `u16` argument through the recursive callers in
-/// `schema.rs` — operations.rs starts each schema walk at depth 0.
+/// Real specs nest a handful of levels — the deepest committed fixture is
+/// 5 layers of `allOf` — and the cap sits below serde's own recursion
+/// limit of roughly 60, so a spec that reaches it is an unsupported shape
+/// and not a parser-rejected one.
 pub(crate) const MAX_NORMALIZE_DEPTH: u16 = 32;
 
 pub(crate) fn normalize_api_model(
   document: &OpenApiDocument,
   response_type_mapping: &[ResponseTypeMapping],
-  reporter: &mut Reporter<'_>,
+  reporter: &Reporter,
 ) -> Result<ApiModel, Diagnostic> {
   let schemas = normalize_schemas(&document.components.schemas, reporter)?;
   let schema_index: BTreeMap<&str, &SchemaType> =
@@ -50,56 +48,72 @@ pub(crate) fn normalize_api_model(
     operations,
   };
 
-  // Final semantic step: sort schemas, narrow discriminator member
-  // properties for TS emit, and validate `$ref` resolution.
   semantic::finalize(&mut model, reporter)?;
 
   Ok(model)
 }
 
-pub(crate) fn unsupported(
-  detail: impl AsRef<str>,
-  reporter: &Reporter<'_>,
-  include_readme: bool,
-) -> Diagnostic {
-  let suffix = if include_readme {
-    ". See the supported subset documented in README.md ('Out of Scope' section)."
-  } else {
-    ""
-  };
+/// Diagnostic for a spec shape outside the supported subset, pointing the
+/// reader at the documented subset.
+pub(crate) fn unsupported(reporter: &Reporter, detail: impl AsRef<str>) -> Diagnostic {
   reporter.error(
     DiagnosticCode::UnsupportedSemantic,
     format!(
-      "Unsupported OpenAPI semantic shape: {}{}",
+      "Unsupported OpenAPI semantic shape: {}. See the supported subset documented in README.md ('Out of Scope' section).",
       detail.as_ref(),
-      suffix
     ),
   )
 }
 
+/// Diagnostic for a shape rejected by a rule that `detail` already names.
+/// Appends no pointer to the documented subset.
+pub(crate) fn unsupported_rule(reporter: &Reporter, detail: impl AsRef<str>) -> Diagnostic {
+  reporter.error(
+    DiagnosticCode::UnsupportedSemantic,
+    format!("Unsupported OpenAPI semantic shape: {}", detail.as_ref()),
+  )
+}
+
+/// Returns an [`unsupported`] diagnostic from the enclosing function.
+macro_rules! bail_unsupported {
+  ($reporter:expr, $($message:tt)*) => {
+    return ::core::result::Result::Err($crate::ir::normalize::unsupported(
+      $reporter,
+      ::std::format!($($message)*),
+    ))
+  };
+}
+
+/// Returns an [`unsupported_rule`] diagnostic from the enclosing function.
+macro_rules! bail_unsupported_rule {
+  ($reporter:expr, $($message:tt)*) => {
+    return ::core::result::Result::Err($crate::ir::normalize::unsupported_rule(
+      $reporter,
+      ::std::format!($($message)*),
+    ))
+  };
+}
+
+pub(crate) use {bail_unsupported, bail_unsupported_rule};
+
 pub(crate) fn check_unsupported_not(
   schema: &Schema,
-  context: &Context<'_>,
-  reporter: &Reporter<'_>,
+  walk: SchemaWalk<'_>,
 ) -> Result<(), Diagnostic> {
   if schema.not.is_some() {
-    return Err(unsupported(
-      format!(
-        "{} uses not, which is outside the supported subset.",
-        context.render()
-      ),
-      reporter,
-      true,
-    ));
+    bail_unsupported!(
+      walk.reporter(),
+      "{} uses not, which is outside the supported subset.",
+      walk.here()
+    );
   }
   Ok(())
 }
 
-/// Test helper: deserialize a raw JSON value into an OpenApiDocument and normalize it.
 #[cfg(test)]
 pub(crate) fn normalize_document(
   document: &serde_json::Value,
-  reporter: &mut Reporter<'_>,
+  reporter: &Reporter,
 ) -> Result<ApiModel, Diagnostic> {
   let doc: OpenApiDocument = serde_json::from_value(document.clone())
     .expect("test document must be a valid OpenApiDocument");

@@ -16,12 +16,13 @@ pub(crate) const REST_VALIDATE_TEMPLATE: &str =
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::ident::TypeName;
   use crate::ir::canonical::HttpMethod;
   use crate::ir::schema::{SchemaScalar, SchemaType};
   use crate::plan::artifact_plan::{
-    PlannedOperation, PlannedRequestContract, PlannedRequestField, RequestFieldKind, ServicePlan,
+    PlannedRequestContract, PlannedRequestField, RequestFieldKind, ServicePlan,
   };
-  use crate::test_support::empty_request;
+  use crate::test_support::{empty_request, op_with};
 
   #[test]
   fn rest_model_template_carries_common_request_definitions() {
@@ -42,19 +43,15 @@ mod tests {
   fn emit_service_generates_injectable_class_with_operation_property() {
     let plan = ServicePlan {
       group_name: "pet".into(),
-      class_name: "PetRest".into(),
+      class_name: TypeName::new("PetRest".to_string()),
       artifact_path: "rest/pet.rest.generated.ts".to_string(),
-      operations: vec![PlannedOperation {
-        operation_id: "listPets".to_string(),
-        method_name: "listPets".to_string(),
-        method: HttpMethod::Get,
-        path: "/pets".to_string(),
-        request: empty_request(),
-        response: None,
-        errors: &[],
-        description: None,
-        deprecated: false,
-      }],
+      operations: vec![op_with(
+        "listPets",
+        HttpMethod::Get,
+        "/pets",
+        empty_request(),
+        None,
+      )],
     };
     let content = emit_service(&plan);
     assert!(content.contains("@Injectable("));
@@ -68,14 +65,13 @@ mod tests {
     let ty = SchemaType::Scalar(SchemaScalar::String);
     let plan = ServicePlan {
       group_name: "pet".into(),
-      class_name: "PetRest".into(),
+      class_name: TypeName::new("PetRest".to_string()),
       artifact_path: "rest/pet.rest.generated.ts".to_string(),
-      operations: vec![PlannedOperation {
-        operation_id: "updatePet".to_string(),
-        method_name: "updatePet".to_string(),
-        method: HttpMethod::Put,
-        path: "/pets/{id}".to_string(),
-        request: PlannedRequestContract {
+      operations: vec![op_with(
+        "updatePet",
+        HttpMethod::Put,
+        "/pets/{id}",
+        PlannedRequestContract {
           fields: vec![PlannedRequestField {
             name: "id".into(),
             optional: false,
@@ -85,11 +81,8 @@ mod tests {
           headers: vec![],
           body: None,
         },
-        response: None,
-        errors: &[],
-        description: None,
-        deprecated: false,
-      }],
+        None,
+      )],
     };
     let content = emit_service(&plan);
     assert!(content.contains("export interface UpdatePetParams"));

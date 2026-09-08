@@ -1,14 +1,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::emit::typescript::{self as ts, Writer};
+use crate::emit::ts::{Writer, type_import_block};
 use crate::ir::canonical::ResponseContent;
 use crate::ir::schema::collect_type_references;
 use crate::plan::artifact_plan::{PlannedOperation, PlannedRequestBody, RequestFieldKind};
 
-/// Relative path from a generated service file (`rest/*.rest.generated.ts`)
-/// to the sibling `model.generated.ts` that holds all emitted TypeScript
-/// types. Fixed by the emit layout — services always live one directory
-/// below the model artifact — so it is a constant rather than a plan field.
+/// Path from a generated service file to the model artifact, one
+/// directory above it.
 const MODEL_IMPORT_PATH: &str = "../model.generated";
 
 pub(super) fn render_service_imports(
@@ -40,13 +38,8 @@ pub(super) fn render_service_imports(
     for header in &operation.request.headers {
       collect_type_references(header.ty, &mut imports);
     }
-    // Body types contribute imports according to the body's layout. A
-    // `Nested` body's ty (named ref or any other `SchemaType`) imports
-    // straight from the type printer. A `FlatJson` body hoists each
-    // property's `SchemaType` to a top-level field, so each property
-    // contributes the same way path/query/header types do. Form bodies
-    // type their fields via `BodyFieldType`, which never references
-    // user-declared schemas — they add nothing.
+    // A form body's fields are typed by `BodyFieldType`, which names no
+    // user-declared schema.
     match &operation.request.body {
       Some(PlannedRequestBody::Nested { ty, .. }) => {
         collect_type_references(ty, &mut imports);
@@ -64,28 +57,20 @@ pub(super) fn render_service_imports(
         ResponseContent::Json(Some(ty)) => {
           collect_type_references(ty, &mut imports);
         }
-        // `Json(None)` and non-JSON variants render to fixed TS surfaces
-        // (`void` / `Blob` / `string` / `ArrayBuffer`) that never reference
-        // user-declared schemas, so they contribute nothing to the import
-        // set. Non-JSON variants are not yet produced by normalize but the
-        // match is exhaustive so a future addition forces a compile error.
+        // Every other variant renders to a built-in type.
         ResponseContent::Json(None)
         | ResponseContent::Blob
         | ResponseContent::Text
         | ResponseContent::ArrayBuffer => {}
       }
     }
-    // Error-response body types contribute imports the same way as the
-    // success response: they appear by name in the per-operation
-    // `{Pascal}Error` interface emitted alongside `{Pascal}Params`.
     for error in operation.errors {
       collect_type_references(&error.body, &mut imports);
     }
   }
 
   if !imports.is_empty() {
-    let by_path = BTreeMap::from([(MODEL_IMPORT_PATH, imports)]);
-    ts::import_block(buffer, &by_path, true);
+    type_import_block(buffer, &BTreeMap::from([(MODEL_IMPORT_PATH, imports)]));
   }
 }
 
@@ -104,8 +89,6 @@ mod tests {
     render_service_imports(&mut buf, operations, "../rest.util");
     buf.into_string()
   }
-
-  // ── Fixed-position imports (HttpClient, Angular core, helpers) ─────────────
 
   #[test]
   fn always_imports_injectable() {
@@ -150,8 +133,6 @@ mod tests {
     assert!(out.contains("import { httpParams, requestFactory } from '../rest.util';"));
   }
 
-  // ── Model-ref import dedup ────────────────────────────────────────────────
-
   #[test]
   fn model_refs_are_deduplicated_across_operations() {
     let pet_ref = SchemaType::Ref("Pet".into());
@@ -195,8 +176,6 @@ mod tests {
     let out = render(&[op_with("createPet", HttpMethod::Get, "/x", request, None)]);
     assert!(out.contains("import type { IdempotencyKey } from '../model.generated';"));
   }
-
-  // ── Body imports under smart-flatten ──────────────────────────────────────
 
   #[test]
   fn nested_body_named_ref_is_imported() {
@@ -247,8 +226,6 @@ mod tests {
     assert!(out.contains("import type { Pet } from '../model.generated';"));
     assert_eq!(out.matches("Pet").count(), 1);
   }
-
-  // ── empty operation set ───────────────────────────────────────────────────
 
   #[test]
   fn empty_operation_set_emits_only_fixed_imports() {
