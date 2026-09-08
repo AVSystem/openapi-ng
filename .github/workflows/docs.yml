@@ -1,22 +1,13 @@
 name: Docs
 
+# The playground runs the checkout's own generator (lib/ wrapper + a wasm build
+# of src/), so every push and PR builds the site. Production only updates for a
+# release commit or a docs-only change; other pushes upload a preview version.
 on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - 'website/**'
-      - '.github/workflows/docs.yml'
-      - 'bun.lock'
-      - 'bunfig.toml'
-      - 'stackblitz/petstore.openapi.yaml'
   pull_request:
-    paths:
-      - 'website/**'
-      - '.github/workflows/docs.yml'
-      - 'bun.lock'
-      - 'bunfig.toml'
-      - 'stackblitz/petstore.openapi.yaml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -32,6 +23,9 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          # the deploy gate diffs the pushed range
+          fetch-depth: 0
       - name: Setup bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -40,11 +34,61 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip1-threads
+      - name: Cache cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ~/.napi-rs
+            .cargo-cache
+            target/
+          # same key as the CI matrix entry so both workflows share the cache
+          key: wasm32-wasip1-threads-cargo-ubuntu-latest
       - name: Install dependencies
         run: bun ci
+      - name: Build wasm engine
+        run: bun run build --target wasm32-wasip1-threads
+      # `napi build` regenerates the committed entry files; the site aliases lib/.
+      - name: Restore committed entry files
+        run: git checkout -- native.js browser.js index.d.ts
+      - name: Decide deploy target
+        id: gate
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -eu
+          # wrangler caps version tags at 25 characters
+          echo "short=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "production=false" >> "$GITHUB_OUTPUT"; echo "pull request: preview only"; exit 0
+          fi
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "production=true" >> "$GITHUB_OUTPUT"; echo "manual run"; exit 0
+          fi
+          # HEAD only, same as the publish job in CI.yml: a release commit that is
+          # not the push HEAD reaches neither npm nor production.
+          if git log -1 --pretty=%B | grep -q '^v\?[0-9]\+\.[0-9]\+\.[0-9]\+$'; then
+            echo "production=true" >> "$GITHUB_OUTPUT"; echo "release commit"; exit 0
+          fi
+          # a force-push or new branch has no usable `before`
+          if [ -n "$BEFORE" ] && ! echo "$BEFORE" | grep -q '^0*$' && git cat-file -e "$BEFORE" 2>/dev/null; then
+            if ! git diff --name-only "$BEFORE" HEAD | grep -qv '^\(website/\|\.github/workflows/docs\.yml\|bun\.lock\|bunfig\.toml\|stackblitz/\)'; then
+              echo "production=true" >> "$GITHUB_OUTPUT"; echo "docs-only change"; exit 0
+            fi
+          fi
+          echo "production=false" >> "$GITHUB_OUTPUT"; echo "unreleased generator change: preview only"
       - name: Build site
         working-directory: website
         run: bun run build
+        env:
+          # previews label the engine with the commit they run
+          ENGINE_VERSION_SUFFIX: ${{ steps.gate.outputs.production != 'true' && format('+{0}', steps.gate.outputs.short) || '' }}
       - name: Type-check
         working-directory: website
         run: bun run check
@@ -55,7 +99,7 @@ jobs:
         working-directory: website
         run: bun run test
       - name: Deploy to production
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        if: steps.gate.outputs.production == 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -63,7 +107,16 @@ jobs:
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           workingDirectory: website
           command: deploy
-      - name: Upload preview version
+      - name: Upload preview version (main)
+        if: github.event_name == 'push' && steps.gate.outputs.production == 'false'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          workingDirectory: website
+          command: versions upload --tag main-${{ steps.gate.outputs.short }} --message "main@${{ steps.gate.outputs.short }}"
+      - name: Upload preview version (PR)
         if: github.event_name == 'pull_request'
         uses: cloudflare/wrangler-action@v3
         with:
