@@ -1,0 +1,14 @@
+{
+  "code": "E_UNSUPPORTED_SEMANTIC",
+  "message": "Unsupported OpenAPI semantic shape: parameter bad for GET /b uses unsupported location bogus_location.. See the supported subset documented in README.md ('Out of Scope' section).",
+  "path": "test/fixtures/warning-then-fatal.openapi.yaml",
+  "warnings": [
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "operationId 'opWithCookieWarning': parameter 'sessionId' uses location 'cookie', which is not supported in the generated service contract and will be omitted.",
+      "path": "test/fixtures/warning-then-fatal.openapi.yaml",
+      "subcode": "unsupported-parameter-location"
+    }
+  ]
+}

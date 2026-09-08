@@ -1,0 +1,52 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/consumer-forms-and-non-json.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Consumer Forms and Non-JSON Responses",
+    "pathCount": 5,
+    "operationCount": 5,
+    "schemaCount": 0
+  },
+  "diagnostics": [
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "requestBody for POST /pets/{petId}/avatar.avatar declares format 'binary', which is currently dropped — the generator emits the base type without format-specific narrowing.",
+      "path": "test/fixtures/consumer-forms-and-non-json.openapi.yaml",
+      "subcode": "format-dropped"
+    },
+    {
+      "code": "E_UNSUPPORTED_SEMANTIC",
+      "severity": "warning",
+      "message": "requestBody for POST /pets/{petId}/avatar.galleries declares format 'binary', which is currently dropped — the generator emits the base type without format-specific narrowing.",
+      "path": "test/fixtures/consumer-forms-and-non-json.openapi.yaml",
+      "subcode": "format-dropped"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest.validate.ts"
+    },
+    {
+      "path": "rest/binary.rest.generated.ts"
+    },
+    {
+      "path": "rest/config.rest.generated.ts"
+    },
+    {
+      "path": "rest/invoice.rest.generated.ts"
+    },
+    {
+      "path": "rest/pet.rest.generated.ts"
+    },
+    {
+      "path": "rest/search.rest.generated.ts"
+    }
+  ]
+}

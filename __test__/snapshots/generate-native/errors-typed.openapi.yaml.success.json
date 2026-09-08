@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/errors-typed.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Errors Typed",
+    "pathCount": 1,
+    "operationCount": 1,
+    "schemaCount": 4
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.generated.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest.validate.ts"
+    },
+    {
+      "path": "rest/pet.rest.generated.ts"
+    }
+  ]
+}

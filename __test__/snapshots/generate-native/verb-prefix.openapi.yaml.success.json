@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/verb-prefix.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "VerbPrefix",
+    "pathCount": 1,
+    "operationCount": 2,
+    "schemaCount": 0
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest.validate.ts"
+    },
+    {
+      "path": "rest/post.rest.generated.ts"
+    }
+  ]
+}

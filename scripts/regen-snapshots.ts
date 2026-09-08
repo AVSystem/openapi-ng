@@ -13,7 +13,8 @@
 //                            every success fixture and so stored once
 //
 // Every fixture in test/fixtures/ must appear in exactly one of the three
-// sets below; the script fails on one that appears in none.
+// sets in scripts/lib/snapshot-layout.ts; the script fails on one that
+// appears in none.
 //
 // Run with: bun run regen-snapshots
 
@@ -25,8 +26,11 @@ import { generate, isGenerateError } from './lib/engine.ts';
 import type { GenerateError, GenerateOptions, GenerateResult } from './lib/engine.ts';
 import {
   BANNER_RE,
+  FAILURE_FIXTURES,
   SNAPSHOT_EMIT,
   STATIC_TEMPLATE_PATHS,
+  SUCCESS_FIXTURES,
+  UNSNAPSHOTTED,
   snapshotDir,
 } from './lib/snapshot-layout.ts';
 
@@ -36,138 +40,15 @@ const snapshots = snapshotDir(repoRoot);
 const staticTemplateDir = path.join(snapshots, 'static-template');
 const staticTemplateIndex = path.join(snapshots, 'static-template.json');
 
-/** One failure snapshot: a fixture, the options it needs, and its label. */
-interface FailureSnapshot {
-  readonly fixture: string;
-  readonly snapshot: string;
-  readonly options?: Partial<GenerateOptions>;
-}
-
 /**
- * Fixtures that generate successfully and whose output is pinned.
- *
- * Ordered as the snapshots directory reads.
- */
-const SUCCESS_FIXTURES: readonly string[] = [
-  'additional-properties-false.openapi.yaml',
-  'additional-properties.openapi.yaml',
-  'allof-composition.openapi.yaml',
-  'anchor-modest.openapi.yaml',
-  'bench-large.openapi.yaml',
-  'body-multipart-mixed-fields.openapi.yaml',
-  'body-multipart-ref-to-named-object.openapi.yaml',
-  'body-urlencoded-scalar-and-array.openapi.yaml',
-  'circular-allof.openapi.yaml',
-  'deprecated-fields.openapi.yaml',
-  'discriminated-union.openapi.yaml',
-  'discriminator-allof.openapi.yaml',
-  'discriminator-mapping.openapi.yaml',
-  'empty-shapes.openapi.yaml',
-  'header-param.openapi.yaml',
-  'inline-model.openapi.yaml',
-  'jsdoc-descriptions.openapi.yaml',
-  'large-enum.openapi.yaml',
-  'multi-tag-operation.openapi.yaml',
-  'multi-warning.openapi.yaml',
-  'nullable-oneof.openapi.yaml',
-  'nullable-optional.openapi.yaml',
-  'oneof-anyof-composition.openapi.json',
-  'oneof-anyof-composition.openapi.yaml',
-  'petstore-minimal.openapi.json',
-  'petstore-minimal.openapi.yaml',
-  'petstore-rich.openapi.json',
-  'petstore-rich.openapi.yaml',
-  'recursive-model.openapi.yaml',
-  'recursive-oneof.openapi.yaml',
-  'reserved-prop-names.openapi.yaml',
-  'response-204-no-content.openapi.yaml',
-  'response-blob-via-pdf.openapi.yaml',
-  'response-default-fallback.openapi.yaml',
-  'response-octet-stream.openapi.yaml',
-  'response-problem-json.openapi.yaml',
-  'response-text-via-text-plain.openapi.yaml',
-  'security-schemes.openapi.yaml',
-  'single-entry-composition.openapi.yaml',
-  'string-formats.openapi.yaml',
-];
-
-/**
- * Fixtures with no snapshot. Every entry but `malformed.yaml` is a gap to
- * close; that one's wording follows the YAML parser's own line and column
- * output, which the spec asserts by regex.
- */
-const UNSNAPSHOTTED: readonly string[] = [
-  'malformed.yaml',
-  // TODO: these generate or fail deterministically and should be pinned.
-  'bench-multi-tag.openapi.yaml',
-  'consumer-forms-and-non-json.openapi.yaml',
-  'cookie-param.openapi.yaml',
-  'duplicate-operation-id.openapi.yaml',
-  'duplicate-schema-name.openapi.yaml',
-  'errors-typed.openapi.yaml',
-  'missing-tag.openapi.yaml',
-  'unsupported-trace.openapi.yaml',
-  'verb-prefix.openapi.yaml',
-  'warning-then-fatal.openapi.yaml',
-];
-
-const PINNED_FAILURE_FIXTURES: readonly string[] = [
-  // One entry per diagnostic the pipeline can end on, so a renamed
-  // subcode or a reject path rerouted through a different arm shows up
-  // here rather than in a consumer's generated output.
-  'empty-parameter.openapi.yaml',
-  'inline-parameter.openapi.yaml',
-  'invalid-enum-type.openapi.yaml',
-  'invalid-enum-value.openapi.json',
-  'unsupported-root.yaml',
-  'unsupported-semantic.openapi.yaml',
-  'additional-properties-boolean.openapi.yaml',
-  'external-ref.openapi.yaml',
-  'field-collision.openapi.yaml',
-  'deep-nested-allof.openapi.yaml',
-  'discriminator-missing-property.openapi.yaml',
-  'discriminator-mapping-external-ref.openapi.yaml',
-  'unbalanced-path-template.openapi.yaml',
-  'anchor-fanout.openapi.yaml',
-  'body-multi-content.openapi.yaml',
-  'body-content-type-xml.openapi.yaml',
-  'body-multipart-nested-object.openapi.yaml',
-  'body-multipart-composed-field.openapi.yaml',
-  'body-multipart-non-object.openapi.yaml',
-  'body-multipart-open-schema.openapi.yaml',
-  'body-urlencoded-binary-field.openapi.yaml',
-  'body-urlencoded-nested-object.openapi.yaml',
-];
-
-/** Failure snapshots that need options the default run does not pass. */
-const PARAMETERISED_FAILURES: readonly FailureSnapshot[] = [
-  // The mapped-type validator refuses a schema the spec does not declare.
-  {
-    fixture: 'petstore-rich.openapi.yaml',
-    snapshot: 'petstore-rich.openapi.yaml.invalid-mapped-type.failure.json',
-    options: {
-      mappedTypes: [{ schema: 'MissingSchema', import: '@demo/x', type: 'Missing' }],
-    },
-  },
-];
-
-const FAILURE_SNAPSHOTS: readonly FailureSnapshot[] = [
-  ...PINNED_FAILURE_FIXTURES.map(fixture => ({
-    fixture,
-    snapshot: `${fixture}.failure.json`,
-  })),
-  ...PARAMETERISED_FAILURES,
-];
-
-/**
- * Fails when a fixture on disk is in none of the three sets, so a new
+ * Fails when a fixture on disk appears in none of the three sets, so a new
  * fixture must be classified rather than silently ignored.
  */
 function assertEveryFixtureIsClassified(): void {
   const classified = new Set<string>([
-    ...SUCCESS_FIXTURES,
+    ...SUCCESS_FIXTURES.map(entry => entry.fixture),
+    ...FAILURE_FIXTURES.map(entry => entry.fixture),
     ...UNSNAPSHOTTED,
-    ...FAILURE_SNAPSHOTS.map(entry => entry.fixture),
   ]);
   const unclassified = fs
     .readdirSync(fixturesDir)
@@ -176,8 +57,8 @@ function assertEveryFixtureIsClassified(): void {
 
   if (unclassified.length > 0) {
     console.error(
-      `regen-snapshots: ${unclassified.length} fixture(s) are in none of ` +
-        'SUCCESS_FIXTURES, FAILURE_SNAPSHOTS or UNSNAPSHOTTED:\n' +
+      `regen-snapshots: ${unclassified.length} fixture(s) appear in none of ` +
+        'SUCCESS_FIXTURES, FAILURE_FIXTURES or UNSNAPSHOTTED:\n' +
         unclassified.map(name => `  ${name}`).join('\n'),
     );
     process.exit(1);
@@ -294,14 +175,14 @@ function run(
 assertEveryFixtureIsClassified();
 
 let staticTemplatesWritten = false;
-for (const fixture of SUCCESS_FIXTURES) {
+for (const { fixture } of SUCCESS_FIXTURES) {
   let result;
   try {
     result = await run(fixture);
   } catch (error) {
     console.error(
       `FAIL: ${fixture} was expected to generate but failed with ` +
-        `${asGenerateError(error, fixture).code}. Add it to FAILURE_SNAPSHOTS, or fix the fixture.`,
+        `${asGenerateError(error, fixture).code}. Add it to FAILURE_FIXTURES, or fix the fixture.`,
     );
     process.exitCode = 1;
     continue;
@@ -313,7 +194,7 @@ for (const fixture of SUCCESS_FIXTURES) {
   writeSuccessSnapshot(fixture, result);
 }
 
-for (const { fixture, snapshot, options } of FAILURE_SNAPSHOTS) {
+for (const { fixture, snapshot, options } of FAILURE_FIXTURES) {
   try {
     await run(fixture, options);
     console.warn(`SKIP: ${fixture} (${snapshot}) succeeded — failure snapshot not regenerated`);
