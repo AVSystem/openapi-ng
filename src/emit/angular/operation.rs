@@ -4,7 +4,7 @@ use std::fmt::Write as _;
 
 use crate::emit::typescript::{Writer, jsdoc};
 use crate::plan::artifact_plan::{PlannedOperation, ServicePlan};
-use crate::plan::naming::{error_interface_name, request_interface_name};
+use crate::plan::naming::{error_interface_name, operation_file_stem, request_interface_name};
 
 use super::imports::{
   collect_model_type_imports, uses_http_params, write_helper_import, write_model_imports,
@@ -100,9 +100,10 @@ pub(crate) fn emit_operation(operation: &PlannedOperation<'_>) -> String {
     operation.description.as_deref(),
     operation.deprecated,
   );
+  // `@__PURE__` lets bundlers drop operations a barrel import never touches.
   match &local_alias {
-    Some(local) => write!(buffer, "const {local} = ").unwrap(),
-    None => write!(buffer, "export const {name} = ").unwrap(),
+    Some(local) => write!(buffer, "const {local} = /* @__PURE__ */ ").unwrap(),
+    None => write!(buffer, "export const {name} = /* @__PURE__ */ ").unwrap(),
   }
   write_call_site(
     &mut buffer,
@@ -148,28 +149,10 @@ fn needs_alias(name: &str, helper_symbols: &[&str], model_imports: &BTreeSet<&st
 pub(crate) fn emit_operations_barrel(service_plan: &ServicePlan<'_>) -> String {
   let mut buffer = Writer::with_capacity(service_plan.operations.len() * 48 + 16);
   for operation in &service_plan.operations {
-    let path = operation
-      .artifact_path
-      .as_deref()
-      .expect("operation artifact paths are planned for this layout");
-    let file_stem = path
-      .rsplit('/')
-      .next()
-      .and_then(|name| name.strip_suffix(".ts"))
-      .expect("operation artifact paths end in <stem>.ts");
+    let file_stem = operation_file_stem(&operation.method_name);
     wln!(buffer, "export * from './{file_stem}';");
   }
   buffer.into_string()
-}
-
-/// Module specifier by which a file directly under `rest/` imports another
-/// artifact under `rest/`. A directory barrel is imported by its directory:
-/// `rest/pet/index.ts` → `./pet`, `rest/pet/list-pets.ts` → `./pet/list-pets`.
-pub(super) fn sibling_specifier(artifact_path: &str) -> String {
-  let relative = artifact_path.strip_prefix("rest/").unwrap_or(artifact_path);
-  let relative = relative.strip_suffix(".ts").unwrap_or(relative);
-  let relative = relative.strip_suffix("/index").unwrap_or(relative);
-  format!("./{relative}")
 }
 
 #[cfg(test)]
@@ -220,35 +203,35 @@ mod tests {
     let cases: [(PlannedOperation<'_>, &str); 8] = [
       (
         requestful("listPets", &str_ty, &json),
-        "export const listPets = defineOperation<ListPetsParams, string>(\n  'listPets',",
+        "export const listPets = /* @__PURE__ */ defineOperation<ListPetsParams, string>(\n  'listPets',",
       ),
       (
         requestful("download", &str_ty, &ResponseContent::Blob),
-        "export const download = defineOperation.blob<DownloadParams>(",
+        "export const download = /* @__PURE__ */ defineOperation.blob<DownloadParams>(",
       ),
       (
         requestful("rawConfig", &str_ty, &ResponseContent::Text),
-        "export const rawConfig = defineOperation.text<RawConfigParams>(",
+        "export const rawConfig = /* @__PURE__ */ defineOperation.text<RawConfigParams>(",
       ),
       (
         requestful("fetch", &str_ty, &ResponseContent::ArrayBuffer),
-        "export const fetch = defineOperation.arrayBuffer<FetchParams>(",
+        "export const fetch = /* @__PURE__ */ defineOperation.arrayBuffer<FetchParams>(",
       ),
       (
         zero_arg("listPets", &json),
-        "export const listPets = defineOperation.zeroArg<string>(\n  'listPets',",
+        "export const listPets = /* @__PURE__ */ defineOperation.zeroArg<string>(\n  'listPets',",
       ),
       (
         zero_arg("download", &ResponseContent::Blob),
-        "export const download = defineOperation.zeroArg.blob(",
+        "export const download = /* @__PURE__ */ defineOperation.zeroArg.blob(",
       ),
       (
         zero_arg("rawConfig", &ResponseContent::Text),
-        "export const rawConfig = defineOperation.zeroArg.text(",
+        "export const rawConfig = /* @__PURE__ */ defineOperation.zeroArg.text(",
       ),
       (
         zero_arg("fetch", &ResponseContent::ArrayBuffer),
-        "export const fetch = defineOperation.zeroArg.arrayBuffer(",
+        "export const fetch = /* @__PURE__ */ defineOperation.zeroArg.arrayBuffer(",
       ),
     ];
     for (operation, expected) in &cases {
@@ -304,7 +287,9 @@ mod tests {
     let void = ResponseContent::Json(None);
     let out = emit_operation(&requestful("delete", &str_ty, &void));
 
-    assert!(out.contains("const delete_ = defineOperation<DeleteParams, void>(\n  'delete',"));
+    assert!(out.contains(
+      "const delete_ = /* @__PURE__ */ defineOperation<DeleteParams, void>(\n  'delete',"
+    ));
     assert!(out.contains("\nexport { delete_ as delete };\n"));
     assert!(!out.contains("export const delete"));
   }
@@ -342,7 +327,7 @@ mod tests {
     let out = emit_operation(&zero_arg("Pet", &json));
 
     assert!(out.contains("import type { Pet } from '../../model';"));
-    assert!(out.contains("const Pet_ = defineOperation.zeroArg<Pet>("));
+    assert!(out.contains("const Pet_ = /* @__PURE__ */ defineOperation.zeroArg<Pet>("));
     assert!(out.contains("export { Pet_ as Pet };"));
   }
 
@@ -375,15 +360,6 @@ mod tests {
     assert_eq!(
       emit_operations_barrel(&plan),
       "export * from './delete';\nexport * from './list-pets';\n"
-    );
-  }
-
-  #[test]
-  fn sibling_specifier_strips_rest_prefix_extension_and_index() {
-    assert_eq!(sibling_specifier("rest/pet/index.ts"), "./pet");
-    assert_eq!(
-      sibling_specifier("rest/pet-order/list-pets.ts"),
-      "./pet-order/list-pets"
     );
   }
 }

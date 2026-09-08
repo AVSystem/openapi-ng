@@ -67,7 +67,11 @@ pub struct GenerateConfig {
   pub response_type_mapping: Vec<ResponseTypeMapping>,
   pub naming_options: Option<NamingOptions>,
   pub naming: crate::plan::naming::NamingConfig,
-  pub layout: Layout,
+  pub layout: BTreeSet<Layout>,
+}
+
+pub(crate) fn default_layout() -> BTreeSet<Layout> {
+  BTreeSet::from([Layout::Services])
 }
 
 pub(crate) fn validate_generate_config(
@@ -139,20 +143,19 @@ fn validate_emit_targets(
   Ok(())
 }
 
-// Only the angular emitter reads `layout`; a non-default value with no
+// Only the angular emitter reads `layout`; standalone operations with no
 // angular output would be silently ignored otherwise.
 fn validate_layout(config: &GenerateConfig, reporter: &Reporter<'_>) -> Result<(), Diagnostic> {
-  if config.layout != Layout::Services && !config.emit.contains(&EmitTarget::Angular) {
+  if config.layout.is_empty() {
     return Err(reporter.error(
       DiagnosticCode::InvalidOption,
-      format!(
-        "layout '{}' requires the 'angular' emit target.",
-        match config.layout {
-          Layout::Services => "services",
-          Layout::Operations => "operations",
-          Layout::Both => "both",
-        }
-      ),
+      "layout must include at least one entry ('services' or 'operations').",
+    ));
+  }
+  if config.layout.contains(&Layout::Operations) && !config.emit.contains(&EmitTarget::Angular) {
+    return Err(reporter.error(
+      DiagnosticCode::InvalidOption,
+      "layout 'operations' requires the 'angular' emit target.",
     ));
   }
   Ok(())
@@ -381,7 +384,7 @@ mod tests {
       response_type_mapping: Vec::new(),
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
-      layout: crate::bindings::Layout::default(),
+      layout: crate::options::default_layout(),
     }
   }
 

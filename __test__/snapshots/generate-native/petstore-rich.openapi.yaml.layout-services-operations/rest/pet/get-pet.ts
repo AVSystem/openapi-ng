@@ -1,7 +1,7 @@
 import { defineOperation } from '../../rest.util';
-import type { Pet, Problem } from '../../model';
+import type { Pet, PetId } from '../../model';
 
-export const getPet = defineOperation<GetPetParams, Pet>(
+export const getPet = /* @__PURE__ */ defineOperation<GetPetParams, Pet>(
   'getPet',
   (request: GetPetParams) => {
     const { petId } = request;
@@ -13,9 +13,5 @@ export const getPet = defineOperation<GetPetParams, Pet>(
 );
 
 export interface GetPetParams {
-  petId: string;
-}
-
-export interface GetPetError {
-  404: Problem;
+  petId: PetId;
 }

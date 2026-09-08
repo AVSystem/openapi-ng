@@ -19,7 +19,7 @@ openapi-ng generate --input <path> [options]
 | `--emit <targets>`     |       | Comma-separated emit list: `models,angular` (repeatable). Default: `models,angular`. `'angular'` auto-includes `'models'`.                                             |
 | `--verbose`            |       | Print warning diagnostics with codes                                                                                                                                   |
 | `--mapped-type <spec>` |       | Replace a schema with an external type import (repeatable). Format: `schema:import:type[:alias]` — see [Mapped types](/guides/configuration/#mapped-type-spec-format). |
-| `--layout <kind>`      |       | Angular output shape: `services` (default), `operations`, or `both` — see [Layout](/guides/configuration/#layout).                                                     |
+| `--layout <layouts>`   |       | Comma-separated Angular layout list: `services,operations` (repeatable). Default: `services` — see [Layout](/guides/configuration/#layout).                            |
 | `--config <path>`      | `-c`  | Path to a config file (overrides auto-discovery — see [Configuration](/guides/configuration/))                                                                         |
 
 ### URL inputs
@@ -50,9 +50,8 @@ is `yaml`. `--format ts` writes `openapi-ng.config.mts` (with a
 `defineConfig` import and a commented `naming.parse` RegExp example);
 `--format js` writes `openapi-ng.config.mjs`. Both pick the `.m*`
 extension on purpose: it forces ESM, avoiding Node's CJS-first parse
-
-- ESM-reparse penalty under a typeless `package.json`, and keeps the
-  config independent of `package.json#type` mutations.
+plus ESM-reparse penalty under a typeless `package.json`, and keeps the
+config independent of `package.json#type` mutations.
 
 Aborts (no overwrite) if any of the eight discoverable config files
 already exists in the current directory.

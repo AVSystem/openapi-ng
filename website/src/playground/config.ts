@@ -15,8 +15,9 @@ export type ParsedConfig =
 export const DEFAULT_CONFIG = `{
   "emit": ["models", "angular"],
 
-  // Angular output shape: "services" | "operations" | "both"
-  // "layout": "services",
+  // Angular output shape: "services" (per-tag classes), "operations"
+  // (one file per operation), or both
+  // "layout": ["services"],
 
   // External TypeScript types standing in for schemas,
   // e.g. { "schema": "GeoFeature", "import": "geojson", "type": "Feature", "alias": "Geo" }

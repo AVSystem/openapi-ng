@@ -69,7 +69,7 @@ export interface OperationRequestOptions {
 // (fixed per requestFactory variant). Structurally compatible with
 // HttpClient.request(method, url, options) so the runtime spread doesn't
 // need a Parameters<…>[2] cast. `injector` is consumed by the runtime and
-// never reaches HttpClient.
+// never reaches HttpClient; when given it wins over a `withInjector()` binding.
 export type ObservableOptions = {
   injector?: Injector;
   context?: HttpContext;

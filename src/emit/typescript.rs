@@ -224,11 +224,15 @@ pub(crate) fn safe_property_name(name: &str) -> Cow<'_, str> {
 /// line is added (after the description body if both are present) so the
 /// emitted output surfaces the deprecation marker to IDE tooltips and
 /// linters at the call site.
+pub(crate) fn has_jsdoc(description: Option<&str>, deprecated: bool) -> bool {
+  deprecated || description.is_some_and(|text| !text.trim_end().is_empty())
+}
+
 pub(crate) fn jsdoc(out: &mut Writer, description: Option<&str>, deprecated: bool) {
-  let trimmed = description.map(str::trim_end).filter(|s| !s.is_empty());
-  if trimmed.is_none() && !deprecated {
+  if !has_jsdoc(description, deprecated) {
     return;
   }
+  let trimmed = description.map(str::trim_end).filter(|s| !s.is_empty());
   out.line("/**");
   if let Some(text) = trimmed {
     for line in text.lines() {

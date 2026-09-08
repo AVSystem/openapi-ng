@@ -76,10 +76,10 @@ export interface GenerateOptions {
   responseTypeMapping?: Array<ResponseTypeMapping>
   naming?: NamingConfig
   /**
-   * Angular output layout. Defaults to `services`; only meaningful with
-   * the `angular` emit target.
+   * Angular output layouts. Defaults to `['services']`; only meaningful
+   * with the `angular` emit target.
    */
-  layout?: Layout
+  layout?: Array<Layout>
 }
 
 export interface GenerateResult {
@@ -129,14 +129,14 @@ export declare const enum InputFormat {
 }
 
 /**
- * Angular output layout: the per-tag class (`services`), one file per
- * operation plus a barrel (`operations`), or both.
+ * One Angular output layout: the per-tag class (`services`) or one file
+ * per operation plus a barrel (`operations`). Listing both emits the
+ * classes on top of the operation files.
  */
-export type Layout = 'services' | 'operations' | 'both';
+export type Layout = 'services' | 'operations';
 export declare const Layout: {
   readonly Services: 'services';
   readonly Operations: 'operations';
-  readonly Both: 'both';
 };
 
 /**
@@ -362,7 +362,7 @@ export interface Config {
   mappedTypes?: Array<MappedType>;
   responseTypeMapping?: Array<ResponseTypeMapping>;
   naming?: NamingConfig;
-  layout?: Layout;
+  layout?: Array<Layout>;
 }
 
 /**

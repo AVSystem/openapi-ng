@@ -248,3 +248,6 @@ website/test-results/
 website/playwright-report/
 
 stackblitz/.angular/
+
+# Local Claude Code session state.
+.claude/

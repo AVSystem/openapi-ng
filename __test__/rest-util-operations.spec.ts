@@ -1,13 +1,16 @@
-// Runtime behaviour of the standalone-operation surface in
-// `templates/angular/rest.util.ts`, run against the template source
-// itself. `@angular/common/http` is partially compiled, so the JIT
-// compiler must be loaded first; `Injector.create` and
-// `runInInjectionContext` need no platform or DOM. `.resource()` is not
-// exercised here — `httpResource` needs an environment injector — its
-// wiring is covered by the angular-consumer type proofs.
+// Runs the standalone-operation runtime against the template source under
+// Node. `@angular/common/http` is partially compiled, so the JIT compiler
+// must load first.
 import '@angular/compiler';
 import test from 'ava';
-import { Injector, runInInjectionContext } from '@angular/core';
+import {
+  Injector,
+  PendingTasks,
+  runInInjectionContext,
+  ɵChangeDetectionScheduler as ChangeDetectionScheduler,
+  ɵEffectScheduler as EffectScheduler,
+} from '@angular/core';
+import { Observable } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import {
   OPENAPI_NG_BASE_PATH,
@@ -102,6 +105,19 @@ test('standalone .observable() inside an injection context needs no injector', t
   t.is(calls[0].options.responseType, 'blob');
 });
 
+test('an explicit { injector } wins over the withInjector() binding', t => {
+  const boundCalls: RecordedCall[] = [];
+  const explicitCalls: RecordedCall[] = [];
+  const bound = listPets.withInjector(injectorWith('/bound', boundCalls));
+  const explicit = injectorWith('/explicit', explicitCalls);
+
+  bound.observable({}, { injector: explicit });
+
+  t.deepEqual(boundCalls, []);
+  t.is(explicitCalls.length, 1);
+  t.is(explicitCalls[0].url, '/explicit/pets');
+});
+
 test('a child injector base path overrides the parent one', t => {
   const calls: RecordedCall[] = [];
   const parent = injectorWith('/parent', calls);
@@ -132,6 +148,51 @@ test('.request() with { injector } and the bound form prepend the base path', t 
   t.is(listPets.withInjector(injector).request({}).url, '/api/pets');
   t.is(ping.request({ injector }).url, '/api/ping');
   t.is(ping.withInjector(injector).request().url, '/api/ping');
+});
+
+test('a bound .request() with an explicit { injector } uses that injector base path', t => {
+  const bound = listPets.withInjector(injectorWith('/bound', []));
+  const explicit = injectorWith('/explicit', []);
+
+  t.is(bound.request({}, { injector: explicit }).url, '/explicit/pets');
+  t.is(bound.request({}).url, '/bound/pets');
+});
+
+test('detached methods keep working', t => {
+  const calls: RecordedCall[] = [];
+  const { request, observable } = listPets.withInjector(injectorWith('/api', calls));
+
+  t.is(request({}).url, '/api/pets');
+  observable({ status: 'sold' });
+  t.is(calls[0].url, '/api/pets');
+});
+
+test('a bound .resource() lives in the calling injection context, not the bound one', t => {
+  // A static injector has no root scope, so httpResource's root-provided
+  // scheduling services need explicit stand-ins.
+  const root = Injector.create({
+    providers: [
+      { provide: HttpClient, useValue: { request: () => new Observable(() => {}) } },
+      { provide: OPENAPI_NG_BASE_PATH, useValue: '/api' },
+      {
+        provide: EffectScheduler,
+        useValue: { add() {}, schedule() {}, remove() {}, flush() {} },
+      },
+      { provide: PendingTasks, useValue: { add: () => () => {} } },
+      {
+        provide: ChangeDetectionScheduler,
+        useValue: { notify() {}, runningTick: false },
+      },
+    ],
+  });
+  const bound = listPets.withInjector(root);
+  const scope = Injector.create({ parent: root, providers: [] });
+
+  const resource = runInInjectionContext(scope, () => bound.resource(() => ({})));
+  t.is(resource.status(), 'loading');
+
+  scope.destroy();
+  t.is(resource.status(), 'idle');
 });
 
 test('a bound operation without a configured base path leaves the URL untouched', t => {

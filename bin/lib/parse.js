@@ -9,9 +9,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const VALID_EMIT_TARGETS = Object.freeze(new Set(['models', 'angular']));
-const DEFAULT_EMIT = Object.freeze(['models', 'angular']);
-const VALID_LAYOUTS = Object.freeze(new Set(['services', 'operations', 'both']));
+const {
+  DEFAULT_EMIT,
+  VALID_EMIT: VALID_EMIT_TARGETS,
+  VALID_LAYOUTS,
+} = require('../../lib/wrapper-core.js');
 
 const VALID_INIT_FORMATS = Object.freeze(new Set(['yaml', 'json', 'ts', 'js']));
 
@@ -32,12 +34,11 @@ function requireValue(argv, i, flagName) {
   return value;
 }
 
-// Normalize one user-supplied emit list (CLI comma-string or YAML
-// array) into a deduped array of recognised targets. Unknown entries
-// fail fast with a config-file hint.
-function normalizeEmit(value) {
+// CLI comma-string or YAML array; null means "not set" so the Rust default applies.
+function normalizeList(value, { key, label, allowed }) {
   if (value === null || value === undefined) return null;
 
+  const names = Array.from(allowed);
   let items;
   if (Array.isArray(value)) {
     items = value.map(v => String(v).trim()).filter(Boolean);
@@ -48,31 +49,31 @@ function normalizeEmit(value) {
       .filter(Boolean);
   } else {
     throw new Error(
-      `Invalid emit value: expected an array (YAML 'emit: [models, angular]') ` +
-        `or comma-separated string ('--emit models,angular'); got ${typeof value}.`,
+      `Invalid ${key} value: expected an array (YAML '${key}: [${names.join(', ')}]') ` +
+        `or comma-separated string ('--${key} ${names.join(',')}'); got ${typeof value}.`,
     );
   }
 
+  const quoted = names.map(name => `'${name}'`).join(', ');
   for (const item of items) {
-    if (!VALID_EMIT_TARGETS.has(item)) {
-      throw new Error(`Unknown emit target: '${item}'. Allowed: 'models', 'angular'.`);
+    if (!allowed.has(item)) {
+      throw new Error(`Unknown ${label}: '${item}'. Allowed: ${quoted}.`);
     }
   }
 
   return Array.from(new Set(items));
 }
 
-// Normalize one user-supplied layout (CLI flag or config key). Unknown
-// values fail fast; null means "not set" so the Rust default applies.
+function normalizeEmit(value) {
+  return normalizeList(value, {
+    key: 'emit',
+    label: 'emit target',
+    allowed: VALID_EMIT_TARGETS,
+  });
+}
+
 function normalizeLayout(value) {
-  if (value === null || value === undefined) return null;
-  const item = String(value).trim();
-  if (!VALID_LAYOUTS.has(item)) {
-    throw new Error(
-      `Unknown layout: '${item}'. Allowed: 'services', 'operations', 'both'.`,
-    );
-  }
-  return item;
+  return normalizeList(value, { key: 'layout', label: 'layout', allowed: VALID_LAYOUTS });
 }
 
 function parseMappedType(value) {
@@ -394,7 +395,7 @@ function parseArgs(argv) {
   let verbose = null;
   const emitTokens = [];
   const mappedTypes = [];
-  let layout = null;
+  const layoutTokens = [];
 
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index];
@@ -436,7 +437,7 @@ function parseArgs(argv) {
     }
 
     if (token === '--layout') {
-      layout = normalizeLayout(requireValue(rest, index, '--layout'));
+      layoutTokens.push(requireValue(rest, index, '--layout'));
       index += 1;
       continue;
     }
@@ -447,6 +448,7 @@ function parseArgs(argv) {
   // Normalise eagerly so unknown emit targets fail at parse time rather
   // than at validate time inside the Rust binding.
   const emit = emitTokens.length > 0 ? normalizeEmit(emitTokens.join(',')) : null;
+  const layout = layoutTokens.length > 0 ? normalizeLayout(layoutTokens.join(',')) : null;
 
   return {
     kind: 'generate',

@@ -94,20 +94,19 @@ pub struct GenerateOptions {
   /// when picking how a successful response body is decoded.
   pub response_type_mapping: Option<Vec<ResponseTypeMapping>>,
   pub naming: Option<NamingOptions>,
-  /// Angular output layout. Defaults to `services`; only meaningful with
-  /// the `angular` emit target.
-  pub layout: Option<Layout>,
+  /// Angular output layouts. Defaults to `['services']`; only meaningful
+  /// with the `angular` emit target.
+  pub layout: Option<Vec<Layout>>,
 }
 
-/// Angular output layout: the per-tag class (`services`), one file per
-/// operation plus a barrel (`operations`), or both.
+/// One Angular output layout: the per-tag class (`services`) or one file
+/// per operation plus a barrel (`operations`). Listing both emits the
+/// classes on top of the operation files.
 #[napi(string_enum = "lowercase")]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Layout {
-  #[default]
   Services,
   Operations,
-  Both,
 }
 
 /// Explicit decoder selection. Skips both extension-based detection and
@@ -202,7 +201,11 @@ impl From<GenerateOptions> for GenerateConfig {
       response_type_mapping: value.response_type_mapping.unwrap_or_default(),
       naming_options: value.naming,
       naming: crate::plan::naming::NamingConfig::default(),
-      layout: value.layout.unwrap_or_default(),
+      layout: value
+        .layout
+        .map_or_else(crate::options::default_layout, |layouts| {
+          layouts.into_iter().collect()
+        }),
     }
   }
 }

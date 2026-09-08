@@ -63,6 +63,11 @@ Omit `outputPath` to keep the result entirely in memory.
 | Forms validation  | `rest.validate.ts`              | `validateRest` helper for signal-forms async validation (optional peer) |
 | Angular services  | `rest/{tag}.rest.ts`            | `@Injectable` service classes grouped by OpenAPI tag                    |
 
+With `operations` in `layout` each service gives way to one file per
+operation under `rest/{tag}/` plus a barrel `rest/{tag}/index.ts`; list
+`services` as well to keep the classes. See
+[Layout](/guides/configuration/#layout).
+
 See [Angular generator](/guides/angular/) for the shape of the emitted
 services and example component usage.
 

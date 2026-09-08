@@ -1,0 +1,6 @@
+{
+  "code": "E_POLICY_VIOLATION",
+  "message": "methodName 'index' for operation GET /pets (operationId=index) cannot be a standalone operation: its file rest/pet/index.ts is the barrel of group 'Pet'. Adjust naming.methodName or use layout 'services'.",
+  "path": "test/fixtures/index-method-name.openapi.yaml",
+  "warnings": []
+}

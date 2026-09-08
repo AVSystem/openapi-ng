@@ -1,7 +1,6 @@
-// Type-proof for the `both` layout: standalone operations, the bound form,
+// Type-proof for the `services` + `operations` layout, generated from
+// reserved-method-name.openapi.yaml: standalone operations, the bound form,
 // the record helper, the barrel namespace and the aliased reserved name.
-// Same declare-/expectType-based style as service-proof.ts: tsc --noEmit
-// gate only, no runtime. Generated from reserved-method-name.openapi.yaml.
 
 import type { HttpResourceRef } from '@angular/common/http';
 import { Injector, inject } from '@angular/core';

@@ -90,11 +90,16 @@ at codegen with `E_POLICY_VIOLATION` / `field-collision`.
 
 ## Standalone operations
 
-- **An operation cannot be named `default`** under `layout:
-'operations'` or `'both'`: `export *` never forwards a default
-  export, so the barrel would drop it. Rejected with
-  `E_POLICY_VIOLATION` / `reserved-identifier`; adjust
-  `naming.methodName`.
+- **An operation cannot be named `default` or `index`** with
+  `operations` in `layout`: `export *` never forwards a
+  default export, so the barrel would drop `default`, and `index` would
+  overwrite the barrel file itself. Rejected with `E_POLICY_VIOLATION`
+  / `reserved-identifier`; adjust `naming.methodName`.
+- **Two method names that kebab-case to one file name** (`delete` and
+  `delete_`) would overwrite each other, as would two groups that do
+  (`Pet` and `pet` under a `naming.group` rule without a case), and a
+  method name with no letters or digits (`$`) has no file name at all.
+  All three are rejected with `E_POLICY_VIOLATION` / `naming-resolution`.
 - **Reserved words such as `delete`** are exported under their real
   name through a local alias (`const delete_ = …; export { delete_ as
 delete }`). The barrel namespace (`ops.delete`) needs nothing extra;

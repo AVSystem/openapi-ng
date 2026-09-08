@@ -103,7 +103,6 @@ content = rewriteConstEnum(content, 'EmitTarget', [
 content = rewriteConstEnum(content, 'Layout', [
   ['Services', 'services'],
   ['Operations', 'operations'],
-  ['Both', 'both'],
 ]);
 
 // Mark `GenerateOptions.emit` optional on the published surface. The JS

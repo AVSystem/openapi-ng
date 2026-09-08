@@ -276,10 +276,11 @@ const successFixtures = [
   // so the response is emitted as a typed JSON shape via the default
   // `requestFactory<…>(…)` (no non-JSON variant).
   'response-problem-json.openapi.yaml',
-  // An operation named `default` is a legal class property under the
-  // default layout; the `operations` layout rejects it (see the
-  // reserved-identifier failure snapshot below).
+  // Operations named `default` and `index` are legal class properties
+  // under the default layout; the `operations` layout rejects them (see
+  // the reserved-identifier failure snapshots below).
   'default-method-name.openapi.yaml',
+  'index-method-name.openapi.yaml',
 ] as const;
 
 // Option-parameterised success cases. `label` names the snapshot files:
@@ -295,24 +296,24 @@ const layoutCases: readonly SuccessCase[] = [
   {
     fixture: 'petstore-rich.openapi.yaml',
     label: 'petstore-rich.openapi.yaml.layout-operations',
-    options: { layout: 'operations' },
+    options: { layout: ['operations'] },
   },
   {
     fixture: 'petstore-rich.openapi.yaml',
-    label: 'petstore-rich.openapi.yaml.layout-both',
-    options: { layout: 'both' },
+    label: 'petstore-rich.openapi.yaml.layout-services-operations',
+    options: { layout: ['services', 'operations'] },
   },
   {
     fixture: 'header-param.openapi.yaml',
     label: 'header-param.openapi.yaml.layout-operations',
-    options: { layout: 'operations' },
+    options: { layout: ['operations'] },
   },
   // `delete` is a reserved word: the operation file declares `delete_`
   // and exports it under the real name; the barrel forwards it.
   {
     fixture: 'reserved-method-name.openapi.yaml',
-    label: 'reserved-method-name.openapi.yaml.layout-both',
-    options: { layout: 'both' },
+    label: 'reserved-method-name.openapi.yaml.layout-services-operations',
+    options: { layout: ['services', 'operations'] },
   },
 ];
 
@@ -501,8 +502,16 @@ test('generate preserves stable failure shape for malformed.yaml (regex message)
 
 test('generate preserves full failure payload snapshot for a default-named operation under layout operations', async t => {
   t.deepEqual(
-    await failurePayload('default-method-name.openapi.yaml', { layout: 'operations' }),
+    await failurePayload('default-method-name.openapi.yaml', { layout: ['operations'] }),
     readJsonSnapshot('default-method-name.openapi.yaml.layout-operations.failure.json'),
+  );
+});
+
+// `index.ts` is the barrel: an operation file of that name would overwrite it.
+test('generate preserves full failure payload snapshot for an index-named operation under layout operations', async t => {
+  t.deepEqual(
+    await failurePayload('index-method-name.openapi.yaml', { layout: ['operations'] }),
+    readJsonSnapshot('index-method-name.openapi.yaml.layout-operations.failure.json'),
   );
 });
 

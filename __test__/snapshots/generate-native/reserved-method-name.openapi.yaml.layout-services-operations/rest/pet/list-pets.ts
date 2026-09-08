@@ -4,7 +4,7 @@ import type { PetList } from '../../model';
 /**
  * List pets, optionally filtered by status.
  */
-export const listPets = defineOperation<ListPetsParams, PetList>(
+export const listPets = /* @__PURE__ */ defineOperation<ListPetsParams, PetList>(
   'listPets',
   (request: ListPetsParams) => {
     const { status } = request;

@@ -791,7 +791,7 @@ test('cli generate --help describes --input accepting path or url', t => {
   t.true(result.stdout.includes('path|url'));
 });
 
-test('cli generate --layout both writes operation files, the barrel and the class', t => {
+test('cli generate --layout services,operations writes operation files, the barrel and the class', t => {
   withTempDir(outputPath => {
     const result = runCli([
       'generate',
@@ -800,7 +800,7 @@ test('cli generate --layout both writes operation files, the barrel and the clas
       '--output',
       outputPath,
       '--layout',
-      'both',
+      'services,operations',
     ]);
     t.is(result.status, 0);
     t.is(result.stderr, '');
@@ -841,7 +841,7 @@ test('cli generate --layout rejects unknown values', t => {
   t.true(result.stderr.includes("Unknown layout: 'flat'"));
 });
 
-test('cli generate --emit models --layout both fails with E_INVALID_OPTION', t => {
+test('cli generate --emit models --layout operations fails with E_INVALID_OPTION', t => {
   const result = runCli([
     'generate',
     '--input',
@@ -849,7 +849,7 @@ test('cli generate --emit models --layout both fails with E_INVALID_OPTION', t =
     '--emit',
     'models',
     '--layout',
-    'both',
+    'operations',
   ]);
   t.not(result.status, 0);
   t.true(result.stderr.includes('E_INVALID_OPTION'));

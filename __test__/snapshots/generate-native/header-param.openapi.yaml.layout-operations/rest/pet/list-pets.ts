@@ -1,6 +1,6 @@
 import { defineOperation } from '../../rest.util';
 
-export const listPets = defineOperation<ListPetsParams, void>(
+export const listPets = /* @__PURE__ */ defineOperation<ListPetsParams, void>(
   'listPets',
   (request: ListPetsParams) => {
     const { headers } = request;

@@ -1704,7 +1704,7 @@ test('generate layout operations emits one file per operation plus a barrel and 
   const result = await generate({
     inputPath: fixture('petstore-minimal.openapi.yaml'),
     emit: [...DEFAULT_EMIT],
-    layout: 'operations',
+    layout: ['operations'],
   });
   t.deepEqual(
     result.artifacts.map(a => a.path),
@@ -1719,7 +1719,9 @@ test('generate layout operations emits one file per operation plus a barrel and 
   );
   const operation = result.artifacts.find(a => a.path === 'rest/pet/list-pets.ts')!;
   t.true(
-    operation.contents.includes('export const listPets = defineOperation.zeroArg<void>('),
+    operation.contents.includes(
+      'export const listPets = /* @__PURE__ */ defineOperation.zeroArg<void>(',
+    ),
   );
   t.true(
     operation.contents.includes("import { defineOperation } from '../../rest.util';"),
@@ -1728,11 +1730,11 @@ test('generate layout operations emits one file per operation plus a barrel and 
   t.true(barrel.contents.endsWith("export * from './list-pets';\n"));
 });
 
-test('generate layout both adds the class built from the barrel', async t => {
+test('generate layout services,operations adds the class built from the barrel', async t => {
   const result = await generate({
     inputPath: fixture('petstore-minimal.openapi.yaml'),
     emit: [...DEFAULT_EMIT],
-    layout: 'both',
+    layout: ['services', 'operations'],
   });
   const paths = result.artifacts.map(a => a.path);
   t.true(paths.includes('rest/pet/list-pets.ts'));
@@ -1751,7 +1753,7 @@ test('generate layout services is the default and matches an explicit services l
   const explicit = await generate({
     inputPath: fixture('petstore-minimal.openapi.yaml'),
     emit: [...DEFAULT_EMIT],
-    layout: 'services',
+    layout: ['services'],
   });
   t.deepEqual(explicit.artifacts, implicit.artifacts);
   t.deepEqual(
@@ -1760,16 +1762,16 @@ test('generate layout services is the default and matches an explicit services l
   );
 });
 
-test('generate rejects a non-default layout without the angular emit target', async t => {
+test('generate rejects the operations layout without the angular emit target', async t => {
   const err = await t.throwsAsync(() =>
     generate({
       inputPath: fixture('petstore-minimal.openapi.yaml'),
       emit: ['models'],
-      layout: 'both',
+      layout: ['services', 'operations'],
     }),
   );
   t.is((err as any).code, 'E_INVALID_OPTION');
-  t.true(err!.message.includes("layout 'both' requires the 'angular' emit target"));
+  t.true(err!.message.includes("layout 'operations' requires the 'angular' emit target"));
 });
 
 test('generate rejects an unknown layout value at the wrapper boundary', async t => {
@@ -1777,12 +1779,37 @@ test('generate rejects an unknown layout value at the wrapper boundary', async t
     generate({
       inputPath: fixture('petstore-minimal.openapi.yaml'),
       emit: [...DEFAULT_EMIT],
-      layout: 'flat' as any,
+      layout: ['flat'] as any,
     }),
   );
   t.is((err as any).code, 'E_INVALID_OPTION');
   t.is((err as any).subcode, 'shape');
-  t.true(err!.message.includes("got 'flat'"));
+  t.true(err!.message.includes("invalid entry 'flat'"));
+});
+
+test('generate rejects a non-array layout at the wrapper boundary', async t => {
+  const err = await t.throwsAsync(() =>
+    generate({
+      inputPath: fixture('petstore-minimal.openapi.yaml'),
+      emit: [...DEFAULT_EMIT],
+      layout: 'operations' as any,
+    }),
+  );
+  t.is((err as any).code, 'E_INVALID_OPTION');
+  t.is((err as any).subcode, 'shape');
+  t.true(err!.message.includes('layout must be an array'));
+});
+
+test('generate rejects an empty layout list', async t => {
+  const err = await t.throwsAsync(() =>
+    generate({
+      inputPath: fixture('petstore-minimal.openapi.yaml'),
+      emit: [...DEFAULT_EMIT],
+      layout: [],
+    }),
+  );
+  t.is((err as any).code, 'E_INVALID_OPTION');
+  t.true(err!.message.includes('layout must include at least one entry'));
 });
 
 test('generate rejects an operation named default under layout operations', async t => {
@@ -1790,7 +1817,7 @@ test('generate rejects an operation named default under layout operations', asyn
     generate({
       inputPath: fixture('default-method-name.openapi.yaml'),
       emit: [...DEFAULT_EMIT],
-      layout: 'operations',
+      layout: ['operations'],
     }),
   );
   t.is((err as any).code, 'E_POLICY_VIOLATION');
@@ -1812,7 +1839,7 @@ test('generate rejects two operations resolving to one method name in a group', 
 });
 
 test.serial(
-  'generate layout both emits standalone operations that type-check in a consumer project',
+  'generate layout services,operations emits standalone operations that type-check in a consumer project',
   async t => {
     resetAngularConsumerGeneratedDir();
 
@@ -1820,7 +1847,7 @@ test.serial(
       inputPath: fixture('reserved-method-name.openapi.yaml'),
       outputPath: angularConsumerGeneratedDir,
       emit: [...DEFAULT_EMIT],
-      layout: 'both',
+      layout: ['services', 'operations'],
     });
 
     execFileSync(

@@ -107,6 +107,7 @@ const successFixtures = [
   'response-text-via-text-plain.openapi.yaml',
   'response-problem-json.openapi.yaml',
   'default-method-name.openapi.yaml',
+  'index-method-name.openapi.yaml',
 ];
 
 // Option-parameterised success cases; `label` names the snapshot files.
@@ -115,22 +116,22 @@ const layoutCases = [
   {
     fixture: 'petstore-rich.openapi.yaml',
     label: 'petstore-rich.openapi.yaml.layout-operations',
-    options: { layout: 'operations' },
+    options: { layout: ['operations'] },
   },
   {
     fixture: 'petstore-rich.openapi.yaml',
-    label: 'petstore-rich.openapi.yaml.layout-both',
-    options: { layout: 'both' },
+    label: 'petstore-rich.openapi.yaml.layout-services-operations',
+    options: { layout: ['services', 'operations'] },
   },
   {
     fixture: 'header-param.openapi.yaml',
     label: 'header-param.openapi.yaml.layout-operations',
-    options: { layout: 'operations' },
+    options: { layout: ['operations'] },
   },
   {
     fixture: 'reserved-method-name.openapi.yaml',
-    label: 'reserved-method-name.openapi.yaml.layout-both',
-    options: { layout: 'both' },
+    label: 'reserved-method-name.openapi.yaml.layout-services-operations',
+    options: { layout: ['services', 'operations'] },
   },
 ];
 
@@ -395,8 +396,13 @@ const parameterisedFailures = [
   },
   {
     fixture: 'default-method-name.openapi.yaml',
-    options: { layout: 'operations' },
+    options: { layout: ['operations'] },
     snapshot: 'default-method-name.openapi.yaml.layout-operations.failure.json',
+  },
+  {
+    fixture: 'index-method-name.openapi.yaml',
+    options: { layout: ['operations'] },
+    snapshot: 'index-method-name.openapi.yaml.layout-operations.failure.json',
   },
 ];
 

@@ -120,42 +120,42 @@ hoist the body schema to a `$ref` so it nests under `body` instead.
 
 ## Standalone operations
 
-Set `layout: 'operations'` (or `--layout operations`) and every
+Set `layout: ['operations']` (or `--layout operations`) and every
 operation becomes its own file under `rest/<group>/`, exporting one
 constant built with `defineOperation`. The builder and the
 `<Op>Params` / `<Op>Error` interfaces are the same text the service
 class carries; only the wrapper differs, and there are no classes:
 
 ```ts
-// rest/pet/list-pets.ts
-import { defineOperation, httpParams } from '../../rest.util';
-import type { PetList } from '../../model';
+// rest/pet/get-pet.ts
+import { defineOperation } from '../../rest.util';
+import type { Pet, PetId } from '../../model';
 
-export const listPets = defineOperation<ListPetsParams, PetList>(
-  'listPets',
-  (request: ListPetsParams) => {
-    const { status } = request;
+export const getPet = /* @__PURE__ */ defineOperation<GetPetParams, Pet>(
+  'getPet',
+  (request: GetPetParams) => {
+    const { petId } = request;
     return {
       method: 'GET',
-      url: `/pets`,
-      params: httpParams({ status }),
+      url: `/pets/${encodeURIComponent(petId)}`,
     };
   },
 );
 
-export interface ListPetsParams {
-  status?: string;
+export interface GetPetParams {
+  petId: PetId;
 }
 ```
 
 `rest/<group>/index.ts` re-exports every file in the
 group. Import it as a namespace and only the members you touch reach
-the bundle:
+the bundle: the `/* @__PURE__ */` annotation lets esbuild (the Angular
+CLI's bundler) and Rollup drop the operations you never read.
 
 ```ts
 import * as pets from './rest/pet';
 
-readonly pets = pets.listPets.resource(() => ({ status: 'available' }));
+readonly pet = pets.getPet.resource(() => ({ petId: this.selectedId() }));
 ```
 
 ### Calling a standalone operation
@@ -167,15 +167,16 @@ the same contract `resource` and `httpResource` follow:
 
 ```ts
 // Field initializer, constructor, guard, validateAsync factory: no injector needed.
-readonly pets = listPets.resource(() => ({ status: this.status() }), { defaultValue: [] });
+readonly pets = listPets.resource({ defaultValue: [] });
 
 // Event handler, effect, rxResource stream: pass the injector.
 readonly #injector = inject(Injector);
-save() {
-  createPet.observable({ body: this.draft() }, { injector: this.#injector }).subscribe();
+update(petId: PetId) {
+  updatePet.observable({ petId, status: 'sold' }, { injector: this.#injector }).subscribe();
 }
 ```
 
+An explicit `{ injector }` also wins over a `withInjector()` binding.
 Calling either outside an injection context without an injector
 throws `openapi-ng: listPets.observable() was called outside an
 injection context` in dev builds, with Angular's `NG0203` attached as
@@ -214,13 +215,13 @@ readonly #api = withInjector({ createPet, deletePet, listPets });
 ```
 
 Pass a literal, not the namespace import: `withInjector(pets)` works
-but retains every operation in the group. To get the whole group,
-inject the class from the `both` layout instead.
+but retains every operation in the group. To get the whole group, list
+`services` in `layout` as well and inject the class instead.
 
-### `layout: 'both'`
+### Both layouts together
 
-Emits the operation files and barrels plus the per-tag classes, each
-property bound from the barrel:
+`layout: ['services', 'operations']` emits the operation files and
+barrels plus the per-tag classes, each property bound from the barrel:
 
 ```ts
 import { Injectable } from '@angular/core';
@@ -237,10 +238,10 @@ export class PetRest {
 export type { DeleteParams, ListPetsParams } from './pet';
 ```
 
-`PetRest.listPets` has the same type under `services` and `both`, and
-the class file re-exports the `Params` / `Error` interfaces, so
-switching layouts changes the file tree and nothing that compiles
-against the class.
+`PetRest.listPets` has the same type with or without `operations` in
+the list, and the class file re-exports the `Params` / `Error`
+interfaces, so adding `operations` changes the file tree and nothing
+that compiles against the class.
 
 ### Reserved names
 
@@ -253,10 +254,12 @@ direct import aliases it:
 import { delete as deletePet } from './rest/pet/delete';
 ```
 
-The one name that cannot be a standalone operation is `default`:
-`export *` never forwards a default export, so the barrel would drop
-it. The generator rejects it with `E_POLICY_VIOLATION` /
-`reserved-identifier` and points at `naming.methodName`.
+Two names cannot be standalone operations: `default`, which the barrel
+would expose as `ops.default`, and `index`, whose file is the barrel
+itself. The generator rejects both with `E_POLICY_VIOLATION` /
+`reserved-identifier` and points at `naming.methodName`. Two method
+names that kebab-case to one file name (`delete` and `delete_`) are
+rejected under `naming-resolution`.
 
 `validateRest` accepts a standalone operation or a bound one as its
 second argument.

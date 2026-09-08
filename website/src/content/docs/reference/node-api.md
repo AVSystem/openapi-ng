@@ -39,7 +39,7 @@ interface GenerateOptions {
   mappedTypes?: Array<MappedType>;
   responseTypeMapping?: Array<ResponseTypeMapping>;
   naming?: NamingConfig;
-  layout?: Layout; // const enum: 'services' | 'operations' | 'both'
+  layout?: Array<Layout>; // const enum: 'services' | 'operations'
 }
 ```
 
@@ -68,7 +68,7 @@ await generate({
 | `mappedTypes`         | Per-schema overrides — point a generated schema at an external import. See the [Configuration guide](/guides/configuration/).                                                                               |
 | `responseTypeMapping` | Per-content-type override for the response decoding kind (`json` / `blob` / `text` / `arrayBuffer`). Matched case-insensitively against the spec's media types. Wires the right `requestFactory.*` variant. |
 | `naming`              | Customise emitted method and group names. See the [Configuration guide](/guides/configuration/).                                                                                                            |
-| `layout`              | Angular output shape: `services` (default, per-tag classes), `operations` (one file per operation plus a barrel), or `both`. See [Layout](/guides/configuration/#layout).                                   |
+| `layout`              | Angular output layouts: `services` (default, per-tag classes) and/or `operations` (one file per operation plus a barrel). See [Layout](/guides/configuration/#layout).                                      |
 
 ### Browser usage
 
@@ -170,7 +170,7 @@ interface Config {
   mappedTypes?: Array<MappedType>;
   responseTypeMapping?: Array<ResponseTypeMapping>;
   naming?: NamingConfig;
-  layout?: Layout;
+  layout?: Array<Layout>;
 }
 ```
 

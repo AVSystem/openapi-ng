@@ -58,7 +58,7 @@ test('nests the operations layout in collapsible directories', async ({ page }) 
   await replaceText(
     page,
     '#pg-config',
-    '{"emit": ["models", "angular"], "layout": "both"}',
+    '{"emit": ["models", "angular"], "layout": ["services", "operations"]}',
   );
   const tree = page.locator('#pg-tree');
   await expect(tree.locator('li[data-path]')).toHaveCount(12);
@@ -77,7 +77,7 @@ test('nests the operations layout in collapsible directories', async ({ page }) 
   await replaceText(
     page,
     '#pg-config',
-    '{"emit": ["models", "angular"], "layout": "operations"}',
+    '{"emit": ["models", "angular"], "layout": ["operations"]}',
   );
   await expect(tree.locator('li[data-path]')).toHaveCount(10);
   await expect(pet.locator('> button')).toHaveAttribute('aria-expanded', 'false');

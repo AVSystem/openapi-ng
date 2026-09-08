@@ -161,19 +161,20 @@ file or the Node API.
 
 ## Layout
 
-`layout` picks the shape of the Angular output. Also available as
-`--layout` on the CLI.
+`layout` lists the shapes the Angular output takes, the same way `emit`
+lists targets. Also available as `--layout services,operations` on the
+CLI (comma-separated, repeatable).
 
-| Value                | Emits                                                                                                  |
+| Entry                | Emits                                                                                                  |
 | -------------------- | ------------------------------------------------------------------------------------------------------ |
 | `services` (default) | `rest/<group>.rest.ts`: one `@Injectable` class per tag with inlined `requestFactory(...)` properties. |
-| `operations`         | `rest/<group>/<method>.ts` per operation plus the barrel `rest/<group>/index.ts`. No classes.          |
-| `both`               | The `operations` files plus the classes, each property being `ops.<method>.withInjector()`.            |
+| `operations`         | `rest/<group>/<method>.ts` per operation plus the barrel `rest/<group>/index.ts`.                      |
 
-Operation file names are the resolved method name in kebab-case, so
-`naming.methodName` governs them too. `layout` is only meaningful with
-the `angular` emit target; a non-default value with `emit: ['models']`
-is an `E_INVALID_OPTION` error. See
+Listing both emits the operation files and the classes, each class
+property being `ops.<method>.withInjector()`. Operation file names are
+the resolved method name in kebab-case, so `naming.methodName` governs
+them too. `layout` is only meaningful with the `angular` emit target;
+`operations` with `emit: ['models']` is an `E_INVALID_OPTION` error. See
 [Standalone operations](/guides/angular/#standalone-operations) for the
 consumer side.
 

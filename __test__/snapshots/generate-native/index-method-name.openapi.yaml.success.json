@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/index-method-name.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Index Method Name",
+    "pathCount": 1,
+    "operationCount": 1,
+    "schemaCount": 1
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest.validate.ts"
+    },
+    {
+      "path": "rest/pet.rest.ts"
+    }
+  ]
+}

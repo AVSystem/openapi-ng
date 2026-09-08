@@ -10,6 +10,7 @@ Try it without installing anything: [playground](https://docs.openapi-ng.dev/pla
 
 - **Rust-powered codegen.** The engine is a native binary loaded via [NAPI-RS](https://napi.rs). The same input always produces identical output.
 - **Angular-first output.** Each operation ships with three flavors — `.observable()`, `.resource()`, `.request()` — matching Angular's current HTTP primitives.
+- **Two layouts.** Per-tag `@Injectable` services by default, or `--layout operations` for one tree-shakeable constant per operation, callable from any injection context or bound once with `withInjector()`.
 - **Strict OpenAPI subset.** A focused 3.x slice with clear diagnostics. No silent misgeneration; see [Assumptions & limitations](https://docs.openapi-ng.dev/reference/limitations/) for the accepted shape.
 - **Configurable naming.** Tune method names and service grouping with template + regex rules, via YAML, JSON, or TypeScript config.
 - **Thin, pass-through helpers.** Generated methods just build the request (method, URL, query, body) and forward every `HttpClient.request` / `httpResource` option through unchanged — `withCredentials`, `transferCache`, `reportProgress`, `equal`, `injector`, and the rest. The response reaches you untouched.
@@ -53,6 +54,21 @@ export class PetList {
   readonly list = this.#pets.listPets.resource({ defaultValue: [] });
 }
 ```
+
+Or skip the classes. `--layout operations` emits one file per operation (`rest/pet/list-pets.ts`, `rest/pet/get-pet.ts`, …) plus a barrel `rest/pet/index.ts`, so the endpoints you never import tree-shake away:
+
+```ts
+import { Component } from '@angular/core';
+import { listPets } from './generated/rest/pet';
+
+@Component({/* ... */})
+export class PetList {
+  // Same three flavors; HttpClient comes from the surrounding injection context.
+  readonly list = listPets.resource({ defaultValue: [] });
+}
+```
+
+Both layouts expose the same `.observable()` / `.resource()` / `.request()` surface, and `--layout services,operations` emits the classes on top of the operation files. Details in the [Angular guide](https://docs.openapi-ng.dev/guides/angular/#standalone-operations).
 
 ### Signal-forms async validation: `rest.validate.ts`
 

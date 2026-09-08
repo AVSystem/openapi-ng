@@ -3,7 +3,7 @@ import { defineOperation } from '../../rest.util';
 /**
  * Remove a pet. The operationId is a reserved word on purpose.
  */
-const delete_ = defineOperation<DeleteParams, void>(
+const delete_ = /* @__PURE__ */ defineOperation<DeleteParams, void>(
   'delete',
   (request: DeleteParams) => {
     const { petId } = request;

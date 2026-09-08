@@ -150,41 +150,40 @@ fn run_pipeline(
       REST_VALIDATE_PATH.to_string(),
       format!("{banner}{REST_VALIDATE_TEMPLATE}"),
     ));
+    let standalone = config.layout.contains(&Layout::Operations);
+    let classes = config.layout.contains(&Layout::Services);
     for service in &plan.services {
-      match config.layout {
-        Layout::Services => {
-          let body = emit_service(service);
-          artifacts.push(GeneratedArtifact::new(
-            service.artifact_path.clone(),
-            format!("{banner}{body}"),
-          ));
-        }
-        Layout::Operations | Layout::Both => {
-          for operation in &service.operations {
-            let path = operation
-              .artifact_path
-              .clone()
-              .expect("operation artifact paths are planned for this layout");
-            let body = emit_operation(operation);
-            artifacts.push(GeneratedArtifact::new(path, format!("{banner}{body}")));
-          }
-          let barrel_path = service
-            .operations_barrel_path
+      if standalone {
+        for operation in &service.operations {
+          let path = operation
+            .artifact_path
             .clone()
-            .expect("operations barrel is planned for this layout");
-          let barrel = emit_operations_barrel(service);
-          artifacts.push(GeneratedArtifact::new(
-            barrel_path,
-            format!("{banner}{barrel}"),
-          ));
-          if config.layout == Layout::Both {
-            let body = emit_bound_service(service);
-            artifacts.push(GeneratedArtifact::new(
-              service.artifact_path.clone(),
-              format!("{banner}{body}"),
-            ));
-          }
+            .expect("operation artifact paths are planned for this layout");
+          let body = emit_operation(operation);
+          artifacts.push(GeneratedArtifact::new(path, format!("{banner}{body}")));
         }
+        let barrel_path = service
+          .operations_barrel_path
+          .clone()
+          .expect("operations barrel is planned for this layout");
+        let barrel = emit_operations_barrel(service);
+        artifacts.push(GeneratedArtifact::new(
+          barrel_path,
+          format!("{banner}{barrel}"),
+        ));
+      }
+      if classes {
+        // With operation files present the class binds them instead of
+        // inlining its own builders.
+        let body = if standalone {
+          emit_bound_service(service)
+        } else {
+          emit_service(service)
+        };
+        artifacts.push(GeneratedArtifact::new(
+          service.artifact_path.clone(),
+          format!("{banner}{body}"),
+        ));
       }
     }
   }
@@ -234,7 +233,7 @@ mod tests {
       response_type_mapping: Vec::new(),
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
-      layout: crate::bindings::Layout::default(),
+      layout: crate::options::default_layout(),
     }
   }
 
@@ -364,7 +363,7 @@ mod tests {
       response_type_mapping: Vec::new(),
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
-      layout: crate::bindings::Layout::default(),
+      layout: crate::options::default_layout(),
     })
     .expect("generation succeeds");
 
@@ -400,7 +399,7 @@ mod tests {
       response_type_mapping: Vec::new(),
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
-      layout: crate::bindings::Layout::default(),
+      layout: crate::options::default_layout(),
     })
     .expect("generation succeeds");
 
@@ -432,7 +431,7 @@ mod tests {
       response_type_mapping: Vec::new(),
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
-      layout: crate::bindings::Layout::default(),
+      layout: crate::options::default_layout(),
     })
     .expect("generation succeeds");
 
@@ -488,7 +487,7 @@ mod tests {
       response_type_mapping: Vec::new(),
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
-      layout: crate::bindings::Layout::default(),
+      layout: crate::options::default_layout(),
     };
     let result = execute_generate(config).expect("inputContents pipeline must succeed");
     assert_eq!(result.summary.title, "Inline Test");
@@ -515,7 +514,7 @@ mod tests {
       response_type_mapping: Vec::new(),
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
-      layout: crate::bindings::Layout::default(),
+      layout: crate::options::default_layout(),
     })
     .expect("generation succeeds");
 
