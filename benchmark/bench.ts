@@ -121,7 +121,7 @@ bench.add('generate (petstore-minimal, yaml)', async () => {
   });
 });
 
-// E11: large-spec benchmark — 30 paths × 2 ops = 60 operations and 90 schemas
+// Large-spec benchmark: 30 paths × 2 ops = 60 operations and 90 schemas
 // (30 entities × {Resource, ResourceStatus, ResourceList}), grouped under
 // 6 tags (Resource1..Resource6, 10 ops each). Synthetic but shaped like a
 // real REST API; useful for catching phase-level regressions

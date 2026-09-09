@@ -135,13 +135,6 @@ fn body_members<'a>(body: Option<&'a PlannedRequestBody<'a>>) -> impl Iterator<I
 }
 
 /// Emits an operation's error interface: its body types keyed by status.
-///
-/// ```ignore
-/// export interface UpdatePetError {
-///   400: ValidationProblem;
-///   500: { traceId: string };
-/// }
-/// ```
 pub(super) fn render_error_interface(
   buffer: &mut Writer,
   operation: &PlannedOperation<'_>,

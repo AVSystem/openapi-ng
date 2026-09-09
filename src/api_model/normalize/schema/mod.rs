@@ -1,9 +1,6 @@
-//! OpenAPI schema → canonical `SchemaType`.
-//!
-//! Entry points are [`normalize_schemas`] for `components.schemas` and
-//! [`normalize_schema`] / [`normalize_properties`] for the schemas embedded
-//! in operations. Discriminator narrowing is not done here — it runs in
-//! [`super::semantic`] once operation lowering has finished.
+//! OpenAPI schema to canonical `SchemaType`, entered through
+//! [`normalize_schemas`], [`normalize_schema`] and
+//! [`normalize_properties`].
 
 mod composition;
 mod enums;

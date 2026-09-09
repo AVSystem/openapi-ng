@@ -1,10 +1,5 @@
-//! Template expander for `Rule.from` and `Rule.format`.
-//!
-//! Three productions, and nothing else:
-//! * `{fieldName}`     — a context field
-//! * `{arrayField[N]}` — an array element, negative indexes counting from
-//!   the tail
-//! * `{capture.name}`  — a named capture from the rule's `parse`
+//! Expands `{fieldName}`, `{arrayField[N]}` and `{capture.name}` in
+//! `Rule.from` and `Rule.format`, and nothing else.
 
 use std::collections::HashMap;
 

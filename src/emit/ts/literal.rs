@@ -35,12 +35,8 @@ pub(crate) fn quoted(value: &str) -> String {
   out
 }
 
-/// Quotes `name` when it is not a bare identifier.
-///
-/// Reserved words such as `class` or `default` are legal in property
-/// position — an interface member is a `PropertyName`, which accepts any
-/// `IdentifierName` — so only names outside the
-/// `[A-Za-z_$][A-Za-z0-9_$]*` shape get quoted.
+/// Quotes `name` when it falls outside `[A-Za-z_$][A-Za-z0-9_$]*`, which
+/// leaves a reserved word like `class` unquoted in property position.
 pub(crate) fn safe_property_name(name: &str) -> Cow<'_, str> {
   if is_identifier(name) {
     Cow::Borrowed(name)

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-// Loaded inside the generate handler, not at module top: requiring the
-// wrapper loads the native binding, which --help and --version must not.
+// Loaded in the generate handler only: requiring the wrapper loads the
+// native binding, which --help and --version must not.
 function loadLibrary() {
   return require('../lib/index.js');
 }
@@ -344,11 +344,8 @@ async function main(argv) {
  * @returns {string}
  */
 function formatParseFailure(error) {
-  // Honour error.code when set (e.g. loadConfigFile tags ENOENT and
-  // YAML/JSON parse failures with E_INPUT_INVALID — those are user
-  // input problems, not CLI option-parsing problems). Fall back to
-  // E_INVALID_OPTION only when no code is set, which is the
-  // parseArgs-raised case for genuinely bad flags.
+  // A code the thrower set wins; `parseArgs` sets none, so a bad flag
+  // falls back to E_INVALID_OPTION.
   const declared = field(error, 'code');
   const detail = field(error, 'message');
   const code = typeof declared === 'string' ? declared : 'E_INVALID_OPTION';
@@ -383,11 +380,8 @@ function formatFailure(error) {
   return `${c.bold(c.red('Error'))} ${c.red('[E_UNEXPECTED]')}\n  ${String(error)}`;
 }
 
-// Defense-in-depth: surface any error escaping `main` (e.g. a future
-// `await` added without a local try/catch) as a single human-readable
-// stderr line and exit 1 — never the Node default "[UnhandledPromise
-// Rejection]" multi-line stack dump. Today the inner paths all catch
-// their own failures; this is the last-line guard.
+// Anything escaping `main` prints one stderr line instead of Node's
+// unhandled-rejection stack dump.
 main(process.argv.slice(2)).catch(err => {
   process.stderr.write(`openapi-ng: ${field(err, 'message') ?? err}\n`);
   process.exitCode = 1;

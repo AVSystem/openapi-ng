@@ -1,9 +1,5 @@
-//! Derives each operation's `methodName` and `group`, and formats the
-//! type names built from them.
-//!
-//! [`fixed`] holds the formatting the project fixes; every other submodule
-//! belongs to the caller-configurable rule engine, whose entry point is
-//! [`NamingResolver`].
+//! Derives each operation's `methodName` and `group` through
+//! [`NamingResolver`], with the project-fixed formatting in [`fixed`].
 
 mod case;
 mod config;

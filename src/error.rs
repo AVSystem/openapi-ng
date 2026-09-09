@@ -7,25 +7,23 @@ use serde::Serialize;
 const SEVERITY_WARNING: &str = "warning";
 const SEVERITY_ERROR: &str = "error";
 
-/// Every code a fatal or a warning can carry:
-///
-/// * `InputInvalid` — read or decode failed (`E_INPUT_INVALID`).
-/// * `UnsupportedSemantic` — accepted spec uses a shape outside the supported
-///   subset (`E_UNSUPPORTED_SEMANTIC`).
-/// * `InvalidReference` — `$ref` does not resolve (`E_INVALID_REFERENCE`).
-/// * `InvalidOption` — caller-supplied option is invalid (`E_INVALID_OPTION`).
-/// * `PolicyViolation` — IR-level rule (missing tag, missing operationId,
-///   request-field collision, planner refusal) (`E_POLICY_VIOLATION`).
-/// * `WriteFailed` — output file write failed (`E_WRITE_FAILED`).
-/// * `Unexpected` — a panic crossed the NAPI boundary (`E_UNEXPECTED`).
+/// Every code a fatal or a warning can carry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DiagnosticCode {
+  /// Reading or decoding the input failed.
   InputInvalid,
+  /// An accepted spec uses a shape outside the supported subset.
   UnsupportedSemantic,
+  /// A `$ref` does not resolve.
   InvalidReference,
+  /// A caller-supplied option is invalid.
   InvalidOption,
+  /// A missing tag or operationId, a request-field collision, or a
+  /// planner refusal.
   PolicyViolation,
+  /// Writing an output file failed.
   WriteFailed,
+  /// A panic crossed the NAPI boundary.
   Unexpected,
 }
 
@@ -43,12 +41,8 @@ impl DiagnosticCode {
   }
 }
 
-/// One diagnostic. Severity is implicit: a fatal travels as `Err`, a
-/// warning through [`Reporter::warning`].
-///
-/// `message` leads with a stage-gerund subject ("Failed to decode
-/// input"), then the detail, then advice when there is any. `subcode`
-/// is set for `PolicyViolation`.
+/// One diagnostic; a fatal travels as `Err`, a warning through
+/// [`Reporter::warning`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Diagnostic {
   pub code: DiagnosticCode,

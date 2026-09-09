@@ -1,13 +1,7 @@
 use crate::api_model::schema::{SchemaScalar, SchemaType};
 use crate::identifier::Identifier;
 
-/// A named, top-level schema declaration.
-///
-/// Interface, enum and alias shapes share one `body` carrier:
-///
-/// * `SchemaType::InlineObject { properties }` → `export interface X { … }`
-/// * `SchemaType::StringLiterals { values }`   → `export type X = 'a' | 'b'`
-/// * any other variant                         → `export type X = …`
+/// A named, top-level schema declaration, whose shape `body` carries.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ModelSymbol {
   pub(crate) name: Box<str>,

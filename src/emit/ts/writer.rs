@@ -1,10 +1,7 @@
 //! The output buffer every emitter writes through.
 
-/// Indent-aware string writer.
-///
-/// Tracks line-start state, so consecutive [`Writer::push`] calls share one
-/// indent prefix without the caller threading it. Every method is
-/// infallible: the sink is an in-memory `String`.
+/// Indent-aware string writer; consecutive [`Writer::push`] calls share
+/// one indent prefix.
 #[derive(Debug, Default)]
 pub(crate) struct Writer {
   buf: String,

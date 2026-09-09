@@ -5,10 +5,9 @@ use crate::error::{Context, Diagnostic, Reporter};
 
 use super::{MAX_NORMALIZE_DEPTH, unsupported_rule};
 
-/// One position in a schema tree.
-///
-/// Every constructor except [`SchemaWalk::root`] descends exactly one
-/// level. Call [`SchemaWalk::check_depth`] before recursing.
+/// One position in a schema tree; every constructor but
+/// [`SchemaWalk::root`] descends a level. Call
+/// [`SchemaWalk::check_depth`] before recursing.
 #[derive(Clone, Copy)]
 pub(crate) struct SchemaWalk<'a> {
   context: Context<'a>,

@@ -17,31 +17,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // returns a short, machine-independent path in banners and diagnostics.
 const fixture = (name: string) => path.join('test', 'fixtures', name);
 
-// ── angular-consumer/generated/ convention ──────────────────────────────────
-//
-// `__test__/angular-consumer/generated/` is the SHARED working directory
-// for any test that needs to emit a real generator output and run `tsc`
-// over it against the consumer's tsconfig (the per-purpose
-// `tsconfig.*.json` files in that directory each `include` a subset of
-// this generated tree). The directory is shared — not per-test — so
-// the tsconfigs can stay declarative (each one names a stable
-// directory; tests don't have to thread a temp path into a generated
-// tsconfig file).
-//
-// Two contributor-facing rules follow from that:
-//
-//   1. Tests that emit into `generated/` MUST call
-//      `resetAngularConsumerGeneratedDir()` before generating, or
-//      leftover files from a previous test will be compiled too and
-//      surface as a confusing tsc diagnostic. Ava runs each test file
-//      serially by default but the order between tests in the same
-//      file is implementation-defined — never assume a clean state.
-//
-//   2. The snapshot-suite tsc gate writes into the sibling subtree
-//      `__test__/angular-consumer/__snapshot_compile__/` and cleans it on
-//      every run. The reset helper below wipes `generated/` whole, and
-//      AVA runs the two files concurrently, so a tree that must survive
-//      belongs in its own sibling directory with its own tsconfig.
+// `angular-consumer/generated/` is shared by every test that emits and
+// type-checks real output, so a test writing there must first call
+// `resetAngularConsumerGeneratedDir()`, and a tree that must survive the
+// wipe belongs in its own sibling directory with its own tsconfig.
 const angularConsumerGeneratedDir = path.join(__dirname, 'angular-consumer', 'generated');
 
 function resetAngularConsumerGeneratedDir() {
@@ -856,7 +835,7 @@ test.serial(
   },
 );
 
-// Compile gate for Phase 7's request-body (multipart + urlencoded) and
+// Compile gate for the request-body (multipart + urlencoded) and
 // non-JSON response (Blob / string / ArrayBuffer) surfaces. The proof
 // file (src/form-non-json-proof.ts) asserts call-site typing on each
 // service and pins the carrier type of `observable` / `resource` via

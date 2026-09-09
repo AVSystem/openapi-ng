@@ -16,12 +16,8 @@ use operations::normalize_operations;
 use schema::normalize_schemas;
 pub(crate) use walk::SchemaWalk;
 
-/// Hard cap on `Schema` nesting, enforced by [`SchemaWalk::check_depth`].
-///
-/// Real specs nest a handful of levels — the deepest committed fixture is
-/// 5 layers of `allOf` — and the cap sits below serde's own recursion
-/// limit of roughly 60, so a spec that reaches it is an unsupported shape
-/// and not a parser-rejected one.
+/// Hard cap on `Schema` nesting, enforced by [`SchemaWalk::check_depth`]
+/// and set below serde's own recursion limit.
 pub(crate) const MAX_NORMALIZE_DEPTH: u16 = 32;
 
 pub(crate) fn normalize_api_model(

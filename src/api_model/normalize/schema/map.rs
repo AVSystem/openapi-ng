@@ -7,12 +7,9 @@ use crate::parse::openapi_model::{AdditionalProperties, Schema};
 use super::super::{SchemaWalk, bail_unsupported_rule};
 use super::normalize_schema;
 
-/// Lowers a schema whose `additionalProperties` constrains emission into
-/// [`SchemaType::Map`].
-///
-/// The supported shape is `additionalProperties` alone. Combining it with
-/// `properties`, `required`, `$ref`, a composition keyword or a non-object
-/// `type` fails, naming the rule it broke.
+/// Lowers a bare `additionalProperties` into [`SchemaType::Map`], failing
+/// when it is combined with `properties`, `required`, `$ref`, a
+/// composition keyword or a non-object `type`.
 pub(super) fn normalize_additional_properties(
   schema: &Schema,
   additional: &AdditionalProperties,

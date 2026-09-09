@@ -1,5 +1,4 @@
-// Argument and config parsing for the CLI. The exported records mirror
-// the NAPI `MappedType` shape one-to-one.
+// Argument and config parsing for the CLI.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -57,11 +56,8 @@ const DEFAULT_EMIT = Object.freeze(['models', 'angular']);
 
 const VALID_INIT_FORMATS = Object.freeze(new Set(['yaml', 'json', 'ts', 'js']));
 
-// Rejects a flag or end-of-args in the value position: without this,
-// `--config --input spec.yaml` consumes `--input` as
-// the config path, leaving the user staring at a config-not-found error
-// without ever seeing their `--input` argument honoured. Treat any token
-// starting with `-` (long `--foo` or short `-f`) as a flag, never a value.
+// Any token starting with `-` is a flag, never a value, so
+// `--config --input spec.yaml` cannot swallow `--input`.
 /**
  * @param {readonly string[]} argv
  * @param {number} i Index of the flag itself.
@@ -80,12 +76,9 @@ function requireValue(argv, i, flagName) {
   return value;
 }
 
-// Normalize one user-supplied emit list (CLI comma-string or YAML
-// array) into a deduped array of recognised targets. Unknown entries
-// fail fast with a config-file hint.
 /**
- * Normalises one emit list — a CLI comma-string or a config array — into
- * a deduped array of recognised targets. `null` when nothing was given.
+ * Normalises a CLI comma-string or config array into a deduped array of
+ * recognised targets, `null` when nothing was given.
  *
  * @param {unknown} value
  * @returns {EmitTarget[] | null}
@@ -422,12 +415,8 @@ function parseArgs(argv) {
 
   const [command, ...rest] = filteredArgv;
 
-  // Distinguish bare `openapi-ng` (no command + no global help flag) from
-  // explicit `--help`/`-h`. CI scripts like `openapi-ng generate ... &&
-  // next-step` would silently run `next-step` if the `generate` argv got
-  // eaten; bare invocation is a usage error and must exit non-zero. We
-  // still print help so the user can recover — only the exit code differs.
-  // `explicit: false` is the signal for the caller to set `process.exitCode = 2`.
+  // `explicit: false` prints help but tells the caller to exit 2, so a
+  // bare invocation cannot pass for success in a CI script.
   if (!command) {
     return { kind: 'help', subcommand: null, explicit: false };
   }

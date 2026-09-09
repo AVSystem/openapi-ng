@@ -70,15 +70,8 @@ fn render_operation_property(buffer: &mut Writer, operation: &PlannedOperation<'
   buffer.line(");");
 }
 
-/// Writes the helper call prefix. The operation's arity (does it take a
-/// typed request?) and its response variant pick one of four call shapes:
-///
-/// |                | Requestful                        | Zero-arg                             |
-/// |----------------|-----------------------------------|--------------------------------------|
-/// | JSON / void    | `requestFactory<Req, Res>`        | `requestFactory.zeroArg<Res>`        |
-/// | Blob           | `requestFactory.blob<Req>`        | `requestFactory.zeroArg.blob`        |
-/// | Text           | `requestFactory.text<Req>`        | `requestFactory.zeroArg.text`        |
-/// | ArrayBuffer    | `requestFactory.arrayBuffer<Req>` | `requestFactory.zeroArg.arrayBuffer` |
+/// Writes the `requestFactory` call prefix the operation's arity and
+/// response variant select.
 fn write_response_call_site(
   buffer: &mut Writer,
   response: Option<&ResponseContent>,

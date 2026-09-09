@@ -24,13 +24,10 @@ pub(super) fn finalize(model: &mut ApiModel, reporter: &Reporter) -> Result<(), 
 }
 
 /// Narrows each discriminated union member's discriminator property to a
-/// single-value string literal.
-///
-/// Fails with `missing-discriminator-property` when a member does not
-/// declare the property, and `discriminator-property-must-be-string` when
-/// it declares it with a non-string type.
-/// The literal each discriminated member narrows its property to, keyed by
-/// member schema name then property name.
+/// single-value string literal, failing with
+/// `missing-discriminator-property` or
+/// `discriminator-property-must-be-string`.
+/// Member schema name, then property name, to the literal it narrows to.
 type Narrowings = BTreeMap<Box<str>, BTreeMap<Box<str>, Box<str>>>;
 
 fn narrow_discriminator_properties(
