@@ -1,51 +1,44 @@
-//! Naming module — pre-emit derivation of `methodName` and `group` for
-//! each operation, plus the formatting helpers (class name, file stem,
-//! request-interface name, body-field inference) that consume those
-//! resolved names.
-//!
-//! Submodules:
-//! * `legacy`    — formatting helpers fixed by the project (not user-configurable).
-//! * `config`, `context`, `template`, `case`, `parse_spec`, `engine`,
-//!   `defaults` — the rule engine described in `docs/naming-spec.md`.
-//!
-//! Public surface (re-exported here): `NamingResolver`, the `NamingConfig`
-//! / `Naming` / `Rule` / `RuleEntry` / `Case` types, the `compile_parse_spec`
-//! helper, and the four legacy formatting helpers.
+//! Derives each operation's `methodName` and `group` through [`NamingResolver`], with the
+//! project-fixed formatting in [`fixed`].
 
 mod case;
 mod config;
 mod context;
 mod defaults;
 mod engine;
-mod legacy;
+mod fixed;
+mod lower;
 mod parse_spec;
 mod template;
 
 pub use config::NamingConfig;
-pub(crate) use config::{Case, Naming, Rule, RuleEntry};
-pub(crate) use legacy::{
+#[cfg_attr(not(test), allow(unused_imports))]
+pub(crate) use config::{Naming, Rule, RuleEntry};
+pub(crate) use fixed::{
   error_interface_name, operation_file_stem, request_interface_name, service_class_name,
   service_file_stem,
 };
-pub(crate) use parse_spec::compile as compile_parse_spec;
+pub(crate) use lower::lower;
 
+use crate::subcode;
 use crate::{
+  api_model::canonical::OperationDef,
   error::{Diagnostic, Reporter},
-  ir::canonical::OperationDef,
+  identifier::MethodName,
 };
 use context::OperationContext;
 use defaults::{default_group, default_method_name};
 use engine::{RuleFailure, evaluate_chain};
 
-/// Resolved-naming entry point used by the planner. Holds the
-/// user-supplied (validated, regex-compiled) config and exposes
-/// per-operation lookups.
+/// Resolves a name per operation, from the caller's config or from the hardcoded default when a
+/// key is unconfigured.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct NamingResolver {
   pub(crate) config: NamingConfig,
 }
 
 impl NamingResolver {
+  #[must_use]
   pub(crate) const fn new(config: NamingConfig) -> Self {
     Self { config }
   }
@@ -53,15 +46,15 @@ impl NamingResolver {
   pub(crate) fn method_name(
     &self,
     operation: &OperationDef,
-    reporter: &Reporter<'_>,
-  ) -> Result<String, Diagnostic> {
+    reporter: &Reporter,
+  ) -> Result<MethodName, Diagnostic> {
     let ctx = OperationContext::from_operation(operation);
-    self.config.method_name.as_ref().map_or_else(
+    let name = self.config.method_name.as_ref().map_or_else(
       || {
         default_method_name(&ctx).map_err(|_| {
           Diagnostic::policy_violation(
             reporter,
-            "naming-resolution",
+            subcode::NAMING_RESOLUTION,
             format!(
               "Could not derive a default methodName for operation {} {} (no operationId, and path produced no segments).",
               operation.method, operation.path,
@@ -74,13 +67,14 @@ impl NamingResolver {
           naming_resolution_error(reporter, "methodName", operation, &failures)
         })
       },
-    )
+    )?;
+    Ok(MethodName::new(name))
   }
 
   pub(crate) fn group(
     &self,
     operation: &OperationDef,
-    reporter: &Reporter<'_>,
+    reporter: &Reporter,
   ) -> Result<String, Diagnostic> {
     let ctx = OperationContext::from_operation(operation);
     self.config.group.as_ref().map_or_else(
@@ -93,8 +87,9 @@ impl NamingResolver {
   }
 }
 
+#[must_use]
 fn naming_resolution_error(
-  reporter: &Reporter<'_>,
+  reporter: &Reporter,
   key: &str,
   operation: &OperationDef,
   failures: &[RuleFailure],
@@ -107,7 +102,7 @@ fn naming_resolution_error(
     .join("\n");
   Diagnostic::policy_violation(
     reporter,
-    "naming-resolution",
+    subcode::NAMING_RESOLUTION,
     format!(
       "Failed to resolve `{}` for operation {} {} (operationId={}). All rules in the fallback chain failed:\n{}",
       key, operation.method, operation.path, operation.operation_id, formatted,
@@ -115,6 +110,7 @@ fn naming_resolution_error(
   )
 }
 
+#[must_use]
 fn format_failure(failure: &RuleFailure) -> String {
   match failure {
     RuleFailure::EmptyFromWithParse => {
@@ -128,20 +124,22 @@ fn format_failure(failure: &RuleFailure) -> String {
 
 #[cfg(test)]
 mod tests {
+  use super::config::{Case, Naming, Rule, RuleEntry};
+  use super::parse_spec::compile as compile_parse_spec;
   use super::*;
   use crate::{
-    error::DiagnosticCode,
-    ir::{
+    api_model::{
       canonical::{HttpMethod, OperationDef, RequestDef, ResponseContent},
       schema::{SchemaScalar, SchemaType},
     },
-    test_support::test_ctx,
+    error::DiagnosticCode,
+    test_support::test_reporter,
   };
 
   fn op(id: &str, tags: &[&str], path: &str) -> OperationDef {
     OperationDef {
       operation_id: id.to_string(),
-      tags: tags.iter().map(|s| s.to_string()).collect(),
+      tags: tags.iter().map(ToString::to_string).collect(),
       method: HttpMethod::Get,
       path: path.to_string(),
       request: RequestDef::default(),
@@ -157,10 +155,10 @@ mod tests {
   #[test]
   fn naming_resolver_returns_default_method_name_when_unconfigured() {
     let resolver = NamingResolver::default();
-    let mut ctx = test_ctx();
+    let ctx = test_reporter();
     let operation = op("list_pets", &["Pet"], "/pets");
     assert_eq!(
-      resolver.method_name(&operation, &ctx.reporter()).unwrap(),
+      resolver.method_name(&operation, &ctx).unwrap().as_str(),
       "listPets"
     );
   }
@@ -168,12 +166,9 @@ mod tests {
   #[test]
   fn naming_resolver_returns_default_group_when_unconfigured() {
     let resolver = NamingResolver::default();
-    let mut ctx = test_ctx();
+    let ctx = test_reporter();
     let operation = op("x", &["pet-orders"], "/pets");
-    assert_eq!(
-      resolver.group(&operation, &ctx.reporter()).unwrap(),
-      "PetOrders"
-    );
+    assert_eq!(resolver.group(&operation, &ctx).unwrap(), "PetOrders");
   }
 
   #[test]
@@ -188,10 +183,10 @@ mod tests {
       method_name: Some(chain),
       group: None,
     });
-    let mut ctx = test_ctx();
+    let ctx = test_reporter();
     let operation = op("posts_listAll", &["Posts"], "/posts");
     assert_eq!(
-      resolver.method_name(&operation, &ctx.reporter()).unwrap(),
+      resolver.method_name(&operation, &ctx).unwrap().as_str(),
       "listAll"
     );
   }
@@ -203,11 +198,9 @@ mod tests {
       method_name: Some(chain),
       group: None,
     });
-    let mut ctx = test_ctx();
+    let ctx = test_reporter();
     let operation = op("x", &["Pet"], "/pets");
-    let err = resolver
-      .method_name(&operation, &ctx.reporter())
-      .unwrap_err();
+    let err = resolver.method_name(&operation, &ctx).unwrap_err();
     assert_eq!(err.code, DiagnosticCode::PolicyViolation);
     assert_eq!(err.subcode, Some("naming-resolution"));
     assert!(err.message.contains("methodName"));

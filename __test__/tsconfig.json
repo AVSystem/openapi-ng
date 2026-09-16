@@ -2,10 +2,22 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "module": "es2022",
-    "moduleResolution": "node",
-    "outDir": "lib",
-    "types": ["node"]
+    "moduleResolution": "bundler",
+    "types": [
+      "node"
+    ],
+    "allowJs": true,
+    "checkJs": false,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "rootDir": ".."
   },
-  "include": ["."],
-  "exclude": ["lib"]
+  "include": [
+    "."
+  ],
+  "exclude": [
+    "lib",
+    "angular-consumer",
+    "snapshots"
+  ]
 }

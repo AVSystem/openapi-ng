@@ -1,14 +1,13 @@
-use std::collections::BTreeMap;
-
-use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_json::Value;
+
+use crate::parse::unique_map::{UniqueIndexMap, UniqueMap};
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct OpenApiDocument {
   pub(crate) openapi: String,
   pub(crate) info: OpenApiInfo,
-  pub(crate) paths: BTreeMap<String, PathItem>,
+  pub(crate) paths: UniqueMap<PathItem>,
   #[serde(default)]
   pub(crate) components: Components,
 }
@@ -21,11 +20,10 @@ pub(crate) struct OpenApiInfo {
 #[derive(Debug, Deserialize, Default)]
 pub(crate) struct Components {
   #[serde(default)]
-  pub(crate) schemas: BTreeMap<String, Schema>,
+  pub(crate) schemas: UniqueMap<Schema>,
 }
 
-/// A path item in OpenAPI 3.x. Fields are in alphabetical method order to match
-/// the BTreeMap ordering that the previous untyped implementation produced.
+/// A path item, its methods declared in alphabetical order.
 #[derive(Debug, Deserialize, Default)]
 pub(crate) struct PathItem {
   pub(crate) delete: Option<Operation>,
@@ -39,9 +37,6 @@ pub(crate) struct PathItem {
 }
 
 impl PathItem {
-  /// Iterate over all operations in this path item, yielding (method, operation) pairs.
-  /// Methods are yielded in alphabetical order (delete, get, head, ...) matching the
-  /// BTreeMap ordering of the previous untyped implementation.
   pub(crate) fn operations(&self) -> impl Iterator<Item = (&'static str, &Operation)> {
     [
       ("delete", self.delete.as_ref()),
@@ -67,31 +62,29 @@ pub(crate) struct Operation {
   #[serde(default)]
   pub(crate) parameters: Vec<Parameter>,
   pub(crate) request_body: Option<RequestBody>,
-  pub(crate) responses: Option<BTreeMap<String, Response>>,
+  pub(crate) responses: Option<UniqueMap<Response>>,
   pub(crate) summary: Option<String>,
   pub(crate) description: Option<String>,
-  /// OpenAPI `deprecated: true` on the operation. Emitted as `@deprecated`
-  /// in the JSDoc above the service method so call sites surface the IDE
-  /// deprecation marker.
+  /// OpenAPI `deprecated: true` on the operation.
   #[serde(default)]
   pub(crate) deprecated: bool,
 }
 
 impl Operation {
-  /// Returns summary and description joined with a blank line, or whichever
-  /// is present alone. Whitespace-only values are treated as absent.
+  /// Returns summary and description joined with a blank line, or whichever is present alone.
+  #[must_use]
   pub(crate) fn merged_description(&self) -> Option<String> {
     match (
       self
         .summary
         .as_deref()
         .map(str::trim)
-        .filter(|s| !s.is_empty()),
+        .filter(|text| !text.is_empty()),
       self
         .description
         .as_deref()
         .map(str::trim)
-        .filter(|s| !s.is_empty()),
+        .filter(|text| !text.is_empty()),
     ) {
       (None, None) => None,
       (Some(s), None) => Some(s.to_string()),
@@ -114,7 +107,7 @@ pub(crate) struct Parameter {
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct RequestBody {
-  pub(crate) content: BTreeMap<String, MediaType>,
+  pub(crate) content: UniqueMap<MediaType>,
   #[serde(default)]
   pub(crate) required: bool,
 }
@@ -126,7 +119,7 @@ pub(crate) struct MediaType {
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct Response {
-  pub(crate) content: Option<BTreeMap<String, MediaType>>,
+  pub(crate) content: Option<UniqueMap<MediaType>>,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -143,10 +136,8 @@ pub(crate) struct Schema {
   pub(crate) any_of: Option<Vec<Schema>>,
   pub(crate) all_of: Option<Vec<Schema>>,
   pub(crate) not: Option<Box<Schema>>,
-  /// Preserves spec-author insertion order so generated TypeScript matches the source document.
-  /// `BTreeMap` would silently re-sort properties alphabetically, destroying meaningful
-  /// ordering (e.g. id/name/status/tags/nickname becoming id/name/nickname/status/tags).
-  pub(crate) properties: Option<IndexMap<String, Schema>>,
+  /// Ordered as the spec author declared them.
+  pub(crate) properties: Option<UniqueIndexMap<Schema>>,
   #[serde(default)]
   pub(crate) required: Vec<String>,
   pub(crate) additional_properties: Option<AdditionalProperties>,
@@ -154,17 +145,10 @@ pub(crate) struct Schema {
   pub(crate) nullable: Option<bool>,
   pub(crate) discriminator: Option<Discriminator>,
   pub(crate) description: Option<String>,
-  /// OpenAPI `deprecated: true` on the schema. Emitted as `@deprecated` in
-  /// the JSDoc above the corresponding TypeScript declaration (top-level
-  /// model or property) so consumers see the IDE deprecation marker at the
-  /// reference site.
+  /// OpenAPI `deprecated: true` on the schema.
   #[serde(default)]
   pub(crate) deprecated: bool,
-  /// OpenAPI `format` hint (e.g. `uuid`, `date-time`, `int32`). Currently
-  /// not carried into the IR — the schema walker surfaces every occurrence
-  /// as an `E_UNSUPPORTED_SEMANTIC` warning (subcode `format-dropped`) so
-  /// spec authors see what's being dropped instead of the field being
-  /// silently ignored.
+  /// OpenAPI `format` hint (`uuid`, `date-time`, `int32`, …).
   pub(crate) format: Option<String>,
 }
 
@@ -173,13 +157,10 @@ pub(crate) struct Schema {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Discriminator {
   pub(crate) property_name: String,
-  /// OpenAPI `discriminator.mapping`: maps a wire-value string to either
-  /// a full `$ref` (`#/components/schemas/Cat`) or a bare schema name.
-  /// Resolved at IR-build time to bare schema names so the emit-time
-  /// narrowing pass can compare against `SchemaType::Ref` payloads
-  /// directly. Defaults to empty when the spec omits the field.
+  /// OpenAPI `discriminator.mapping`: a wire value against either a full `$ref`
+  /// (`#/components/schemas/Cat`) or a bare schema name.
   #[serde(default)]
-  pub(crate) mapping: BTreeMap<String, String>,
+  pub(crate) mapping: UniqueMap<String>,
 }
 
 #[cfg(test)]
@@ -199,9 +180,27 @@ impl Schema {
     }
   }
 
+  pub(crate) fn wrap_object(property: &str, value: Self) -> Self {
+    let properties: indexmap::IndexMap<String, Self> =
+      std::iter::once((property.to_string(), value)).collect();
+    Self {
+      type_: Some("object".to_string()),
+      properties: Some(properties.into()),
+      ..Default::default()
+    }
+  }
+
   pub(crate) fn wrap_one_of(members: Vec<Self>) -> Self {
     Self {
       one_of: Some(members),
+      ..Default::default()
+    }
+  }
+
+  pub(crate) fn wrap_map(values: Self) -> Self {
+    Self {
+      type_: Some("object".to_string()),
+      additional_properties: Some(AdditionalProperties::Schema(Box::new(values))),
       ..Default::default()
     }
   }
@@ -219,9 +218,5 @@ impl Schema {
 #[serde(untagged)]
 pub(crate) enum AdditionalProperties {
   Schema(Box<Schema>),
-  // The bool value (true vs false) is intentionally discarded — both
-  // forms map to the same "unsupported subset" rejection in
-  // normalize/schema.rs. Deserializing as a typed variant (rather than
-  // a generic catch-all) keeps the rejection message accurate.
-  Boolean(#[allow(dead_code)] bool),
+  Boolean(bool),
 }

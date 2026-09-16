@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import type { GenerateOptions } from '../index.js';
 
 import { generate as nativeGenerate } from '../lib/index.js';
 
@@ -19,6 +20,9 @@ type BrowserEntry = {
   createGenerate: (load: () => Promise<unknown>) => GenerateFn;
   GenerateError: { isGenerateError: (value: unknown) => boolean };
   EmitTarget: { Models: string; Angular: string };
+  Layout: { Services: string; Operations: string };
+  InputFormat: { Json: string; Yaml: string };
+  ResponseType: { Json: string; Blob: string; Text: string; ArrayBuffer: string };
 };
 type TypedError = { code?: string; subcode?: string | null; message: string };
 
@@ -44,7 +48,7 @@ const petstoreOptions = {
   inputContents: petstore,
   displayPath: 'petstore-minimal.openapi.yaml',
   emit: ['models', 'angular'],
-};
+} satisfies GenerateOptions;
 
 wasiTest(
   'browser generate through the WASI binding matches the native output',
@@ -112,7 +116,14 @@ test('browser generate maps a binding without generateNative to E_UNSUPPORTED_RU
   t.regex(err.message, /generateNative/);
 });
 
-test('browser entry exports EmitTarget mirror', t => {
-  t.is(browserEntry.EmitTarget.Models, 'models');
-  t.is(browserEntry.EmitTarget.Angular, 'angular');
+test('browser entry exports the runtime enum mirrors', t => {
+  t.deepEqual(browserEntry.EmitTarget, { Models: 'models', Angular: 'angular' });
+  t.deepEqual(browserEntry.Layout, { Services: 'services', Operations: 'operations' });
+  t.deepEqual(browserEntry.InputFormat, { Json: 'json', Yaml: 'yaml' });
+  t.deepEqual(browserEntry.ResponseType, {
+    Json: 'json',
+    Blob: 'blob',
+    Text: 'text',
+    ArrayBuffer: 'arrayBuffer',
+  });
 });

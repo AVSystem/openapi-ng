@@ -4,7 +4,7 @@ pub(crate) mod emit_ts_models;
 mod tests {
   use super::emit_ts_models;
   use crate::{
-    ir::{
+    api_model::{
       canonical::ModelSymbol,
       schema::{SchemaScalar, SchemaType},
     },
@@ -89,7 +89,7 @@ mod tests {
       &[ResolvedMappedType {
         schema: "UserId",
         import: "./shared/user-id".into(),
-        ty: "ExternalUserId".into(),
+        type_name: "ExternalUserId".into(),
         alias: Some("Nickname".into()),
       }],
     );
@@ -100,12 +100,8 @@ mod tests {
 
   #[test]
   fn emit_model_uses_reexport_for_self_alias_to_avoid_identifier_collision() {
-    // schema=UserId, type=ExternalUserId, alias=UserId — the binding
-    // would otherwise be both imported as `UserId` AND aliased to
-    // `UserId` in the same file (`export type UserId = UserId;`), a
-    // duplicate-identifier error. The emitter sidesteps this by
-    // collapsing to a single `export type { ExternalUserId as UserId }
-    // from './shared/user-id';` re-export.
+    // schema=UserId, type=ExternalUserId, alias=UserId collapses to one
+    // re-export rather than a duplicate `export type UserId = UserId;`.
     let model_symbols = vec![ModelSymbol {
       name: "UserId".into(),
       description: None,
@@ -118,7 +114,7 @@ mod tests {
       &[ResolvedMappedType {
         schema: "UserId",
         import: "./shared/user-id".into(),
-        ty: "ExternalUserId".into(),
+        type_name: "ExternalUserId".into(),
         alias: Some("UserId".into()),
       }],
     );
@@ -154,7 +150,7 @@ mod tests {
       &[ResolvedMappedType {
         schema: "UserId",
         import: "./shared/user-id".into(),
-        ty: "UserId".into(),
+        type_name: "UserId".into(),
         alias: None,
       }],
     );

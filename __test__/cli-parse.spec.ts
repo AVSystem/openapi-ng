@@ -20,6 +20,7 @@ type ParseModule = {
   loadConfigFile(configPath: string): Promise<Record<string, unknown>>;
   normalizeMappedTypes(items: unknown): unknown[] | null;
   normalizeEmit(value: unknown): string[] | null;
+  normalizeLayout(value: unknown): string[] | null;
   mergeConfig(
     fileConfig: Record<string, unknown>,
     cliFlags: Record<string, unknown>,

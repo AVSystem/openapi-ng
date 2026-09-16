@@ -1,0 +1,6 @@
+{
+  "code": "E_UNSUPPORTED_SEMANTIC",
+  "message": "Unsupported OpenAPI semantic shape: HTTP method TRACE for /pets is not supported; remove the trace operation or split it into a non-generated client.. See the supported subset documented in README.md ('Out of Scope' section).",
+  "path": "test/fixtures/unsupported-trace.openapi.yaml",
+  "warnings": []
+}

@@ -1,17 +1,5 @@
-// Compile-time proofs for the request bodies and non-JSON responses
-// surfaced by Phase 7. Lives next to service-proof.ts (the petstore-rich
-// JSON proof) and compiles against a separate combined fixture
-// (`consumer-forms-and-non-json.openapi.yaml`) generated into
-// `__test__/angular-consumer/generated/` by the matching ava test.
-//
-// Each block asserts:
-//   1. The request type accepts the right field shapes (Blob | File,
-//      number[], etc.).
-//   2. `.observable(...)` and `.resource(...)` carry the right Response
-//      generic through to `Observable<Response>` / `HttpResourceRef<...>`.
-//
-// A regression that collapses any of these to `any` or rejects a valid
-// call-site shape fails this file under `tsc --noEmit`.
+// Compile-time proofs for form request bodies and non-JSON responses,
+// against the fixture `consumer-forms-and-non-json.openapi.yaml`.
 
 import type { HttpResourceRef } from '@angular/common/http';
 import type { Observable } from 'rxjs';

@@ -1,15 +1,17 @@
 #![deny(clippy::all)]
 
+mod api_model;
 mod bindings;
 mod emit;
 mod error;
+mod identifier;
 mod io;
-mod ir;
 mod options;
 mod parse;
 mod pipeline;
 pub mod plan;
 mod result;
+mod subcode;
 #[cfg(test)]
 mod test_support;
 

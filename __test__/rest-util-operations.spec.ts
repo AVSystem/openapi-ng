@@ -154,7 +154,14 @@ test('a bound .request() with an explicit { injector } uses that injector base p
   const bound = listPets.withInjector(injectorWith('/bound', []));
   const explicit = injectorWith('/explicit', []);
 
-  t.is(bound.request({}, { injector: explicit }).url, '/explicit/pets');
+  // The bound type deliberately omits `options` (see the `@ts-expect-error`
+  // in standalone-proof.ts); the runtime still honours an explicit injector,
+  // which is what this asserts.
+  const withOverride = bound.request as (
+    request: Record<string, never>,
+    options: { injector: typeof explicit },
+  ) => { url: string };
+  t.is(withOverride({}, { injector: explicit }).url, '/explicit/pets');
   t.is(bound.request({}).url, '/bound/pets');
 });
 

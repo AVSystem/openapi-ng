@@ -1,0 +1,40 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/bench-multi-tag.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Multi-Tag Bench",
+    "pathCount": 50,
+    "operationCount": 100,
+    "schemaCount": 150
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest.validate.ts"
+    },
+    {
+      "path": "rest/catalog.rest.ts"
+    },
+    {
+      "path": "rest/customers.rest.ts"
+    },
+    {
+      "path": "rest/inventory.rest.ts"
+    },
+    {
+      "path": "rest/orders.rest.ts"
+    },
+    {
+      "path": "rest/shipping.rest.ts"
+    }
+  ]
+}

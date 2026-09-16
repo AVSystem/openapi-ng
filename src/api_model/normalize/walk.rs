@@ -1,0 +1,95 @@
+//! Position of a schema walk: breadcrumb, nesting depth and diagnostic sink, carried as one value.
+
+use crate::error::{Context, Diagnostic, Reporter};
+
+use super::{MAX_NORMALIZE_DEPTH, unsupported_rule};
+
+/// One position in a schema tree; every constructor but [`SchemaWalk::root`] descends a level.
+#[derive(Clone, Copy)]
+pub(crate) struct SchemaWalk<'a> {
+  context: Context<'a>,
+  depth: u16,
+  reporter: &'a Reporter,
+}
+
+impl<'a> SchemaWalk<'a> {
+  /// Starts a walk at a top-level schema, parameter, request body or response.
+  #[must_use]
+  pub(crate) const fn root(context: Context<'a>, reporter: &'a Reporter) -> Self {
+    Self {
+      context,
+      depth: 0,
+      reporter,
+    }
+  }
+
+  /// Descends into the named object property.
+  #[must_use]
+  pub(crate) const fn property<'s>(&'s self, name: &'s str) -> SchemaWalk<'s> {
+    self.descend(Context::Property {
+      parent: &self.context,
+      name,
+    })
+  }
+
+  /// Descends into the 1-based member of a `oneOf` / `anyOf` / `allOf`.
+  #[must_use]
+  pub(crate) const fn composition_member<'s>(&'s self, index: usize) -> SchemaWalk<'s> {
+    self.descend(Context::CompositionMember {
+      parent: &self.context,
+      index,
+    })
+  }
+
+  /// Descends into the `additionalProperties` sub-schema.
+  #[must_use]
+  pub(crate) const fn additional_properties<'s>(&'s self) -> SchemaWalk<'s> {
+    self.descend(Context::AdditionalProperties {
+      parent: &self.context,
+    })
+  }
+
+  /// Descends into an array's item schema, which shares the array's breadcrumb.
+  #[must_use]
+  pub(crate) const fn item(&self) -> Self {
+    Self {
+      context: self.context,
+      depth: self.depth + 1,
+      reporter: self.reporter,
+    }
+  }
+
+  #[must_use]
+  const fn descend<'s>(&'s self, context: Context<'s>) -> SchemaWalk<'s> {
+    SchemaWalk {
+      context,
+      depth: self.depth + 1,
+      reporter: self.reporter,
+    }
+  }
+
+  /// The breadcrumb for this position, for use in a diagnostic message.
+  #[must_use]
+  pub(crate) fn here(&self) -> String {
+    self.context.render()
+  }
+
+  #[must_use]
+  pub(crate) const fn reporter(&self) -> &'a Reporter {
+    self.reporter
+  }
+
+  /// Fails once the walk has descended past [`MAX_NORMALIZE_DEPTH`].
+  pub(crate) fn check_depth(&self) -> Result<(), Diagnostic> {
+    if self.depth < MAX_NORMALIZE_DEPTH {
+      return Ok(());
+    }
+    Err(unsupported_rule(
+      self.reporter,
+      format!(
+        "{} nesting exceeds {MAX_NORMALIZE_DEPTH} levels (likely cyclic or pathological spec).",
+        self.here()
+      ),
+    ))
+  }
+}

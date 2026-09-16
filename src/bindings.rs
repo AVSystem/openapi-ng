@@ -7,8 +7,7 @@ use crate::{
   result::{GenerateSummary, GeneratedArtifact},
 };
 
-/// Per-target emit selection. The `emit` option is the set of artifact
-/// families to produce; each entry maps to one or more files.
+/// Set of artifact families to produce; each entry maps to one or more files.
 #[napi(string_enum = "lowercase")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum EmitTarget {
@@ -16,9 +15,8 @@ pub enum EmitTarget {
   Angular,
 }
 
-/// User-facing naming config crossing the NAPI boundary. The JS wrapper
-/// in `lib/index.js` unpacks each JS `RegExp` into the `{ source, flags
-/// }` shape carried here, so Rust sees pure data on this side.
+/// The naming config as it crosses the NAPI boundary, where a JS `RegExp` arrives already
+/// unpacked into `{ source, flags }`.
 #[napi(object)]
 #[derive(Clone, Debug)]
 pub struct NamingOptions {
@@ -26,11 +24,7 @@ pub struct NamingOptions {
   pub group: Option<NamingValue>,
 }
 
-/// Discriminated union: a string shorthand, a single rule, or a chain
-/// of rules-or-shorthands. NAPI cannot express true sum types, so we
-/// use exclusive fields: exactly one of `string`, `rule`, or `chain`
-/// must be set. The JS wrapper enforces this; the Rust validator
-/// double-checks at config resolution.
+/// A string shorthand, a single rule, or a chain of either.
 #[napi(object)]
 #[derive(Clone, Debug)]
 pub struct NamingValue {
@@ -38,8 +32,7 @@ pub struct NamingValue {
   pub string: Option<String>,
   /// `{ rule: { ... } }` — a single Rule.
   pub rule: Option<NamingRuleEntry>,
-  /// `{ chain: [...] }` — a sequence; each item is an exclusive
-  /// `{ string }` or `{ rule }`.
+  /// `{ chain: [...] }` — a sequence of `{ string }` or `{ rule }`.
   pub chain: Option<Vec<NamingChainItem>>,
 }
 
@@ -70,38 +63,27 @@ pub struct NamingParseSpec {
 
 #[napi(object)]
 pub struct GenerateOptions {
-  /// Path to the spec on disk. Mutually exclusive with `input_contents`;
-  /// the option validator rejects requests that set both or neither.
+  /// Path to the spec on disk.
   pub input_path: Option<String>,
-  /// Raw spec source. When set, `display_path` is required and the
-  /// 16 MiB byte cap applies to `input_contents.as_bytes().len()`.
-  /// JS wrapper fills this in for URL inputs.
+  /// Raw spec source.
   pub input_contents: Option<String>,
-  /// Banner / diagnostic display string. Required when `input_contents`
-  /// is set; ignored when `input_path` is set (the existing path
-  /// normalisation runs in that case).
+  /// Banner and diagnostic display string.
   pub display_path: Option<String>,
-  /// Decoder hint. Only honoured when `input_contents` is set; combining
-  /// it with `input_path` is a shape error.
+  /// Decoder hint.
   pub input_format: Option<InputFormat>,
-  /// Optional. When undefined, generation runs in-memory (no files written).
-  /// Passing an empty string is rejected at option resolution.
+  /// Optional.
   pub output_path: Option<String>,
   pub emit: Vec<EmitTarget>,
   pub mapped_types: Option<Vec<MappedType>>,
-  /// Per-content-type override of the generated response-decoding kind
-  /// (`json | blob | text | arrayBuffer`). Read by the normalize stage
-  /// when picking how a successful response body is decoded.
+  /// Per-content-type override of the response-decoding kind (`json | blob | text | arrayBuffer`).
   pub response_type_mapping: Option<Vec<ResponseTypeMapping>>,
   pub naming: Option<NamingOptions>,
-  /// Angular output layouts. Defaults to `['services']`; only meaningful
-  /// with the `angular` emit target.
+  /// Angular output layouts.
   pub layout: Option<Vec<Layout>>,
 }
 
-/// One Angular output layout: the per-tag class (`services`) or one file
-/// per operation plus a barrel (`operations`). Listing both emits the
-/// classes on top of the operation files.
+/// One Angular output layout: the per-tag class (`services`) or one file per operation plus a
+/// barrel (`operations`).
 #[napi(string_enum = "lowercase")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Layout {
@@ -109,8 +91,7 @@ pub enum Layout {
   Operations,
 }
 
-/// Explicit decoder selection. Skips both extension-based detection and
-/// the JSON-then-YAML sniff fallback. Honoured only with `input_contents`.
+/// Explicit decoder selection.
 #[napi(string_enum = "lowercase")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InputFormat {
@@ -125,14 +106,8 @@ pub struct GenerateResult {
   pub artifacts: Vec<GeneratedArtifact>,
 }
 
-/// Payload returned inside `GenerateOutcome.error`. The JS wrapper
-/// constructs a `GenerateError` (a real JS class that extends Error)
-/// from these fields, so consumers can `instanceof GenerateError` and
-/// read `code/subcode/message/path/warnings`.
-///
-/// The fatal sits at the top level (`code/subcode/message/path`); pre-fatal
-/// warnings ride in `warnings`. `subcode` is set for `PolicyViolation`
-/// codes; it is `null` for every other category.
+/// Payload returned inside `GenerateOutcome.error`, which the JS wrapper turns into a
+/// `GenerateError`.
 #[napi(object)]
 pub struct GenerateErrorPayload {
   pub code: String,
@@ -142,22 +117,18 @@ pub struct GenerateErrorPayload {
   pub warnings: Vec<GeneratorDiagnostic>,
 }
 
-/// Return shape of the native export. Exactly one field is set. The JS
-/// wrapper turns `error` into a thrown `GenerateError`; returning data
-/// instead of throwing keeps native and WASI runtimes identical.
+/// Return shape of the native export, with exactly one field set.
 #[napi(object)]
 pub struct GenerateOutcome {
   pub result: Option<GenerateResult>,
   pub error: Option<GenerateErrorPayload>,
 }
 
-/// Project a `catch_unwind` payload into the same payload shape a typed
-/// fatal produces. `&'static str` and `String` are the two common panic
-/// payload types; anything else collapses to a generic message.
+#[must_use]
 pub(crate) fn map_panic(panic: Box<dyn std::any::Any + Send>) -> GenerateErrorPayload {
   let message = panic
     .downcast_ref::<&'static str>()
-    .map(|s| (*s).to_string())
+    .map(|target| (*target).to_string())
     .or_else(|| panic.downcast_ref::<String>().cloned())
     .unwrap_or_else(|| "openapi-ng: unexpected panic in native binding".to_string());
   let fatal = Diagnostic {
@@ -172,6 +143,7 @@ pub(crate) fn map_panic(panic: Box<dyn std::any::Any + Send>) -> GenerateErrorPa
   })
 }
 
+#[must_use]
 pub(crate) fn map_failure(failure: GenerateFailure) -> GenerateErrorPayload {
   let GenerateFailure { warnings, fatal } = failure;
   let fatal = fatal.to_napi_error();
@@ -184,10 +156,7 @@ pub(crate) fn map_failure(failure: GenerateFailure) -> GenerateErrorPayload {
   }
 }
 
-/// Boundary projection: take the wire-shaped `GenerateOptions` from the
-/// JS caller and lower it into the resolved `GenerateConfig` the domain
-/// pipeline consumes. Lives in `bindings.rs` (not `options.rs`) so the
-/// domain doesn't depend on the NAPI boundary types.
+/// Lowers the wire-shaped options into the config the pipeline consumes.
 impl From<GenerateOptions> for GenerateConfig {
   fn from(value: GenerateOptions) -> Self {
     Self {
@@ -210,11 +179,10 @@ impl From<GenerateOptions> for GenerateConfig {
   }
 }
 
+#[must_use]
 pub(crate) fn map_generate_result(value: ApplicationGenerateResult) -> GenerateResult {
   GenerateResult {
     summary: value.summary,
-    // Pipeline-collected diagnostics are warnings — fatals exit via the
-    // `Err(GenerateFailure)` arm and are projected in `map_failure`.
     diagnostics: value
       .diagnostics
       .iter()

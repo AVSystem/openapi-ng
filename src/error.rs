@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use napi_derive::napi;
@@ -6,32 +7,27 @@ use serde::Serialize;
 const SEVERITY_WARNING: &str = "warning";
 const SEVERITY_ERROR: &str = "error";
 
-/// Compact diagnostic taxonomy. Six codes covering every fatal/warning
-/// the pipeline emits:
-///
-/// * `InputInvalid` — read or decode failed (`E_INPUT_INVALID`).
-/// * `UnsupportedSemantic` — accepted spec uses a shape outside the supported
-///   subset (`E_UNSUPPORTED_SEMANTIC`).
-/// * `InvalidReference` — `$ref` does not resolve (`E_INVALID_REFERENCE`).
-/// * `InvalidOption` — caller-supplied option is invalid (`E_INVALID_OPTION`).
-/// * `PolicyViolation` — IR-level rule (missing tag, missing operationId,
-///   request-field collision, planner refusal) (`E_POLICY_VIOLATION`).
-/// * `WriteFailed` — output file write failed (`E_WRITE_FAILED`).
-/// * `Unexpected` — a panic crossed the NAPI boundary; surfaced by
-///   `map_panic` so a Rust panic becomes an `E_UNEXPECTED` GenerateError
-///   instead of aborting the host Node process.
+/// Every code a fatal or a warning can carry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DiagnosticCode {
+  /// Reading or decoding the input failed.
   InputInvalid,
+  /// An accepted spec uses a shape outside the supported subset.
   UnsupportedSemantic,
+  /// A `$ref` does not resolve.
   InvalidReference,
+  /// A caller-supplied option is invalid.
   InvalidOption,
+  /// A missing tag or operationId, a request-field collision, or a planner refusal.
   PolicyViolation,
+  /// Writing an output file failed.
   WriteFailed,
+  /// A panic crossed the NAPI boundary.
   Unexpected,
 }
 
 impl DiagnosticCode {
+  #[must_use]
   pub const fn as_str(self) -> &'static str {
     match self {
       Self::InputInvalid => "E_INPUT_INVALID",
@@ -45,18 +41,7 @@ impl DiagnosticCode {
   }
 }
 
-/// Single internal diagnostic carried across the pipeline. Severity is
-/// implicit (Err vs warnings-vec). `path` is an `Rc<str>` so the reporter
-/// can attach the same display path to every diagnostic by bumping a
-/// refcount, not allocating a fresh `String`.
-///
-/// Message convention: lead with a stage-gerund subject ("Failed to
-/// decode input", "Unsupported OpenAPI semantic shape", "Failed to plan
-/// services"), then state the detail, then append a sentence of
-/// actionable advice when one exists ("Rename the colliding parameters
-/// in the OpenAPI spec.", "Check for typos in the $ref..."). `subcode`
-/// is set for `PolicyViolation` to let consumers route on a kebab-case
-/// sub-class without parsing the message.
+/// One diagnostic; a fatal travels as `Err`, a warning through [`Reporter::warning`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Diagnostic {
   pub code: DiagnosticCode,
@@ -66,6 +51,7 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
+  #[must_use]
   pub(crate) fn new(code: DiagnosticCode, message: impl Into<String>, path: Rc<str>) -> Self {
     Self {
       code,
@@ -75,8 +61,9 @@ impl Diagnostic {
     }
   }
 
+  #[must_use]
   pub(crate) fn policy_violation(
-    reporter: &Reporter<'_>,
+    reporter: &Reporter,
     subcode: &'static str,
     message: impl Into<String>,
   ) -> Self {
@@ -85,14 +72,17 @@ impl Diagnostic {
     diagnostic
   }
 
+  #[must_use]
   pub(crate) fn to_napi_warning(&self) -> GeneratorDiagnostic {
     self.to_napi(SEVERITY_WARNING)
   }
 
+  #[must_use]
   pub(crate) fn to_napi_error(&self) -> GeneratorDiagnostic {
     self.to_napi(SEVERITY_ERROR)
   }
 
+  #[must_use]
   fn to_napi(&self, severity: &'static str) -> GeneratorDiagnostic {
     GeneratorDiagnostic {
       code: self.code.as_str().to_string(),
@@ -112,12 +102,8 @@ impl std::fmt::Display for Diagnostic {
 
 impl std::error::Error for Diagnostic {}
 
-/// Boundary projection of `Diagnostic` for the NAPI surface — string-typed
-/// `code` is what JS consumers see and compare against. `severity` is
-/// either `"warning"` or `"error"`; the TS surface narrows it to the
-/// `'warning' | 'error'` union via `scripts/patch-types.mjs`. `subcode`
-/// is populated only for `PolicyViolation` today; consumers route on it
-/// when they need finer-grained remediation than `code` alone.
+/// Boundary projection of [`Diagnostic`] for the NAPI surface, where `code` and `severity` are
+/// strings a JS consumer compares against.
 #[napi(object)]
 #[derive(Clone, Debug, Serialize)]
 pub struct GeneratorDiagnostic {
@@ -128,13 +114,7 @@ pub struct GeneratorDiagnostic {
   pub path: String,
 }
 
-/// Borrowed breadcrumb for diagnostic context messages used during schema/operation
-/// normalization. Building a `Context` value is alloc-free; only `.render()` allocates,
-/// and only on the error path when a diagnostic message is actually being constructed.
-///
-/// Each variant corresponds to one level of the recursive normalization walk.
-/// `Copy` so inner call sites can take `context: &Context<'_>` and build a deeper
-/// context by value without extra indirection.
+/// Borrowed breadcrumb naming one position of a schema walk.
 #[derive(Clone, Copy)]
 pub(crate) enum Context<'a> {
   /// Top-level named schema: renders as `"schema {name}"`.
@@ -146,8 +126,8 @@ pub(crate) enum Context<'a> {
   },
   /// An `additionalProperties` sub-schema: renders as `"{parent} additionalProperties"`.
   AdditionalProperties { parent: &'a Context<'a> },
-  /// One member of a oneOf/anyOf/allOf array (1-based index):
-  /// renders as `"{parent} composition member {index}"`.
+  /// One member of a oneOf/anyOf/allOf array (1-based index): renders as `"{parent} composition
+  /// member {index}"`.
   CompositionMember {
     parent: &'a Context<'a>,
     index: usize,
@@ -161,8 +141,8 @@ pub(crate) enum Context<'a> {
 }
 
 impl<'a> Context<'a> {
-  /// Render the full breadcrumb chain into a `String`. This allocates —
-  /// call only when actually constructing a diagnostic message.
+  /// Renders the full chain. Allocates.
+  #[must_use]
   pub(crate) fn render(&self) -> String {
     match self {
       Context::Schema(name) => format!("schema {name}"),
@@ -182,44 +162,70 @@ impl<'a> Context<'a> {
   }
 }
 
-/// Single reporter type carried through every pipeline stage. Holds the
-/// display path (shared via `Rc<str>` across every diagnostic it builds)
-/// and a borrow into the boundary-owned warnings vec.
-///
-/// Stages take `&Reporter<'_>` when they only emit fatals via
-/// `.error(...)`; they take `&mut Reporter<'_>` when they also need to
-/// push pre-fatal warnings via `.warning(...)`.
-pub(crate) struct Reporter<'a> {
+/// Diagnostic sink for one run.
+pub(crate) struct Reporter {
   path: Rc<str>,
-  warnings: &'a mut Vec<Diagnostic>,
+  warnings: RefCell<Vec<Diagnostic>>,
 }
 
-impl<'a> Reporter<'a> {
-  pub(crate) const fn new(path: Rc<str>, warnings: &'a mut Vec<Diagnostic>) -> Self {
-    Self { path, warnings }
+impl Reporter {
+  #[must_use]
+  pub(crate) const fn new(path: Rc<str>) -> Self {
+    Self {
+      path,
+      warnings: RefCell::new(Vec::new()),
+    }
   }
 
+  /// Builds a fatal diagnostic without recording it.
+  #[must_use]
   pub(crate) fn error(&self, code: DiagnosticCode, message: impl Into<String>) -> Diagnostic {
     Diagnostic::new(code, message, Rc::clone(&self.path))
   }
 
-  /// Push a pre-fatal warning. `subcode` is an optional stable
-  /// kebab-case tag that lets consumers route on a finer-grained class
-  /// than `code` alone; pass `None` when no such subdivision applies.
+  /// Records a pre-fatal warning.
   pub(crate) fn warning(
-    &mut self,
+    &self,
     code: DiagnosticCode,
     subcode: Option<&'static str>,
     message: impl Into<String>,
   ) {
     let mut diagnostic = Diagnostic::new(code, message, Rc::clone(&self.path));
     diagnostic.subcode = subcode;
-    self.warnings.push(diagnostic);
+    self.warnings.borrow_mut().push(diagnostic);
+  }
+
+  #[must_use]
+  pub(crate) fn into_warnings(self) -> Vec<Diagnostic> {
+    self.warnings.into_inner()
   }
 }
 
+/// Returns a `PolicyViolation` from the enclosing function.
+macro_rules! bail_policy {
+  ($reporter:expr, $subcode:expr, $($message:tt)*) => {
+    return ::core::result::Result::Err($crate::error::Diagnostic::policy_violation(
+      $reporter,
+      $subcode,
+      ::std::format!($($message)*),
+    ))
+  };
+}
+
+/// Returns a fatal diagnostic of the given code from the enclosing function.
+macro_rules! bail {
+  ($reporter:expr, $code:expr, $($message:tt)*) => {
+    return ::core::result::Result::Err(
+      $reporter.error($code, ::std::format!($($message)*)),
+    )
+  };
+}
+
+pub(crate) use {bail, bail_policy};
+
 #[cfg(test)]
 mod tests {
+  use crate::subcode;
   use serde_json::json;
 
   use super::{Diagnostic, DiagnosticCode, Reporter};
@@ -265,10 +271,10 @@ mod tests {
 
   #[test]
   fn subcode_threads_through_the_napi_projection() {
-    let mut ctx = crate::test_support::test_ctx();
+    let ctx = crate::test_support::test_reporter();
     let diagnostic = Diagnostic::policy_violation(
-      &ctx.reporter(),
-      "missing-tag",
+      &ctx,
+      subcode::MISSING_TAG,
       "Failed to plan services: operation missing tag.",
     );
 
@@ -278,9 +284,8 @@ mod tests {
   }
 
   #[test]
-  fn warning_pushes_typed_diagnostic_carrying_path() {
-    let mut warnings = Vec::new();
-    let mut reporter = Reporter::new(std::rc::Rc::from("fixtures/spec.yaml"), &mut warnings);
+  fn warning_records_typed_diagnostic_carrying_path() {
+    let reporter = Reporter::new(std::rc::Rc::from("fixtures/spec.yaml"));
 
     reporter.warning(
       DiagnosticCode::UnsupportedSemantic,
@@ -288,34 +293,56 @@ mod tests {
       "Input used a fallback path.",
     );
 
+    let warnings = reporter.into_warnings();
     assert_eq!(warnings.len(), 1);
     assert_eq!(warnings[0].code, DiagnosticCode::UnsupportedSemantic);
     assert_eq!(warnings[0].path.as_ref(), "fixtures/spec.yaml");
   }
 
   #[test]
-  fn error_returns_a_fatal_diagnostic_without_pushing() {
-    let mut warnings = Vec::new();
-    let reporter = Reporter::new(std::rc::Rc::from("fixtures/spec.yaml"), &mut warnings);
+  fn error_returns_a_fatal_diagnostic_without_recording_it() {
+    let reporter = Reporter::new(std::rc::Rc::from("fixtures/spec.yaml"));
 
     let fatal = reporter.error(DiagnosticCode::WriteFailed, "Failed to write artifact.");
 
     assert_eq!(fatal.code, DiagnosticCode::WriteFailed);
     assert_eq!(fatal.path.as_ref(), "fixtures/spec.yaml");
-    assert!(warnings.is_empty());
+    assert!(reporter.into_warnings().is_empty());
   }
 
   #[test]
-  fn warnings_accumulate_in_order_on_the_caller_owned_vec() {
-    let mut warnings = Vec::new();
-    {
-      let mut reporter = Reporter::new(std::rc::Rc::from("fixtures/spec.yaml"), &mut warnings);
-      reporter.warning(DiagnosticCode::UnsupportedSemantic, None, "First warning.");
-      reporter.warning(DiagnosticCode::UnsupportedSemantic, None, "Second warning.");
-    }
+  fn warnings_accumulate_in_report_order() {
+    let reporter = Reporter::new(std::rc::Rc::from("fixtures/spec.yaml"));
 
+    reporter.warning(DiagnosticCode::UnsupportedSemantic, None, "First warning.");
+    reporter.warning(DiagnosticCode::UnsupportedSemantic, None, "Second warning.");
+
+    let warnings = reporter.into_warnings();
     assert_eq!(warnings.len(), 2);
     assert_eq!(warnings[0].message, "First warning.");
     assert_eq!(warnings[1].message, "Second warning.");
+  }
+
+  #[test]
+  fn reporting_composes_inside_a_fallible_iterator_chain() {
+    let reporter = Reporter::new(std::rc::Rc::from("fixtures/spec.yaml"));
+
+    let outcome = ["ok", "warn", "fatal"]
+      .iter()
+      .map(|token| match *token {
+        "fatal" => Err(reporter.error(DiagnosticCode::InputInvalid, "Bad token.")),
+        "warn" => {
+          reporter.warning(DiagnosticCode::UnsupportedSemantic, None, "Odd token.");
+          Ok(*token)
+        }
+        other => Ok(other),
+      })
+      .collect::<Result<Vec<_>, Diagnostic>>();
+
+    assert_eq!(
+      outcome.expect_err("chain short-circuits").code,
+      DiagnosticCode::InputInvalid
+    );
+    assert_eq!(reporter.into_warnings().len(), 1);
   }
 }

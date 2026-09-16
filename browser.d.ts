@@ -10,12 +10,11 @@ export type {
   GenerateResult,
   GenerateSummary,
   GeneratorDiagnostic,
-  InputFormat,
   MappedType,
   NamingConfig,
   ResponseTypeMapping,
 } from './index';
-export { EmitTarget, GenerateError, Layout } from './index';
+export { EmitTarget, GenerateError, InputFormat, Layout, ResponseType } from './index';
 
 /**
  * Generate in the browser. Same contract as the Node `generate`, except

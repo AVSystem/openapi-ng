@@ -1,0 +1,136 @@
+//! Grouping operations into services.
+
+use crate::subcode;
+use indexmap::IndexMap;
+
+use crate::{
+  api_model::canonical::OperationDef,
+  error::{Diagnostic, Reporter},
+  identifier::MethodName,
+};
+
+pub(crate) type GroupedOperations<'a> = Vec<(String, Vec<(&'a OperationDef, MethodName)>)>;
+
+/// Groups operations by their resolved group name, resolving each operation's method name in
+/// the same pass.
+pub(crate) fn group_operations<'a>(
+  operations: &'a [OperationDef],
+  resolver: &crate::plan::naming::NamingResolver,
+  reporter: &Reporter,
+) -> Result<GroupedOperations<'a>, Diagnostic> {
+  // `IndexMap` keeps the groups in discovery order.
+  operations
+    .iter()
+    .try_fold(
+      IndexMap::<String, Vec<(&'a OperationDef, MethodName)>>::new(),
+      |mut groups, operation| {
+        let group_name = resolver.group(operation, reporter)?;
+        let method_name = resolver.method_name(operation, reporter)?;
+        let members = groups.entry(group_name.clone()).or_default();
+        reject_duplicate_method_name(members, operation, &method_name, &group_name, reporter)?;
+        members.push((operation, method_name));
+        Ok(groups)
+      },
+    )
+    .map(|groups| groups.into_iter().collect())
+}
+
+/// Two operations with one method name would be two identically named class properties, or two
+/// operation files at the same path.
+fn reject_duplicate_method_name(
+  members: &[(&OperationDef, MethodName)],
+  operation: &OperationDef,
+  method_name: &MethodName,
+  group_name: &str,
+  reporter: &Reporter,
+) -> Result<(), Diagnostic> {
+  let Some((previous, _)) = members.iter().find(|(_, taken)| taken == method_name) else {
+    return Ok(());
+  };
+  Err(Diagnostic::policy_violation(
+    reporter,
+    subcode::NAMING_RESOLUTION,
+    format!(
+      "methodName '{method_name}' resolves for both {} {} (operationId={}) and {} {} (operationId={}) in group '{group_name}'; adjust naming.methodName so they differ.",
+      previous.method,
+      previous.path,
+      previous.operation_id,
+      operation.method,
+      operation.path,
+      operation.operation_id,
+    ),
+  ))
+}
+
+#[cfg(test)]
+mod tests {
+  mod grouper {
+    use crate::{
+      api_model::{
+        canonical::{HttpMethod, OperationDef, RequestDef, ResponseContent},
+        schema::{SchemaScalar, SchemaType},
+      },
+      plan::{naming::NamingResolver, services::group_operations},
+      test_support::test_reporter,
+    };
+
+    fn operation(id: &str, tags: Vec<&str>) -> OperationDef {
+      OperationDef {
+        operation_id: id.to_string(),
+        tags: tags.into_iter().map(str::to_string).collect(),
+        method: HttpMethod::Get,
+        path: format!("/{id}"),
+        request: RequestDef::default(),
+        response: Some(ResponseContent::Json(Some(SchemaType::Scalar(
+          SchemaScalar::Boolean,
+        )))),
+        errors: Vec::new(),
+        description: None,
+        deprecated: false,
+      }
+    }
+
+    #[test]
+    fn tag_first_operation_grouper_preserves_group_and_operation_discovery_order() {
+      let operations = [
+        operation("listPets", vec!["Pet"]),
+        operation("listAdoptions", vec!["Adoption"]),
+        operation("getPet", vec!["Pet"]),
+      ];
+      let ctx = test_reporter();
+      let resolver = NamingResolver::default();
+      let groups = group_operations(&operations, &resolver, &ctx).expect("grouping succeeds");
+
+      assert_eq!(
+        groups
+          .iter()
+          .map(|(name, _)| name.as_str())
+          .collect::<Vec<_>>(),
+        vec!["Pet", "Adoption"]
+      );
+      assert_eq!(
+        groups[0]
+          .1
+          .iter()
+          .map(|(operation, _method_name)| operation.operation_id.as_str())
+          .collect::<Vec<_>>(),
+        vec!["listPets", "getPet"]
+      );
+    }
+
+    #[test]
+    fn tagless_operations_fall_back_to_path_derived_group_with_default_resolver() {
+      // The previous `tag_first_operation_grouper_rejects_tagless_operations`
+      // test asserted a policy violation; with the configurable naming
+      // engine, the default `group` rule falls back to
+      // `pascalCase(pathSegments[0])` when tags are missing.
+      let ctx = test_reporter();
+      let resolver = NamingResolver::default();
+      let ops = [operation("listPets", Vec::new())];
+      let groups = group_operations(&ops, &resolver, &ctx)
+        .expect("default resolver groups by path segment when tags are absent");
+      assert_eq!(groups.len(), 1);
+      assert_eq!(groups[0].0, "ListPets");
+    }
+  }
+}

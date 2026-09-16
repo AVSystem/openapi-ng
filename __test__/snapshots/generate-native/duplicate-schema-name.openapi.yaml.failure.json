@@ -1,0 +1,6 @@
+{
+  "code": "E_POLICY_VIOLATION",
+  "message": "Failed to decode OpenAPI input: components.schemas: duplicate key 'Pet' at line 8 column 5. Each schema name must be declared once.",
+  "path": "test/fixtures/duplicate-schema-name.openapi.yaml",
+  "warnings": []
+}

@@ -1,0 +1,6 @@
+{
+  "code": "E_POLICY_VIOLATION",
+  "message": "Failed to plan services: operationId 'doIt' is defined on both GET /a and GET /b. operationIds must be globally unique.",
+  "path": "test/fixtures/duplicate-operation-id.openapi.yaml",
+  "warnings": []
+}

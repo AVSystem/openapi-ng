@@ -1,10 +1,8 @@
-use crate::wln;
 use std::collections::BTreeSet;
-use std::fmt::Write as _;
 
-use crate::emit::typescript::{Writer, jsdoc};
+use crate::emit::ts::{Doc, Writer, jsdoc, w, wln};
 use crate::plan::artifact_plan::{PlannedOperation, ServicePlan};
-use crate::plan::naming::{error_interface_name, operation_file_stem, request_interface_name};
+use crate::plan::naming::operation_file_stem;
 
 use super::imports::{
   collect_model_type_imports, uses_http_params, write_helper_import, write_model_imports,
@@ -13,16 +11,13 @@ use super::request::{
   render_error_interface, render_request_interface, render_requestful_builder,
   render_zero_arg_builder,
 };
-use super::service::{has_request_interface, write_call_site};
+use super::service::write_call_site;
 
-// Operation files live at `rest/<group>/<method>.ts`, one level
-// below the service files.
+// Operation files live at `rest/<group>/<method>.ts`, one level below the service files.
 const HELPER_IMPORT_PATH: &str = "../../rest.util";
 const MODEL_IMPORT_PATH: &str = "../../model";
 
-// Names that cannot be declared with `export const` in a module: ES
-// reserved words, strict-mode reserved words, and the two identifiers
-// strict mode refuses as binding names.
+// Names no `export const` can bind: reserved words, and the two strict mode refuses.
 const RESERVED_IDENTIFIERS: &[&str] = &[
   "arguments",
   "await",
@@ -74,8 +69,9 @@ const RESERVED_IDENTIFIERS: &[&str] = &[
   "yield",
 ];
 
-/// One standalone operation file: the `defineOperation(...)` constant
-/// followed by its `{Pascal}Params` / `{Pascal}Error` interfaces.
+/// One standalone operation file: the `defineOperation(...)` constant followed by its
+/// `{Pascal}Params` / `{Pascal}Error` interfaces.
+#[must_use]
 pub(crate) fn emit_operation(operation: &PlannedOperation<'_>) -> String {
   let operations = std::slice::from_ref(operation);
   let helper_symbols: &[&str] = if uses_http_params(operations) {
@@ -88,7 +84,7 @@ pub(crate) fn emit_operation(operation: &PlannedOperation<'_>) -> String {
   // Export specifiers accept any IdentifierName, so a name that cannot be
   // a `const` binding is declared under `<name>_` and exported as itself.
   let local_alias = needs_alias(name, helper_symbols, &model_imports).then(|| format!("{name}_"));
-  let request_name = has_request_interface(operation).then(|| request_interface_name(name));
+  let request_name = operation.request_interface.clone();
 
   let mut buffer = Writer::with_capacity(1024);
   write_helper_import(&mut buffer, HELPER_IMPORT_PATH, helper_symbols);
@@ -97,13 +93,12 @@ pub(crate) fn emit_operation(operation: &PlannedOperation<'_>) -> String {
 
   jsdoc(
     &mut buffer,
-    operation.description.as_deref(),
-    operation.deprecated,
+    Doc::new(operation.description.as_deref(), operation.deprecated),
   );
   // `@__PURE__` lets bundlers drop operations a barrel import never touches.
   match &local_alias {
-    Some(local) => write!(buffer, "const {local} = /* @__PURE__ */ ").unwrap(),
-    None => write!(buffer, "export const {name} = /* @__PURE__ */ ").unwrap(),
+    Some(local) => w!(buffer, "const {local} = /* @__PURE__ */ "),
+    None => w!(buffer, "export const {name} = /* @__PURE__ */ "),
   }
   write_call_site(
     &mut buffer,
@@ -131,37 +126,41 @@ pub(crate) fn emit_operation(operation: &PlannedOperation<'_>) -> String {
   }
   if !operation.errors.is_empty() {
     buffer.blank_line();
-    render_error_interface(&mut buffer, operation, &error_interface_name(name));
+    if let Some(error_name) = &operation.error_interface {
+      render_error_interface(&mut buffer, operation, error_name);
+    }
   }
 
   buffer.into_string()
 }
 
+#[must_use]
 fn needs_alias(name: &str, helper_symbols: &[&str], model_imports: &BTreeSet<&str>) -> bool {
   RESERVED_IDENTIFIERS.contains(&name)
     || helper_symbols.contains(&name)
     || model_imports.contains(name)
 }
 
-/// `rest/<group>/index.ts`: re-exports every operation file in its
-/// directory so a namespace import of the barrel keeps only the members
-/// it touches.
+/// `rest/<group>/index.ts`: re-exports every operation file in its directory so a namespace
+/// import of the barrel keeps only the members it touches.
+#[must_use]
 pub(crate) fn emit_operations_barrel(service_plan: &ServicePlan<'_>) -> String {
   let mut buffer = Writer::with_capacity(service_plan.operations.len() * 48 + 16);
-  for operation in &service_plan.operations {
-    let file_stem = operation_file_stem(&operation.method_name);
+  service_plan.operations.iter().for_each(|operation| {
+    let file_stem = operation_file_stem(operation.method_name.as_str());
     wln!(buffer, "export * from './{file_stem}';");
-  }
+  });
   buffer.into_string()
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::ir::canonical::{ErrorResponse, HttpMethod, ResponseContent};
-  use crate::ir::schema::{SchemaScalar, SchemaType};
+  use crate::api_model::canonical::{ErrorResponse, HttpMethod, ResponseContent};
+  use crate::api_model::schema::{SchemaScalar, SchemaType};
+  use crate::identifier::TypeName;
   use crate::plan::artifact_plan::{PlannedRequestContract, PlannedRequestField, RequestFieldKind};
-  use crate::test_support::{empty_request, op_with, path_field, string_ty};
+  use crate::test_support::{empty_request, op_with, path_field, string_schema};
 
   fn op<'a>(
     method_name: &str,
@@ -178,13 +177,13 @@ mod tests {
 
   fn requestful<'a>(
     method_name: &str,
-    path_ty: &'a SchemaType,
+    path_schema: &'a SchemaType,
     response: &'a ResponseContent,
   ) -> PlannedOperation<'a> {
     op(
       method_name,
       PlannedRequestContract {
-        fields: vec![path_field("id", path_ty)],
+        fields: vec![path_field("id", path_schema)],
         headers: vec![],
         body: None,
       },
@@ -198,23 +197,23 @@ mod tests {
 
   #[test]
   fn define_operation_call_shapes_mirror_request_factory() {
-    let str_ty = string_ty();
+    let str_schema = string_schema();
     let json = ResponseContent::Json(Some(SchemaType::Scalar(SchemaScalar::String)));
     let cases: [(PlannedOperation<'_>, &str); 8] = [
       (
-        requestful("listPets", &str_ty, &json),
+        requestful("listPets", &str_schema, &json),
         "export const listPets = /* @__PURE__ */ defineOperation<ListPetsParams, string>(\n  'listPets',",
       ),
       (
-        requestful("download", &str_ty, &ResponseContent::Blob),
+        requestful("download", &str_schema, &ResponseContent::Blob),
         "export const download = /* @__PURE__ */ defineOperation.blob<DownloadParams>(",
       ),
       (
-        requestful("rawConfig", &str_ty, &ResponseContent::Text),
+        requestful("rawConfig", &str_schema, &ResponseContent::Text),
         "export const rawConfig = /* @__PURE__ */ defineOperation.text<RawConfigParams>(",
       ),
       (
-        requestful("fetch", &str_ty, &ResponseContent::ArrayBuffer),
+        requestful("fetch", &str_schema, &ResponseContent::ArrayBuffer),
         "export const fetch = /* @__PURE__ */ defineOperation.arrayBuffer<FetchParams>(",
       ),
       (
@@ -246,9 +245,9 @@ mod tests {
 
   #[test]
   fn operation_file_imports_two_levels_up_and_ends_with_interfaces() {
-    let str_ty = string_ty();
+    let str_schema = string_schema();
     let json = ResponseContent::Json(Some(SchemaType::Scalar(SchemaScalar::String)));
-    let out = emit_operation(&requestful("listPets", &str_ty, &json));
+    let out = emit_operation(&requestful("listPets", &str_schema, &json));
 
     assert!(out.starts_with("import { defineOperation } from '../../rest.util';\n\n"));
     assert!(!out.contains("Injectable"));
@@ -266,7 +265,7 @@ mod tests {
         fields: vec![PlannedRequestField {
           name: "status".into(),
           optional: true,
-          ty: &pet,
+          schema: &pet,
           kind: RequestFieldKind::Query,
         }],
         headers: vec![],
@@ -283,9 +282,9 @@ mod tests {
 
   #[test]
   fn reserved_word_is_declared_under_alias_and_exported_as_itself() {
-    let str_ty = string_ty();
+    let str_schema = string_schema();
     let void = ResponseContent::Json(None);
-    let out = emit_operation(&requestful("delete", &str_ty, &void));
+    let out = emit_operation(&requestful("delete", &str_schema, &void));
 
     assert!(out.contains(
       "const delete_ = /* @__PURE__ */ defineOperation<DeleteParams, void>(\n  'delete',"
@@ -296,7 +295,7 @@ mod tests {
 
   #[test]
   fn runtime_import_collision_is_aliased() {
-    let str_ty = string_ty();
+    let str_schema = string_schema();
     let void = ResponseContent::Json(None);
     let mut operation = op(
       "httpParams",
@@ -304,7 +303,7 @@ mod tests {
         fields: vec![PlannedRequestField {
           name: "limit".into(),
           optional: true,
-          ty: &str_ty,
+          schema: &str_schema,
           kind: RequestFieldKind::Query,
         }],
         headers: vec![],
@@ -345,15 +344,15 @@ mod tests {
 
   #[test]
   fn barrel_reexports_each_operation_file_by_sibling_specifier() {
-    let str_ty = string_ty();
+    let str_schema = string_schema();
     let void = ResponseContent::Json(None);
     let plan = ServicePlan {
       group_name: "pet".into(),
-      class_name: "PetRest".into(),
+      class_name: TypeName::new("PetRest".to_string()),
       artifact_path: "rest/pet.rest.ts".to_string(),
       operations_barrel_path: Some("rest/pet/index.ts".to_string()),
       operations: vec![
-        requestful("delete", &str_ty, &void),
+        requestful("delete", &str_schema, &void),
         zero_arg("listPets", &void),
       ],
     };
