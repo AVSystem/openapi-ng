@@ -421,7 +421,10 @@ options object to switch observation modes or to forward extra
 ```ts
 this.#petRest.updatePet.observable(req);
 this.#petRest.updatePet.observable(req, { observe: 'response' });
-this.#petRest.updatePet.observable(req, { observe: 'events', reportProgress: true });
+this.#petRest.updatePet.observable(req, {
+  observe: 'events',
+  reportUploadProgress: true,
+});
 ```
 
 | Options                          | Return type                   |
@@ -430,13 +433,15 @@ this.#petRest.updatePet.observable(req, { observe: 'events', reportProgress: tru
 | `{ observe: 'response' }`        | `Observable<HttpResponse<T>>` |
 | `{ observe: 'events' }`          | `Observable<HttpEvent<T>>`    |
 
-The options bag mirrors `HttpClient.request`'s options minus the
-fields the generator already supplies — `body`, `params`, `headers`,
-and `responseType` are baked in from the operation, so the type
-rejects them. Everything else is forwarded: `withCredentials`,
-`reportProgress`, `transferCache`, `context`, `keepalive`, and the
-Fetch-related options (`redirect`, `mode`, `credentials`, `priority`,
-`cache`, `timeout`).
+The options bag is `HttpClient.request`'s own options type, read from
+your installed Angular, minus the fields the generator already
+supplies — `body`, `params`, `headers`, and `responseType` are baked
+in from the operation, so the type rejects them. Everything else is
+forwarded: `withCredentials`, `transferCache`, `context`, the progress
+and Fetch-related options, and any option a later Angular adds,
+without regenerating. Deprecations carry over the same way: on
+Angular 22 your editor marks `reportProgress` as deprecated, as it
+does on `HttpClient` itself.
 
 For void-response operations (204 No Content), the same overloads
 still apply — `Observable<HttpResponse<void>>` is meaningful when you
