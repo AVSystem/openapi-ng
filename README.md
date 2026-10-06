@@ -13,7 +13,7 @@ Try it without installing anything: [playground](https://docs.openapi-ng.dev/pla
 - **Two layouts.** Per-tag `@Injectable` services by default, or `--layout operations` for one tree-shakeable constant per operation, callable from any injection context or bound once with `withInjector()`.
 - **Strict OpenAPI subset.** A focused 3.x slice with clear diagnostics. No silent misgeneration; see [Assumptions & limitations](https://docs.openapi-ng.dev/reference/limitations/) for the accepted shape.
 - **Configurable naming.** Tune method names and service grouping with template + regex rules, via YAML, JSON, or TypeScript config.
-- **Thin, pass-through helpers.** Generated methods just build the request (method, URL, query, body) and forward every `HttpClient.request` / `httpResource` option through unchanged — `withCredentials`, `transferCache`, `reportProgress`, `equal`, `injector`, and the rest. The response reaches you untouched.
+- **Thin, pass-through helpers.** Generated methods just build the request (method, URL, query, body) and forward every `HttpClient.request` / `httpResource` option through unchanged — `withCredentials`, `transferCache`, `reportUploadProgress`, `equal`, `injector`, and the rest. The response reaches you untouched.
 
 ## Install
 

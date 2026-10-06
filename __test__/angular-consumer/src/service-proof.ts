@@ -1,6 +1,12 @@
 import type { PetRest, UpdatePetParams } from '../generated/rest/pet.rest';
-import type { HttpEvent, HttpResourceRef, HttpResponse } from '@angular/common/http';
+import type {
+  HttpClient,
+  HttpEvent,
+  HttpResourceRef,
+  HttpResponse,
+} from '@angular/common/http';
 import { Pet, PetList } from '../generated/model.ts';
+import type { ObservableOptions } from '../generated/rest.model';
 import { Observable } from 'rxjs';
 import type { ResourceParamsContext } from '@angular/core';
 import type {
@@ -37,7 +43,7 @@ const listPetsObservableResponse = service.listPets.observable({
 });
 const listPetsObservableEvents = service.listPets.observable({
   observe: 'events',
-  reportProgress: true,
+  reportDownloadProgress: true,
 });
 
 expectType<string>(listPetsRequest.url);
@@ -99,8 +105,37 @@ const updatePetObservableResponse = service.updatePet.observable(request, {
 });
 const updatePetObservableEvents = service.updatePet.observable(request, {
   observe: 'events',
-  reportProgress: true,
+  reportDownloadProgress: true,
 });
+
+// Every HttpClient.request option the operation does not supply itself passes
+// through, so options added by a later Angular need no regeneration.
+type PassThroughOptions = Omit<
+  NonNullable<Parameters<HttpClient['request']>[2]>,
+  'body' | 'params' | 'headers' | 'responseType'
+>;
+// A non-literal argument skips excess-property checks, so compare keys too.
+declare const missingOptionKey: Exclude<
+  keyof PassThroughOptions,
+  keyof ObservableOptions
+>;
+expectType<never>(missingOptionKey);
+declare const everyRequestOption: Required<PassThroughOptions>;
+service.updatePet.observable(request, everyRequestOption);
+service.updatePet.observable(request, {
+  integrity: 'sha256-x',
+  referrerPolicy: 'no-referrer',
+  reportUploadProgress: true,
+});
+
+// @ts-expect-error — the operation supplies the body
+service.updatePet.observable(request, { body: {} });
+// @ts-expect-error — the operation supplies the query params
+service.updatePet.observable(request, { params: {} });
+// @ts-expect-error — the operation supplies the headers
+service.updatePet.observable(request, { headers: {} });
+// @ts-expect-error — the response type is fixed per operation
+service.updatePet.observable(request, { responseType: 'text' });
 
 expectType<string>(updatePetRequest.url);
 expectType<Observable<Pet>>(updatePetObservable);
@@ -133,6 +168,6 @@ expectType<Observable<HttpResponse<void>>>(
 expectType<Observable<HttpEvent<void>>>(
   requestVoidFactory.observable(
     { id: 'x' },
-    { observe: 'events', reportProgress: true },
+    { observe: 'events', reportDownloadProgress: true },
   ),
 );
