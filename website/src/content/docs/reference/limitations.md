@@ -13,19 +13,24 @@ shape your spec violated; see the
 
 - **`operationId` is required** on every operation. The generator uses
   it to name service methods and request interfaces.
-- **Every operation needs at least one `tag`**. The first tag
-  determines which service class the operation belongs to (tag `pet` →
-  `PetRest`). Additional tags are ignored for grouping.
+- **The first `tag` picks the service class** (tag `pet` →
+  `PetRest`). Additional tags are ignored for grouping. An untagged
+  operation falls back to its first path segment (`/pets/{petId}` →
+  `PetsRest`).
 - **Only `#/components/schemas/` references** are supported. External
   files, URL refs, and refs to other sections (e.g.
   `#/components/responses/`) are rejected.
 
 ## Response handling
 
-- **Only the lowest 2xx response is used.** If your operation defines
-  both `200` and `201`, the `200` response is picked. Error responses
-  (4xx, 5xx) are completely ignored — no error type mappings are
-  generated.
+- **Only the lowest 2xx response types the return value.** If your
+  operation defines both `200` and `201`, the `200` response is picked.
+- **Error responses are named, not wired in.** Each 4xx or 5xx
+  response with an `application/json` schema becomes a member of a
+  status-keyed `<Op>Error` interface next to `<Op>Params`
+  (`{ 404: NotFound }`), for you to narrow against. `.observable()` and
+  `.resource()` do not use it in their error typing, and `default`
+  responses are not included.
 - Default content type is `application/json`; other types route to the
   matching `requestFactory.{blob,text,arrayBuffer}` variant (see the
   [Angular generator](/guides/angular/#non-json-responses)).
@@ -110,5 +115,5 @@ delete }`). The barrel namespace (`ops.delete`) needs nothing extra;
 - Remote URLs or external file references (the `--input <url>` fetcher
   is the one exception).
 - OpenAPI 2.x (Swagger) and 3.1-specific features.
-- Error response type generation.
+- Typed errors on `.observable()` / `.resource()`.
 - Custom service grouping strategies (tag-first only).
