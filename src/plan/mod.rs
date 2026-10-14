@@ -3,6 +3,7 @@
 
 pub(crate) mod artifact_plan;
 pub mod naming;
+pub(crate) mod resources;
 pub(crate) mod services;
 
 use crate::{
@@ -43,6 +44,7 @@ pub(crate) fn plan_generation<'model>(
     resolve_service_plans(
       model,
       &resolver,
+      &config.resources,
       reporter,
       config.layout.contains(&crate::bindings::Layout::Operations),
     )?

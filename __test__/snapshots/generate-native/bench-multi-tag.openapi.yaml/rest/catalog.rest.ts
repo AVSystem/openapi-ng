@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { httpParams, requestFactory } from '../rest.util';
+import { httpParams, mutationFactory, requestFactory } from '../rest.util';
 import type {
   CatalogItem1,
   CatalogItem10,
@@ -28,7 +28,7 @@ import type {
 })
 export class CatalogRest {
 
-  readonly createCatalogItem1 = requestFactory<CreateCatalogItem1Params, CatalogItem1>(
+  readonly createCatalogItem1 = mutationFactory<CreateCatalogItem1Params, CatalogItem1>(
     (request: CreateCatalogItem1Params) => {
       const { body } = request;
       return {
@@ -39,7 +39,7 @@ export class CatalogRest {
     },
   );
 
-  readonly createCatalogItem10 = requestFactory<CreateCatalogItem10Params, CatalogItem10>(
+  readonly createCatalogItem10 = mutationFactory<CreateCatalogItem10Params, CatalogItem10>(
     (request: CreateCatalogItem10Params) => {
       const { body } = request;
       return {
@@ -50,7 +50,7 @@ export class CatalogRest {
     },
   );
 
-  readonly createCatalogItem2 = requestFactory<CreateCatalogItem2Params, CatalogItem2>(
+  readonly createCatalogItem2 = mutationFactory<CreateCatalogItem2Params, CatalogItem2>(
     (request: CreateCatalogItem2Params) => {
       const { body } = request;
       return {
@@ -61,7 +61,7 @@ export class CatalogRest {
     },
   );
 
-  readonly createCatalogItem3 = requestFactory<CreateCatalogItem3Params, CatalogItem3>(
+  readonly createCatalogItem3 = mutationFactory<CreateCatalogItem3Params, CatalogItem3>(
     (request: CreateCatalogItem3Params) => {
       const { body } = request;
       return {
@@ -72,7 +72,7 @@ export class CatalogRest {
     },
   );
 
-  readonly createCatalogItem4 = requestFactory<CreateCatalogItem4Params, CatalogItem4>(
+  readonly createCatalogItem4 = mutationFactory<CreateCatalogItem4Params, CatalogItem4>(
     (request: CreateCatalogItem4Params) => {
       const { body } = request;
       return {
@@ -83,7 +83,7 @@ export class CatalogRest {
     },
   );
 
-  readonly createCatalogItem5 = requestFactory<CreateCatalogItem5Params, CatalogItem5>(
+  readonly createCatalogItem5 = mutationFactory<CreateCatalogItem5Params, CatalogItem5>(
     (request: CreateCatalogItem5Params) => {
       const { body } = request;
       return {
@@ -94,7 +94,7 @@ export class CatalogRest {
     },
   );
 
-  readonly createCatalogItem6 = requestFactory<CreateCatalogItem6Params, CatalogItem6>(
+  readonly createCatalogItem6 = mutationFactory<CreateCatalogItem6Params, CatalogItem6>(
     (request: CreateCatalogItem6Params) => {
       const { body } = request;
       return {
@@ -105,7 +105,7 @@ export class CatalogRest {
     },
   );
 
-  readonly createCatalogItem7 = requestFactory<CreateCatalogItem7Params, CatalogItem7>(
+  readonly createCatalogItem7 = mutationFactory<CreateCatalogItem7Params, CatalogItem7>(
     (request: CreateCatalogItem7Params) => {
       const { body } = request;
       return {
@@ -116,7 +116,7 @@ export class CatalogRest {
     },
   );
 
-  readonly createCatalogItem8 = requestFactory<CreateCatalogItem8Params, CatalogItem8>(
+  readonly createCatalogItem8 = mutationFactory<CreateCatalogItem8Params, CatalogItem8>(
     (request: CreateCatalogItem8Params) => {
       const { body } = request;
       return {
@@ -127,7 +127,7 @@ export class CatalogRest {
     },
   );
 
-  readonly createCatalogItem9 = requestFactory<CreateCatalogItem9Params, CatalogItem9>(
+  readonly createCatalogItem9 = mutationFactory<CreateCatalogItem9Params, CatalogItem9>(
     (request: CreateCatalogItem9Params) => {
       const { body } = request;
       return {

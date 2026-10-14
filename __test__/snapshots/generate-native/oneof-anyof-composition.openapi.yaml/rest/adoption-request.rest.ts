@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { requestFactory } from '../rest.util';
+import { mutationFactory } from '../rest.util';
 import type { AdoptionDecision, AdoptionRequest } from '../model';
 
 @Injectable({
@@ -7,7 +7,7 @@ import type { AdoptionDecision, AdoptionRequest } from '../model';
 })
 export class AdoptionRequestRest {
 
-  readonly createAdoptionRequest = requestFactory<CreateAdoptionRequestParams, AdoptionDecision>(
+  readonly createAdoptionRequest = mutationFactory<CreateAdoptionRequestParams, AdoptionDecision>(
     (request: CreateAdoptionRequestParams) => {
       const { body } = request;
       return {

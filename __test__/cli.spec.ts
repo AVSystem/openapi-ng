@@ -850,3 +850,63 @@ test('cli generate --emit models --layout operations fails with E_INVALID_OPTION
   t.true(result.stderr.includes('E_INVALID_OPTION'));
   t.true(result.stderr.includes("requires the 'angular' emit target"));
 });
+
+test('cli generate honours resources RegExp rules from openapi-ng.config.mjs', t => {
+  withTempDir(dir => {
+    const out = path.join(dir, 'out');
+    fs.writeFileSync(
+      path.join(dir, 'openapi-ng.config.mjs'),
+      `export default {\n` +
+        `  input: ${JSON.stringify(fixture('resource-rules.openapi.yaml'))},\n` +
+        `  output: ${JSON.stringify(out)},\n` +
+        `  resources: [{ operationId: /^create/ }],\n` +
+        `};\n`,
+      'utf8',
+    );
+    const result = runCli(['generate'], dir);
+    t.is(result.status, 0, result.stderr);
+    const pets = fs.readFileSync(path.join(out, 'rest', 'pet.rest.ts'), 'utf8');
+    t.true(pets.includes('readonly createPet = requestFactory<'));
+    t.true(pets.includes('readonly listPets = mutationFactory.zeroArg<'));
+  });
+});
+
+test('cli generate honours resources from a YAML config', t => {
+  withTempDir(dir => {
+    const out = path.join(dir, 'out');
+    fs.writeFileSync(
+      path.join(dir, '.openapi-ng.yaml'),
+      `input: ${JSON.stringify(fixture('resource-rules.openapi.yaml'))}\n` +
+        `output: ${JSON.stringify(out)}\n` +
+        `resources:\n  - DELETE\n  - path: { source: '/search$', flags: '' }\n`,
+      'utf8',
+    );
+    const result = runCli(['generate'], dir);
+    t.is(result.status, 0, result.stderr);
+    const pets = fs.readFileSync(path.join(out, 'rest', 'pet.rest.ts'), 'utf8');
+    t.true(pets.includes('readonly deletePet = requestFactory<'));
+    t.true(pets.includes('readonly searchPets = requestFactory<'));
+    t.true(pets.includes('readonly listPets = mutationFactory.zeroArg<'));
+  });
+});
+
+test('cli generate honours resources from a JSON config', t => {
+  withTempDir(dir => {
+    const out = path.join(dir, 'out');
+    fs.writeFileSync(
+      path.join(dir, '.openapi-ng.json'),
+      JSON.stringify({
+        input: fixture('resource-rules.openapi.yaml'),
+        output: out,
+        resources: ['DELETE', { operationId: { source: '^SEARCH', flags: 'i' } }],
+      }),
+      'utf8',
+    );
+    const result = runCli(['generate'], dir);
+    t.is(result.status, 0, result.stderr);
+    const pets = fs.readFileSync(path.join(out, 'rest', 'pet.rest.ts'), 'utf8');
+    t.true(pets.includes('readonly deletePet = requestFactory<'));
+    t.true(pets.includes('readonly searchPets = requestFactory<'));
+    t.true(pets.includes('readonly listPets = mutationFactory.zeroArg<'));
+  });
+});

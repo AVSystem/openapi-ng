@@ -414,6 +414,7 @@ fn semantic_finalize_lowers_operations_with_inputs_body_and_response() {
       errors: Vec::new(),
       description: None,
       deprecated: false,
+      resource: None,
     }],
   };
 

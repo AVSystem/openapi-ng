@@ -1,0 +1,6 @@
+{
+  "code": "E_INPUT_INVALID",
+  "message": "Failed to decode OpenAPI input as YAML: paths./session/logout.get.x-openapi-ng-resource: invalid type: string \"no\", expected a boolean at line 91 column 30",
+  "path": "test/fixtures/resource-extension-not-boolean.openapi.yaml",
+  "warnings": []
+}

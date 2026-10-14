@@ -1,12 +1,12 @@
 import { Injectable } from '@angular/core';
-import { requestFactory } from '../rest.util';
+import { mutationFactory } from '../rest.util';
 
 @Injectable({
   providedIn: 'root',
 })
 export class SearchRest {
 
-  readonly submitForm = requestFactory<SubmitFormParams, {
+  readonly submitForm = mutationFactory<SubmitFormParams, {
     count?: number;
   }>(
     (request: SubmitFormParams) => {

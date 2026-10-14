@@ -4,7 +4,7 @@ use crate::identifier::TypeName;
 use crate::plan::artifact_plan::{PlannedOperation, ServicePlan};
 use crate::plan::naming::service_file_stem;
 
-use super::imports::render_service_imports;
+use super::imports::{factory_name, render_service_imports};
 use super::request::{
   render_error_interface, render_request_interface, render_requestful_builder,
   render_zero_arg_builder,
@@ -125,7 +125,12 @@ fn render_operation_property(
     Doc::new(operation.description.as_deref(), operation.deprecated),
   );
   w!(buffer, "readonly {property_name} = ");
-  write_call_site(buffer, "requestFactory", operation.response, request_name);
+  write_call_site(
+    buffer,
+    factory_name(operation, false),
+    operation.response,
+    request_name,
+  );
   buffer.push("(\n");
   buffer.indent();
   match request_name {
@@ -191,7 +196,7 @@ mod tests {
   use crate::api_model::canonical::ErrorResponse;
   use crate::api_model::canonical::{HttpMethod, ResponseContent};
   use crate::api_model::schema::{SchemaScalar, SchemaType};
-  use crate::plan::artifact_plan::{PlannedRequestContract, ServicePlan};
+  use crate::plan::artifact_plan::{Access, PlannedRequestContract, ServicePlan};
   use crate::test_support::{empty_request, op_with, path_field, string_schema};
 
   // The four tests below pin the helper expression emitted by
@@ -433,6 +438,39 @@ mod tests {
        }\n\
        \n\
        export type { GetPetParams, GetPetError } from './pet';\n"
+    );
+  }
+
+  #[test]
+  fn mutation_uses_mutation_factory_and_imports_only_the_factories_used() {
+    let str_schema = string_schema();
+    let json = ResponseContent::Json(Some(SchemaType::Scalar(SchemaScalar::String)));
+    let mut delete = op_with_response_and_path("deletePet", &str_schema, &json);
+    delete.access = Access::Mutation;
+    let mut ping = op_with("ping", HttpMethod::Post, "/ping", empty_request(), None);
+    ping.access = Access::Mutation;
+    let mutations_only = ServicePlan {
+      group_name: "pet".to_string(),
+      class_name: TypeName::new("PetRest".to_string()),
+      artifact_path: "rest/pet.rest.ts".to_string(),
+      operations_barrel_path: None,
+      operations: vec![delete, ping],
+    };
+
+    let out = emit_service(&mutations_only);
+
+    assert!(out.contains("import { mutationFactory } from '../rest.util';"));
+    assert!(out.contains("readonly deletePet = mutationFactory<DeletePetParams, string>("));
+    assert!(out.contains("readonly ping = mutationFactory.zeroArg<void>("));
+    assert!(!out.contains("requestFactory"), "{out}");
+
+    let mut mixed = mutations_only;
+    mixed
+      .operations
+      .push(op_with_response_and_path("getPet", &str_schema, &json));
+    assert!(
+      emit_service(&mixed)
+        .contains("import { mutationFactory, requestFactory } from '../rest.util';")
     );
   }
 }

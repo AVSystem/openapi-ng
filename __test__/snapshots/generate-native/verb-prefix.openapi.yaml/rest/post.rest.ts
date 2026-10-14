@@ -1,12 +1,12 @@
 import { Injectable } from '@angular/core';
-import { requestFactory } from '../rest.util';
+import { mutationFactory, requestFactory } from '../rest.util';
 
 @Injectable({
   providedIn: 'root',
 })
 export class PostRest {
 
-  readonly postsCreate = requestFactory<PostsCreateParams, void>(
+  readonly postsCreate = mutationFactory<PostsCreateParams, void>(
     (request: PostsCreateParams) => {
       const { body } = request;
       return {

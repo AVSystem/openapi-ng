@@ -122,6 +122,7 @@ mod tests {
       errors: Vec::new(),
       description: None,
       deprecated: false,
+      resource: None,
     }
   }
 

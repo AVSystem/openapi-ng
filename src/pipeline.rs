@@ -215,6 +215,8 @@ mod tests {
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
       layout: crate::options::default_layout(),
+      resource_rule_entries: None,
+      resources: crate::plan::resources::ResourceRules::default(),
     }
   }
 
@@ -341,6 +343,8 @@ mod tests {
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
       layout: crate::options::default_layout(),
+      resource_rule_entries: None,
+      resources: crate::plan::resources::ResourceRules::default(),
     })
     .expect("generation succeeds");
 
@@ -377,6 +381,8 @@ mod tests {
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
       layout: crate::options::default_layout(),
+      resource_rule_entries: None,
+      resources: crate::plan::resources::ResourceRules::default(),
     })
     .expect("generation succeeds");
 
@@ -409,6 +415,8 @@ mod tests {
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
       layout: crate::options::default_layout(),
+      resource_rule_entries: None,
+      resources: crate::plan::resources::ResourceRules::default(),
     })
     .expect("generation succeeds");
 
@@ -461,6 +469,8 @@ mod tests {
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
       layout: crate::options::default_layout(),
+      resource_rule_entries: None,
+      resources: crate::plan::resources::ResourceRules::default(),
     };
     let result = execute_generate(config).expect("inputContents pipeline must succeed");
     assert_eq!(result.summary.title, "Inline Test");
@@ -487,6 +497,8 @@ mod tests {
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
       layout: crate::options::default_layout(),
+      resource_rule_entries: None,
+      resources: crate::plan::resources::ResourceRules::default(),
     })
     .expect("generation succeeds");
 

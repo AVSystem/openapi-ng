@@ -14,8 +14,10 @@ use crate::plan::naming::{
   error_interface_name, operation_file_stem, request_interface_name, service_class_name,
   service_file_stem,
 };
+use crate::plan::resources::ResourceRules;
 use crate::plan::services::plan_request_contract;
 
+use super::Access;
 use super::collisions::{reject_artifact_path_collisions, reject_cross_group_path_collisions};
 use super::*;
 
@@ -51,6 +53,7 @@ pub(crate) fn validate_mapped_types_against_schemas<'model>(
 pub(crate) fn resolve_service_plans<'model>(
   model: &'model ApiModel,
   resolver: &crate::plan::naming::NamingResolver,
+  resources: &ResourceRules,
   reporter: &Reporter,
   standalone: bool,
 ) -> Result<Vec<ServicePlan<'model>>, Diagnostic> {
@@ -63,7 +66,14 @@ pub(crate) fn resolve_service_plans<'model>(
       let mut operations = group
         .into_iter()
         .map(|(operation, method_name)| {
-          plan_operation(operation, method_name, &file_stem, standalone, reporter)
+          plan_operation(
+            operation,
+            method_name,
+            &file_stem,
+            resources,
+            standalone,
+            reporter,
+          )
         })
         .collect::<Result<Vec<_>, Diagnostic>>()?;
       operations.sort_by(|left, right| left.method_name.cmp(&right.method_name));
@@ -92,6 +102,7 @@ fn plan_operation<'model>(
   operation: &'model crate::api_model::canonical::OperationDef,
   method_name: MethodName,
   file_stem: &str,
+  resources: &ResourceRules,
   standalone: bool,
   reporter: &Reporter,
 ) -> Result<PlannedOperation<'model>, Diagnostic> {
@@ -111,6 +122,11 @@ fn plan_operation<'model>(
     errors: operation.errors.as_slice(),
     description: operation.description.clone(),
     deprecated: operation.deprecated,
+    access: if resources.admits(operation) {
+      Access::Resource
+    } else {
+      Access::Mutation
+    },
   })
 }
 

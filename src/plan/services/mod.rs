@@ -130,6 +130,7 @@ mod tests {
         errors: Vec::new(),
         description: None,
         deprecated: false,
+        resource: None,
       };
       let request = plan_request_contract(&operation, &ctx).expect("request contract resolves");
 
@@ -190,6 +191,7 @@ mod tests {
         errors: Vec::new(),
         description: None,
         deprecated: false,
+        resource: None,
       };
       let request = plan_request_contract(&operation, &ctx).expect("request contract resolves");
 
@@ -235,6 +237,7 @@ mod tests {
         errors: Vec::new(),
         description: None,
         deprecated: false,
+        resource: None,
       };
       let request = plan_request_contract(&operation, &ctx).expect("request contract resolves");
 
@@ -276,6 +279,7 @@ mod tests {
         errors: Vec::new(),
         description: None,
         deprecated: false,
+        resource: None,
       };
       let ctx = test_reporter();
       let err = plan_request_contract(&operation, &ctx)
@@ -311,6 +315,7 @@ mod tests {
         errors: Vec::new(),
         description: None,
         deprecated: false,
+        resource: None,
       };
       let ctx = test_reporter();
       let request = plan_request_contract(&operation, &ctx)
@@ -352,6 +357,7 @@ mod tests {
           errors: Vec::new(),
           description: None,
           deprecated: false,
+          resource: None,
         },
         &ctx,
       )

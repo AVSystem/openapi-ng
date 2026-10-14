@@ -12,6 +12,10 @@ export type {
   GeneratorDiagnostic,
   MappedType,
   NamingConfig,
+  ResourceMethod,
+  ResourcePattern,
+  ResourceRule,
+  Resources,
   ResponseTypeMapping,
 } from './index';
 export { EmitTarget, GenerateError, InputFormat, Layout, ResponseType } from './index';

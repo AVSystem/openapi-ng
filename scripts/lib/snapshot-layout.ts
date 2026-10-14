@@ -153,6 +153,31 @@ export const SUCCESS_FIXTURES: readonly SuccessFixture[] = [
     fixture: 'reserved-prop-names.openapi.yaml',
     pins: 'a reserved word stays bare while a non-identifier gets quoted',
   },
+  {
+    fixture: 'resource-rules.openapi.yaml',
+    pins: 'GETs and a query-named POST keep `.resource()`; the extension overrides either way',
+  },
+  {
+    fixture: 'resource-rules.openapi.yaml',
+    label: 'resource-rules.openapi.yaml.layout-operations',
+    options: { layout: ['operations'] satisfies Layout[] },
+    pins: 'operation files pick `defineMutation` for the operations the rules leave out',
+  },
+  {
+    fixture: 'resource-rules.openapi.yaml',
+    label: 'resource-rules.openapi.yaml.custom-rules',
+    options: { resources: ['DELETE', { path: /\/search$/ }] },
+    pins: 'an explicit `resources` list replaces the default rules',
+  },
+  {
+    fixture: 'resource-rules.openapi.yaml',
+    label: 'resource-rules.openapi.yaml.layout-services-operations',
+    options: {
+      layout: ['services', 'operations'] satisfies Layout[],
+      responseTypeMapping: [{ contentType: 'application/pdf', responseType: 'arrayBuffer' }],
+    },
+    pins: 'bound classes keep each mutation\'s type, and an `arrayBuffer` write picks `defineMutation.arrayBuffer`',
+  },
   { fixture: 'response-204-no-content.openapi.yaml', pins: 'a bodyless response emits `void`' },
   { fixture: 'response-blob-via-pdf.openapi.yaml', pins: '`application/pdf` routes to the blob variant' },
   {
@@ -202,6 +227,9 @@ export const FAILURE_FIXTURES: readonly FailureFixture[] = [
   { fixture: 'inline-parameter.openapi.yaml', pins: 'a parameter with an inline object schema' },
   { fixture: 'invalid-enum-type.openapi.yaml', pins: 'an enum on a non-string type' },
   { fixture: 'invalid-enum-value.openapi.json', pins: 'a non-string enum member' },
+  { fixture: 'resource-extension-not-boolean.openapi.yaml', pins: '`x-openapi-ng-resource` must be a boolean' },
+  { fixture: 'resource-extension-null.openapi.yaml', pins: 'a null `x-openapi-ng-resource` is refused, not read as absent' },
+  { fixture: 'resource-extension-on-path-item.openapi.yaml', pins: '`x-openapi-ng-resource` on a path item is refused' },
   { fixture: 'unbalanced-path-template.openapi.yaml', pins: 'an unbalanced brace in a path template' },
   { fixture: 'unsupported-root.yaml', pins: 'components.schemas declared as a sequence' },
   { fixture: 'unsupported-semantic.openapi.yaml', pins: 'additionalProperties combined with properties' },

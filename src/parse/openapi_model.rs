@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer, de::Error};
 use serde_json::Value;
 
 use crate::parse::unique_map::{UniqueIndexMap, UniqueMap};
@@ -34,6 +34,23 @@ pub(crate) struct PathItem {
   pub(crate) post: Option<Operation>,
   pub(crate) put: Option<Operation>,
   pub(crate) trace: Option<Operation>,
+  #[serde(
+    rename = "x-openapi-ng-resource",
+    default,
+    deserialize_with = "reject_path_level_resource"
+  )]
+  _resource: (),
+}
+
+fn reject_path_level_resource<'de, D: Deserializer<'de>>(_: D) -> Result<(), D::Error> {
+  Err(D::Error::custom(
+    "x-openapi-ng-resource goes on an operation (`get:`, `post:`, ...), not on the path item",
+  ))
+}
+
+// Absent means no override; an explicit `null` is refused rather than read as absent.
+fn required_bool<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<bool>, D::Error> {
+  bool::deserialize(deserializer).map(Some)
 }
 
 impl PathItem {
@@ -68,6 +85,13 @@ pub(crate) struct Operation {
   /// OpenAPI `deprecated: true` on the operation.
   #[serde(default)]
   pub(crate) deprecated: bool,
+  /// `x-openapi-ng-resource`, overriding the `resources` rules for this operation.
+  #[serde(
+    rename = "x-openapi-ng-resource",
+    default,
+    deserialize_with = "required_bool"
+  )]
+  pub(crate) resource: Option<bool>,
 }
 
 impl Operation {

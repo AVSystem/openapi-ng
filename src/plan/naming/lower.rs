@@ -5,7 +5,7 @@ use crate::{
   error::{Diagnostic, DiagnosticCode, Reporter, bail},
   plan::naming::{
     config::{Case, Naming, NamingConfig, Rule, RuleEntry},
-    parse_spec::compile as compile_parse_spec,
+    parse_spec::compile_option_pattern,
   },
 };
 
@@ -96,17 +96,7 @@ fn lower_rule(
 
   let parse = rule
     .parse
-    .map(|spec| {
-      compile_parse_spec(&spec.source, &spec.flags).map_err(|error| {
-        reporter.error(
-          DiagnosticCode::InvalidOption,
-          format!(
-            "naming.{path}.parse: failed to compile regex `{}` (flags=`{}`): {error:?}",
-            spec.source, spec.flags,
-          ),
-        )
-      })
-    })
+    .map(|spec| compile_option_pattern(&spec, &format!("naming.{path}.parse"), reporter))
     .transpose()?;
 
   // Without a `format`, the rule's output is the expanded `from` — which

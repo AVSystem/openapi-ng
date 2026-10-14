@@ -8,7 +8,13 @@ import { schema } from '@angular/forms/signals';
 import type { Observable } from 'rxjs';
 import type { Pet, PetList, Problem } from '../generated/model';
 import type { CommonRequest } from '../generated/rest.model';
-import { withInjector, type Operation, type RequestFn } from '../generated/rest.util';
+import {
+  withInjector,
+  type Mutation,
+  type MutationFn,
+  type Operation,
+  type RequestFn,
+} from '../generated/rest.util';
 import { validateRest } from '../generated/rest.validate';
 import * as ops from '../generated/rest/pet';
 import type { GetPetError, GetPetParams, PetRest } from '../generated/rest/pet.rest';
@@ -43,7 +49,7 @@ expectType<CommonRequest>(listPets.request({}));
 expectType<CommonRequest>(listPets.request({ status: 'sold' }, { injector }));
 
 expectType<Operation<ListPetsParams, PetList>>(listPets);
-expectType<Operation<DeleteParams, void>>(deletePet);
+expectType<Mutation<DeleteParams, void>>(deletePet);
 
 // Bound form: today's RequestFn, identical to the `services` class property.
 const boundGetPet = getPet.withInjector(injector);
@@ -57,12 +63,12 @@ expectType<HttpResourceRef<Pet | undefined>>(
 // Record helper: every entry maps to its RequestFn.
 const api = withInjector({ getPet, deletePet, listPets }, injector);
 expectType<RequestFn<GetPetParams, Pet>>(api.getPet);
-expectType<RequestFn<DeleteParams, void>>(api.deletePet);
+expectType<MutationFn<DeleteParams, void>>(api.deletePet);
 expectType<RequestFn<ListPetsParams, PetList>>(api.listPets);
 expectType<Observable<void>>(api.deletePet.observable({ petId: 'x' }));
 
 // Barrel namespace, reserved-word member included.
-expectType<Operation<DeleteParams, void>>(ops.delete);
+expectType<Mutation<DeleteParams, void>>(ops.delete);
 expectType<Operation<GetPetParams, Pet>>(ops.getPet);
 expectType<CommonRequest>(ops.listPets.request({}));
 
@@ -93,3 +99,17 @@ api.getPet.withInjector(injector);
 
 // @ts-expect-error — the bound `.request()` takes no options
 service.listPets.request({}, { injector });
+
+// @ts-expect-error — a DELETE outside the `resources` rules has no `.resource()`
+deletePet.resource(() => ({ petId: 'x' }));
+
+// @ts-expect-error — nor does its bound form
+api.deletePet.resource(() => ({ petId: 'x' }));
+
+schema<string>(path => {
+  // @ts-expect-error — so validateRest refuses it
+  validateRest(path, deletePet, {
+    request: ctx => ({ petId: ctx.value() }),
+    onError: () => undefined,
+  });
+});

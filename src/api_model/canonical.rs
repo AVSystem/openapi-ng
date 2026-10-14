@@ -89,6 +89,24 @@ pub(crate) enum HttpMethod {
 }
 
 impl HttpMethod {
+  pub(crate) const ALL: [Self; 7] = [
+    Self::Get,
+    Self::Post,
+    Self::Put,
+    Self::Delete,
+    Self::Patch,
+    Self::Options,
+    Self::Head,
+  ];
+
+  /// The method [`Self::as_str`] prints as `value`.
+  #[must_use]
+  pub(crate) fn from_uppercase(value: &str) -> Option<Self> {
+    Self::ALL
+      .into_iter()
+      .find(|method| method.as_str() == value)
+  }
+
   #[must_use]
   pub(crate) const fn as_str(self) -> &'static str {
     match self {
@@ -151,6 +169,8 @@ pub(crate) struct OperationDef {
   pub(crate) description: Option<String>,
   /// The source operation declared `deprecated: true`.
   pub(crate) deprecated: bool,
+  /// `x-openapi-ng-resource`, overriding the `resources` rules.
+  pub(crate) resource: Option<bool>,
 }
 
 /// One response slot keyed by an explicit 4xx or 5xx status.

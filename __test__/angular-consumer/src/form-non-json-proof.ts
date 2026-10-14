@@ -41,10 +41,8 @@ const multipartRequest: UpdatePetAvatarParams = {
 };
 
 const multipartObservable = petSvc.updatePetAvatar.observable(multipartRequest);
-const multipartResource = petSvc.updatePetAvatar.resource(() => multipartRequest);
 
 expectType<Observable<{ id?: string }>>(multipartObservable);
-expectType<HttpResourceRef<{ id?: string } | undefined>>(multipartResource);
 
 /**
  * application/x-www-form-urlencoded — scalar + scalar array.

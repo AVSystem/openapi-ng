@@ -1,0 +1,12 @@
+openapi: 3.0.3
+info:
+  title: Resource Extension On Path Item
+  version: 1.0.0
+paths:
+  /pets:
+    x-openapi-ng-resource: true
+    get:
+      operationId: listPets
+      responses:
+        '204':
+          description: ok

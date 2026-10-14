@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::api_model::canonical::ResponseContent;
 use crate::api_model::schema::{SchemaType, collect_type_references};
 use crate::emit::ts::{Writer, type_import_block, wln};
-use crate::plan::artifact_plan::{PlannedOperation, PlannedRequestBody, RequestFieldKind};
+use crate::plan::artifact_plan::{Access, PlannedOperation, PlannedRequestBody, RequestFieldKind};
 
 /// Path from a generated service file to the sibling `model.ts`, one directory above it.
 const MODEL_IMPORT_PATH: &str = "../model";
@@ -14,17 +14,46 @@ pub(super) fn render_service_imports(
   helper_import_path: &str,
 ) {
   buffer.line("import { Injectable } from '@angular/core';");
-  let helper_symbols: &[&str] = if uses_http_params(operations) {
-    &["httpParams", "requestFactory"]
-  } else {
-    &["requestFactory"]
-  };
-  write_helper_import(buffer, helper_import_path, helper_symbols);
+  write_helper_import(
+    buffer,
+    helper_import_path,
+    &helper_symbols(operations, false),
+  );
   write_model_imports(
     buffer,
     &collect_model_type_imports(operations),
     MODEL_IMPORT_PATH,
   );
+}
+
+/// The `rest.util` factory an operation is built with: `define*` in an operation file
+/// (`standalone`), `*Factory` in a service class.
+#[must_use]
+pub(super) const fn factory_name(
+  operation: &PlannedOperation<'_>,
+  standalone: bool,
+) -> &'static str {
+  match (standalone, operation.access) {
+    (false, Access::Resource) => "requestFactory",
+    (false, Access::Mutation) => "mutationFactory",
+    (true, Access::Resource) => "defineOperation",
+    (true, Access::Mutation) => "defineMutation",
+  }
+}
+
+/// The `rest.util` symbols the operations reference, sorted.
+#[must_use]
+pub(super) fn helper_symbols(
+  operations: &[PlannedOperation<'_>],
+  standalone: bool,
+) -> Vec<&'static str> {
+  operations
+    .iter()
+    .map(|operation| factory_name(operation, standalone))
+    .chain(uses_http_params(operations).then_some("httpParams"))
+    .collect::<BTreeSet<_>>()
+    .into_iter()
+    .collect()
 }
 
 #[must_use]
@@ -39,6 +68,9 @@ pub(super) fn uses_http_params(operations: &[PlannedOperation<'_>]) -> bool {
 }
 
 pub(super) fn write_helper_import(buffer: &mut Writer, path: &str, symbols: &[&str]) {
+  if symbols.is_empty() {
+    return;
+  }
   wln!(buffer, "import {{ {} }} from '{path}';", symbols.join(", "));
 }
 
@@ -262,7 +294,7 @@ mod tests {
   fn empty_operation_set_emits_only_fixed_imports() {
     let out = render(&[]);
     assert!(out.contains("Injectable"));
-    assert!(out.contains("requestFactory"));
+    assert!(!out.contains("rest.util"));
     assert!(!out.contains("HttpClient"));
     assert!(!out.contains("httpParams"));
     assert!(!out.contains("../model"));

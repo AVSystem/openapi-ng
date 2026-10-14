@@ -1,0 +1,103 @@
+openapi: 3.0.3
+info:
+  title: Resource Extension Not Boolean
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      tags: [Pet]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+    post:
+      operationId: createPet
+      tags: [Pet]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pet'
+      responses:
+        '201':
+          description: created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+  /pets/search:
+    post:
+      operationId: searchPets
+      tags: [Pet]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+  /pets/{petId}:
+    delete:
+      operationId: deletePet
+      tags: [Pet]
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: deleted
+  /pets/{petId}/preview-delete:
+    delete:
+      operationId: previewDeletePet
+      x-openapi-ng-resource: true
+      tags: [Pet]
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: what a delete would remove
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+  /session/logout:
+    get:
+      operationId: logout
+      x-openapi-ng-resource: "no"
+      tags: [Session]
+      responses:
+        '204':
+          description: logged out
+components:
+  schemas:
+    Pet:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string

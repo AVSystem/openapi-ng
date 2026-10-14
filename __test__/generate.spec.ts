@@ -136,7 +136,7 @@ function assertPetServiceArtifact(
   t.true(serviceSource?.includes('export class PetRest {'));
   t.true(serviceSource?.includes('requestFactory.zeroArg<PetList>('));
   t.true(serviceSource?.includes('requestFactory<GetPetParams, Pet>('));
-  t.true(serviceSource?.includes('requestFactory<UpdatePetParams, Pet>('));
+  t.true(serviceSource?.includes('mutationFactory<UpdatePetParams, Pet>('));
   t.true(serviceSource?.includes('export interface GetPetParams {'));
   t.true(serviceSource?.includes('export interface UpdatePetParams {'));
   t.true(serviceSource?.includes('petId: PetId;'));
@@ -602,7 +602,7 @@ test('generate exposes flattened request interfaces and operation-object APIs in
     t.false(serviceArtifact?.contents?.includes('HttpClient'));
     t.true(serviceArtifact?.contents?.includes('requestFactory.zeroArg<PetList>('));
     t.true(serviceArtifact?.contents?.includes('requestFactory<GetPetParams, Pet>('));
-    t.true(serviceArtifact?.contents?.includes('requestFactory<UpdatePetParams, Pet>('));
+    t.true(serviceArtifact?.contents?.includes('mutationFactory<UpdatePetParams, Pet>('));
   });
 });
 
@@ -862,6 +862,98 @@ test.serial(
   },
 );
 
+test.serial(
+  'generate emits resource-gated operations that type-check in a consumer project',
+  async t => {
+    resetAngularConsumerGeneratedDir();
+
+    await generate({
+      inputPath: fixture('resource-rules.openapi.yaml'),
+      outputPath: angularConsumerGeneratedDir,
+      emit: [...DEFAULT_EMIT],
+    });
+
+    execFileSync(
+      process.execPath,
+      [
+        path.join(__dirname, '..', 'node_modules', 'typescript', 'bin', 'tsc'),
+        '-p',
+        path.join(__dirname, 'angular-consumer', 'tsconfig.resource-gating.json'),
+      ],
+      {
+        cwd: path.join(__dirname, 'angular-consumer'),
+        stdio: 'pipe',
+      },
+    );
+    t.pass('tsc type-checked resource-gated operations successfully');
+  },
+);
+
+test.serial(
+  'generate keeps mutations without .resource() in bound classes, arrayBuffer included',
+  async t => {
+    resetAngularConsumerGeneratedDir();
+
+    await generate({
+      inputPath: fixture('resource-rules.openapi.yaml'),
+      outputPath: angularConsumerGeneratedDir,
+      emit: [...DEFAULT_EMIT],
+      layout: ['services', 'operations'],
+      responseTypeMapping: [{ contentType: 'application/pdf', responseType: 'arrayBuffer' }],
+    });
+
+    execFileSync(
+      process.execPath,
+      [
+        path.join(__dirname, '..', 'node_modules', 'typescript', 'bin', 'tsc'),
+        '-p',
+        path.join(__dirname, 'angular-consumer', 'tsconfig.resource-gating-bound.json'),
+      ],
+      {
+        cwd: path.join(__dirname, 'angular-consumer'),
+        stdio: 'pipe',
+      },
+    );
+    t.pass('tsc type-checked bound mutations successfully');
+  },
+);
+
+test.serial(
+  'negative-proof tsconfig fails to compile when .resource() is called on a mutation',
+  async t => {
+    resetAngularConsumerGeneratedDir();
+
+    await generate({
+      inputPath: fixture('resource-rules.openapi.yaml'),
+      outputPath: angularConsumerGeneratedDir,
+      emit: [...DEFAULT_EMIT],
+    });
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        path.join(__dirname, '..', 'node_modules', 'typescript', 'bin', 'tsc'),
+        '-p',
+        path.join(__dirname, 'angular-consumer', 'tsconfig.negative-resource.json'),
+      ],
+      {
+        cwd: path.join(__dirname, 'angular-consumer'),
+        encoding: 'utf8',
+      },
+    );
+
+    const stdout = (result.stdout ?? '') + (result.stderr ?? '');
+    t.not(result.status, 0, `expected tsc to fail but it succeeded; output:\n${stdout}`);
+    const errors = stdout.match(/error TS\d+: .*/g) ?? [];
+    t.is(errors.length, 3, stdout);
+    t.is(
+      stdout.match(/resource-rejects-mutation\.ts\(\d+,\d+\): error TS2339/g)?.length,
+      3,
+      stdout,
+    );
+  },
+);
+
 // Negative-compile fixture for the multipart binary-field surface:
 // asserts that tsc FAILS when assigning a plain `string` to a
 // `Blob | File` slot in the generated `UpdatePetAvatarParams`. If this
@@ -934,13 +1026,13 @@ test.serial(
     // Must fail — otherwise the request callback's return type has widened.
     t.not(result.status, 0, `expected tsc to fail but it succeeded; output:\n${stdout}`);
     // The error must be a type-mismatch on the request shape (TS2322 type
-    // assignability or TS2739 missing-properties), not e.g. TS2304 (cannot
+    // assignability, TS2739/TS2741 missing properties), not e.g. TS2304 (cannot
     // find name) — that would mean the proof file is broken, not that the
     // typing rejected the mismatch.
     t.regex(
       stdout,
-      /TS2322|TS2739/,
-      `expected TS2322/TS2739 type-mismatch error; output:\n${stdout}`,
+      /TS2322|TS2739|TS2741/,
+      `expected TS2322/TS2739/TS2741 type-mismatch error; output:\n${stdout}`,
     );
   },
 );
@@ -1101,7 +1193,7 @@ test('generate encodes oneOf/anyOf composition as focused public contract fragme
     t.true(modelArtifact?.contents?.includes('  reviewerNote?: string | null;'));
     t.true(
       serviceArtifact?.contents?.includes(
-        'requestFactory<CreateAdoptionRequestParams, AdoptionDecision>(',
+        'mutationFactory<CreateAdoptionRequestParams, AdoptionDecision>(',
       ),
     );
   });
@@ -1793,6 +1885,98 @@ test('generate rejects an operation named default under layout operations', asyn
   t.is((err as any).code, 'E_POLICY_VIOLATION');
   t.is((err as any).subcode, 'reserved-identifier');
   t.true(err!.message.includes('naming.methodName'));
+});
+
+test('generate types every operation as a mutation when resources is empty', async t => {
+  const result = await generate({
+    inputPath: fixture('petstore-minimal.openapi.yaml'),
+    resources: [],
+  });
+  const service = requireArtifact(result, 'rest/pet.rest.ts').contents ?? '';
+  t.true(service.includes("import { mutationFactory } from '../rest.util';"));
+  t.true(service.includes('readonly listPets = mutationFactory.zeroArg<void>('));
+});
+
+for (const [label, resources, message] of [
+  ['a non-array', 'GET', 'resources must be an array'],
+  ['a lower-case method', ['get'], "resources[0].method: 'get' is not one of 'GET'"],
+  ['a rule that sets nothing', [{}], 'resources[0] must set at least one of'],
+  [
+    'a misspelt key',
+    [{ method: 'POST', operationID: /^search/ }],
+    "unknown key(s) 'operationID'",
+  ],
+  ['a non-RegExp pattern', [{ path: '/search$' }], 'resources[0].path: must be a RegExp'],
+  ['an unsupported flag', [{ operationId: /^search/v }], 'unsupported flag `v`'],
+  [
+    'a bare RegExp',
+    [/^search/],
+    'resources[0]: a RegExp is not a rule; say what it tests, e.g. { operationId: /^search/ }',
+  ],
+  [
+    'a look-around',
+    [{ path: /^(?!\/admin)/ }],
+    'resources[0].path: failed to compile regex',
+  ],
+] as const) {
+  test(`generate rejects resources with ${label}`, async t => {
+    const err = await t.throwsAsync(() =>
+      generate({
+        inputPath: fixture('petstore-minimal.openapi.yaml'),
+        // Deliberately malformed: the wrapper must name the offending entry.
+        resources: resources as never,
+      }),
+    );
+    t.is((err as any).code, 'E_INVALID_OPTION');
+    t.true(err!.message.includes(message), err!.message);
+  });
+}
+
+test('generate applies i and ignores g/u/y/d on a resources pattern', async t => {
+  const result = await generate({
+    inputPath: fixture('resource-rules.openapi.yaml'),
+    resources: [{ operationId: /^SEARCH/dgiuy }],
+  });
+  const service = requireArtifact(result, 'rest/pet.rest.ts').contents ?? '';
+  t.true(service.includes('readonly searchPets = requestFactory<'));
+  t.true(service.includes('readonly listPets = mutationFactory.zeroArg<'));
+});
+
+test('generate reads a brace in a resources path pattern as a literal', async t => {
+  const result = await generate({
+    inputPath: fixture('resource-rules.openapi.yaml'),
+    resources: [{ path: /^\/pets\/{petId}$/ }],
+  });
+  const service = requireArtifact(result, 'rest/pet.rest.ts').contents ?? '';
+  t.true(service.includes('readonly deletePet = requestFactory<'));
+  t.true(service.includes('readonly createPet = mutationFactory<'));
+});
+
+test('generate lets x-openapi-ng-resource override an explicit resources list', async t => {
+  const empty = await generate({
+    inputPath: fixture('resource-rules.openapi.yaml'),
+    resources: [],
+  });
+  const pets = requireArtifact(empty, 'rest/pet.rest.ts').contents ?? '';
+  t.true(pets.includes('readonly previewDeletePet = requestFactory<'));
+  t.true(pets.includes('readonly listPets = mutationFactory.zeroArg<'));
+
+  const everyGet = await generate({
+    inputPath: fixture('resource-rules.openapi.yaml'),
+    resources: ['GET'],
+  });
+  const session = requireArtifact(everyGet, 'rest/session.rest.ts').contents ?? '';
+  t.true(session.includes('readonly logout = mutationFactory.zeroArg<'));
+});
+
+test('generate accepts a {source, flags} resources pattern', async t => {
+  const result = await generate({
+    inputPath: fixture('resource-rules.openapi.yaml'),
+    resources: [{ path: { source: '/search$', flags: '' } }],
+  });
+  const service = requireArtifact(result, 'rest/pet.rest.ts').contents ?? '';
+  t.true(service.includes('readonly searchPets = requestFactory<'));
+  t.true(service.includes('readonly listPets = mutationFactory.zeroArg<'));
 });
 
 test('generate rejects two operations resolving to one method name in a group', async t => {

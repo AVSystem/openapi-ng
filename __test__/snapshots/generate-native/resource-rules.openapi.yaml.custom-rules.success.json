@@ -1,0 +1,31 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/resource-rules.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Resource Rules",
+    "pathCount": 7,
+    "operationCount": 8,
+    "schemaCount": 1
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest.validate.ts"
+    },
+    {
+      "path": "rest/pet.rest.ts"
+    },
+    {
+      "path": "rest/session.rest.ts"
+    }
+  ]
+}

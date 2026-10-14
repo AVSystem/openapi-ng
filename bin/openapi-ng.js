@@ -169,6 +169,13 @@ emit:
 #     import: dayjs
 #     type: Dayjs
 
+# resources: which operations get .resource(). Default: GET, plus a POST
+# whose operationId starts with search/query/find/lookup. A list here
+# replaces the default; a pattern is a regex as {source, flags}.
+# resources:
+#   - GET
+#   - path: { source: '/search$', flags: '' }
+
 # naming:
 #   methodName: '{operationId}'
 #   group:
@@ -199,6 +206,9 @@ export default defineConfig({
   // emit: ['models', 'angular'],
 
   // layout: ['services'], // or ['operations'] | ['services', 'operations']
+
+  // Which operations get .resource(); a list replaces the default.
+  // resources: ['GET', { method: 'POST', operationId: /^([sS]earch|[qQ]uery|[fF]ind|[lL]ookup)([A-NP-Z0-9_-]|O($|[^r])|Or($|[^A-Z])|$)/ }],
 
   // mappedTypes: [
   //   { schema: 'DateTime', import: 'dayjs', type: 'Dayjs' },
@@ -348,6 +358,7 @@ async function main(argv) {
       responseTypeMapping: merged.responseTypeMapping ?? undefined,
       naming: merged.naming ?? undefined,
       layout: merged.layout ?? undefined,
+      resources: merged.resources ?? undefined,
     });
     process.stdout.write(`${formatSuccess(result, merged.verbose)}\n`);
   } catch (error) {
