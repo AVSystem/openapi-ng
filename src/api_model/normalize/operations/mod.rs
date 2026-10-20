@@ -130,6 +130,7 @@ fn normalize_operation(
     path: path.to_string(),
     description: operation.merged_description(),
     deprecated: operation.deprecated,
+    resource: operation.resource,
   })
 }
 

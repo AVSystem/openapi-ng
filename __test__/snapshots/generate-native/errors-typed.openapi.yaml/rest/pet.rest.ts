@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { requestFactory } from '../rest.util';
+import { mutationFactory } from '../rest.util';
 import type { NotFound, Pet, UpdatePetRequest, ValidationProblem } from '../model';
 
 @Injectable({
@@ -7,7 +7,7 @@ import type { NotFound, Pet, UpdatePetRequest, ValidationProblem } from '../mode
 })
 export class PetRest {
 
-  readonly updatePet = requestFactory<UpdatePetParams, Pet>(
+  readonly updatePet = mutationFactory<UpdatePetParams, Pet>(
     (request: UpdatePetParams) => {
       const { petId, body } = request;
       return {

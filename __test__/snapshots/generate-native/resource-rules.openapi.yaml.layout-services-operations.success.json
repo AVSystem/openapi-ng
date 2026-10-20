@@ -1,0 +1,61 @@
+{
+  "summary": {
+    "normalizedSourcePath": "test/fixtures/resource-rules.openapi.yaml",
+    "specVersion": "3.0.3",
+    "title": "Resource Rules",
+    "pathCount": 7,
+    "operationCount": 8,
+    "schemaCount": 1
+  },
+  "diagnostics": [],
+  "artifacts": [
+    {
+      "path": "model.ts"
+    },
+    {
+      "path": "rest.model.ts"
+    },
+    {
+      "path": "rest.util.ts"
+    },
+    {
+      "path": "rest.validate.ts"
+    },
+    {
+      "path": "rest/pet/create-pet.ts"
+    },
+    {
+      "path": "rest/pet/delete-pet.ts"
+    },
+    {
+      "path": "rest/pet/export-pet.ts"
+    },
+    {
+      "path": "rest/pet/list-pets.ts"
+    },
+    {
+      "path": "rest/pet/preview-delete-pet.ts"
+    },
+    {
+      "path": "rest/pet/render-report.ts"
+    },
+    {
+      "path": "rest/pet/search-pets.ts"
+    },
+    {
+      "path": "rest/pet/index.ts"
+    },
+    {
+      "path": "rest/pet.rest.ts"
+    },
+    {
+      "path": "rest/session/logout.ts"
+    },
+    {
+      "path": "rest/session/index.ts"
+    },
+    {
+      "path": "rest/session.rest.ts"
+    }
+  ]
+}

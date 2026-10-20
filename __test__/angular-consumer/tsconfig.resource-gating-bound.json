@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/resource-gating-bound-proof.ts", "generated/**/*.ts"]
+}

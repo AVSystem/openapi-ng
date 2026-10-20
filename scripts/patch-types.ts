@@ -166,6 +166,7 @@ const dtsPatches: readonly Patch[] = [
   // A JS `RegExp` cannot cross the NAPI boundary: Rust declares the
   // `{ source, flags }` shape the wrapper unpacks into.
   rewrite('friendly naming type', 'naming?: NamingOptions', 'naming?: NamingConfig'),
+  rewrite('friendly resources type', 'resources?: Array<ResourceRuleEntry>', 'resources?: Resources'),
 
   // Wrapper-internal; the hand-authored tail declares `generate`.
   {

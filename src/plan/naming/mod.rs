@@ -19,6 +19,7 @@ pub(crate) use fixed::{
   service_file_stem,
 };
 pub(crate) use lower::lower;
+pub(crate) use parse_spec::{compile as compile_pattern, compile_option_pattern};
 
 use crate::subcode;
 use crate::{
@@ -149,6 +150,7 @@ mod tests {
       errors: Vec::new(),
       description: None,
       deprecated: false,
+      resource: None,
     }
   }
 

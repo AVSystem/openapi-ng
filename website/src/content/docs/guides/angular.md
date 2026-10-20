@@ -1,6 +1,6 @@
 ---
 title: Angular generator
-description: What the Angular generator emits — services, the three operation flavors (observable, resource, request), typed parse, base-path wiring, and non-JSON response variants.
+description: What the Angular generator emits — services, the operation flavors (observable, request, and resource for reads), typed parse, base-path wiring, and non-JSON response variants.
 ---
 
 ## Models
@@ -30,7 +30,8 @@ output is deterministic.
 ## Services
 
 Each OpenAPI tag becomes an `@Injectable` Angular service. Every
-operation is a readonly property with three flavors:
+operation is a readonly property with up to three flavors (only reads
+get `.resource()`, see [Which operations get `.resource()`](#which-operations-get-resource)):
 
 - **`.observable(req, options?)`** — returns an `Observable<T>` via `HttpClient`. Pass `{ observe: 'response' }` to receive `Observable<HttpResponse<T>>` (headers, status), or `{ observe: 'events' }` for `Observable<HttpEvent<T>>` (upload/download progress, raw events). See [`.observable()` modes](#observable-modes) below.
 - **`.resource(reactiveReq, options?)`** — returns an `HttpResourceRef<T>` via Angular's `httpResource`. The ref exposes `headers()`, `statusCode()`, and `progress()` as signals.
@@ -54,7 +55,7 @@ export class PetRest {
     };
   });
 
-  readonly updatePet = requestFactory<UpdatePetParams, Pet>(
+  readonly updatePet = mutationFactory<UpdatePetParams, Pet>(
     (request: UpdatePetParams) => {
       const { petId, includeHistory, body } = request;
       return {
@@ -68,12 +69,17 @@ export class PetRest {
 }
 ```
 
+Operations the [`resources` rules](#which-operations-get-resource)
+leave out are built with `mutationFactory`, which has the same variants
+and the same runtime but types the property without `.resource()`.
+
 Operations with no request parameters use `requestFactory.zeroArg<T>` (or
 `.zeroArg.blob` / `.zeroArg.text` / `.zeroArg.arrayBuffer` for non-JSON
 responses); parameterised operations use the top-level
 `requestFactory<Req, Res>` (with the same `.blob` / `.text` /
-`.arrayBuffer` siblings). `HttpClient` is injected internally by the
-runtime — services do not declare it.
+`.arrayBuffer` siblings). `mutationFactory` mirrors each of these.
+`HttpClient` is injected internally by the runtime — services do not
+declare it.
 
 ### Request interface shape
 
@@ -122,7 +128,8 @@ hoist the body schema to a `$ref` so it nests under `body` instead.
 
 Set `layout: ['operations']` (or `--layout operations`) and every
 operation becomes its own file under `rest/<group>/`, exporting one
-constant built with `defineOperation`. The builder and the
+constant built with `defineOperation` (`defineMutation` for an
+operation without `.resource()`). The builder and the
 `<Op>Params` / `<Op>Error` interfaces are the same text the service
 class carries; only the wrapper differs, and there are no classes:
 
@@ -191,7 +198,8 @@ prepends it.
 ### Binding once: `.withInjector()`
 
 `op.withInjector(injector?)` resolves DI once and returns the bound
-form: exactly the `RequestFn` a service class property is, so handlers
+form: exactly what a service class property is (a `RequestFn`, or a
+`MutationFn` for an operation without `.resource()`), so handlers
 call it without passing an injector each time. The argument defaults
 to `inject(Injector)`, so the zero-argument call must run in an
 injection context:
@@ -308,6 +316,30 @@ and/or `parse`:
 
 …where `T` is the spec-declared response type and `U` is whatever
 `parse` returns.
+
+### Which operations get `.resource()`
+
+A resource sends its request as soon as it is created and again
+whenever a signal it reads changes, so it suits reads, not writes (see
+[resources](https://angular.dev/guide/signals/resource)). By default
+only `GET` operations, and `POST` operations whose operationId starts
+with the word `search`, `query`, `find` or `lookup` (`searchPets`, not
+`findingsCreate`), get `.resource()`. Every other operation is typed
+without it, so the mistake fails to compile:
+
+```ts
+this.#petRest.deletePet.resource(() => ({ petId: this.selectedId() }));
+// error TS2339: Property 'resource' does not exist on type 'MutationFn<DeletePetParams, void>'.
+```
+
+`.observable()` and `.request()` are unaffected. Change the rules with
+[`resources`](/guides/configuration/#resources), or mark one operation
+in the spec with `x-openapi-ng-resource: true` (a `POST` that reads)
+or `false` (a `GET` with side effects, such as a logout).
+
+The gate is in the types only: a mutation object still carries
+`.resource` at runtime, so plain JavaScript or an `as any` can reach
+it.
 
 ### Why `parse` matters here
 
@@ -490,10 +522,10 @@ export class PetList {
 ## Non-JSON responses
 
 When an operation declares a response content type other than JSON,
-the generator emits the same three flavors but routes them through
+the generator emits the same flavors but routes them through
 the matching `httpResource` factory. The `requestFactory` symbol
 itself is a callable for JSON, with sibling factories for the other
-kinds:
+kinds (`mutationFactory` has the same ones):
 
 | Response kind | Factory                           | Emitted return type                                        |
 | ------------- | --------------------------------- | ---------------------------------------------------------- |
@@ -543,12 +575,16 @@ Runtime module. Exports:
   skipping `undefined` and flattening arrays (each item becomes a
   repeated query param).
 - `RequestFn<Request, Response>` / `ZeroArgRequestFn<Response>` — the
-  shape of every generated operation property (generic parameters are
+  shape of every generated property with `.resource()` (generic parameters are
   `Request` first, `Response` second); `RequestFnVoid<Request>` /
   `ZeroArgRequestFnVoid` are the void-response variants picked
   automatically when `Response` is `void`.
 - `requestFactory` — callable for JSON; `.blob` / `.text` /
   `.arrayBuffer` cover the non-JSON response kinds.
+- `mutationFactory` / `defineMutation` — `requestFactory` /
+  `defineOperation` typed without `.resource()` (`MutationFn`,
+  `Mutation` and their `ZeroArg` forms), for the operations the
+  `resources` rules leave out.
 
 ### `rest.validate.ts`
 
@@ -562,7 +598,9 @@ async validation. Exports:
   builds the typed request from the field context; `opts.onSuccess`
   (optional) maps the typed response into form errors; `opts.onError`
   (required) handles HTTP failures. Omit `onSuccess` for the common
-  "HTTP 200 = valid, 4xx = invalid" pattern.
+  "HTTP 200 = valid, 4xx = invalid" pattern. It needs an operation with
+  `.resource()`: a `POST` validator gets one from
+  `x-openapi-ng-resource: true` or a [`resources`](/guides/configuration/#resources) rule.
 - `RestValidatorOptions<TRequest, TResponse, TValue, TPathKind>` — the
   options bag accepted by `validateRest`.
 - `MapToErrorsFn` — re-export from `@angular/forms/signals` so callers
@@ -575,6 +613,7 @@ tree-shakes away when unused.
 ```ts
 import { validateRest } from './generated/rest.validate';
 
+// `checkEmail` is a GET, so it has `.resource()`.
 validateRest(emailPath, accountRest.checkEmail, {
   request: ctx => ({ email: ctx.value() }),
   onError: () => ({ kind: 'email-taken' }),

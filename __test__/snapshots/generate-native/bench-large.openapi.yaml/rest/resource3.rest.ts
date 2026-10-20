@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { httpParams, requestFactory } from '../rest.util';
+import { httpParams, mutationFactory, requestFactory } from '../rest.util';
 import type {
   Resource11,
   Resource11List,
@@ -18,7 +18,7 @@ import type {
 })
 export class Resource3Rest {
 
-  readonly createResource11 = requestFactory<CreateResource11Params, Resource11>(
+  readonly createResource11 = mutationFactory<CreateResource11Params, Resource11>(
     (request: CreateResource11Params) => {
       const { body } = request;
       return {
@@ -29,7 +29,7 @@ export class Resource3Rest {
     },
   );
 
-  readonly createResource12 = requestFactory<CreateResource12Params, Resource12>(
+  readonly createResource12 = mutationFactory<CreateResource12Params, Resource12>(
     (request: CreateResource12Params) => {
       const { body } = request;
       return {
@@ -40,7 +40,7 @@ export class Resource3Rest {
     },
   );
 
-  readonly createResource13 = requestFactory<CreateResource13Params, Resource13>(
+  readonly createResource13 = mutationFactory<CreateResource13Params, Resource13>(
     (request: CreateResource13Params) => {
       const { body } = request;
       return {
@@ -51,7 +51,7 @@ export class Resource3Rest {
     },
   );
 
-  readonly createResource14 = requestFactory<CreateResource14Params, Resource14>(
+  readonly createResource14 = mutationFactory<CreateResource14Params, Resource14>(
     (request: CreateResource14Params) => {
       const { body } = request;
       return {
@@ -62,7 +62,7 @@ export class Resource3Rest {
     },
   );
 
-  readonly createResource15 = requestFactory<CreateResource15Params, Resource15>(
+  readonly createResource15 = mutationFactory<CreateResource15Params, Resource15>(
     (request: CreateResource15Params) => {
       const { body } = request;
       return {

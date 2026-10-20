@@ -9,7 +9,7 @@ Try it without installing anything: [playground](https://docs.openapi-ng.dev/pla
 ## Why openapi-ng
 
 - **Rust-powered codegen.** The engine is a native binary loaded via [NAPI-RS](https://napi.rs). The same input always produces identical output.
-- **Angular-first output.** Each operation ships with three flavors — `.observable()`, `.resource()`, `.request()` — matching Angular's current HTTP primitives.
+- **Angular-first output.** Each operation ships with `.observable()` and `.request()`, and reads also get `.resource()` (by default `GET`s and `search`/`query`/`find`/`lookup` `POST`s, [configurable](https://docs.openapi-ng.dev/guides/configuration/#resources); writes are typed without it, so `deletePet.resource()` fails to compile), matching Angular's current HTTP primitives.
 - **Two layouts.** Per-tag `@Injectable` services by default, or `--layout operations` for one tree-shakeable constant per operation, callable from any injection context or bound once with `withInjector()`.
 - **Strict OpenAPI subset.** A focused 3.x slice with clear diagnostics. No silent misgeneration; see [Assumptions & limitations](https://docs.openapi-ng.dev/reference/limitations/) for the accepted shape.
 - **Configurable naming.** Tune method names and service grouping with template + regex rules, via YAML, JSON, or TypeScript config.
@@ -63,16 +63,16 @@ import { listPets } from './generated/rest/pet';
 
 @Component({/* ... */})
 export class PetList {
-  // Same three flavors; HttpClient comes from the surrounding injection context.
+  // Same flavors; HttpClient comes from the surrounding injection context.
   readonly list = listPets.resource({ defaultValue: [] });
 }
 ```
 
-Both layouts expose the same `.observable()` / `.resource()` / `.request()` surface, and `--layout services,operations` emits the classes on top of the operation files. Details in the [Angular guide](https://docs.openapi-ng.dev/guides/angular/#standalone-operations).
+Both layouts expose the same surface (`.observable()` and `.request()` on every operation, `.resource()` on reads), and `--layout services,operations` emits the classes on top of the operation files. Details in the [Angular guide](https://docs.openapi-ng.dev/guides/angular/#standalone-operations).
 
 ### Signal-forms async validation: `rest.validate.ts`
 
-A `validateRest(path, restMethod, opts)` helper wraps Angular signal-forms `validateAsync` and delegates to the generated `RequestFn.resource()`, preserving request/response typing:
+A `validateRest(path, restMethod, opts)` helper wraps Angular signal-forms `validateAsync` and delegates to the generated `RequestFn.resource()`, preserving request/response typing. It needs an operation with `.resource()`; `checkEmail` below is a GET, while a `POST` validator needs `x-openapi-ng-resource: true` or a [`resources`](https://docs.openapi-ng.dev/guides/configuration/#resources) rule:
 
 ```ts
 import { validateRest } from './generated/rest.validate';

@@ -11,7 +11,7 @@ use crate::{
 use super::{GenerateConfig, MappedType, ResponseTypeMapping};
 
 /// The caller's options, validated and resolved: `emit` gains the targets it
-/// implies, `naming` is lowered.
+/// implies, `naming` and `resources` are lowered.
 pub(crate) fn resolve_generate_config(
   mut config: GenerateConfig,
   reporter: &Reporter,
@@ -22,6 +22,7 @@ pub(crate) fn resolve_generate_config(
 
   config.emit = resolve_emit_targets(config.emit, reporter)?;
   config.naming = crate::plan::naming::lower(config.naming_options.take(), reporter)?;
+  config.resources = crate::plan::resources::lower(config.resource_rule_entries.take(), reporter)?;
   Ok(config)
 }
 

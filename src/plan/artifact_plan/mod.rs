@@ -62,6 +62,14 @@ pub(crate) struct PlannedOperation<'model> {
   pub(crate) deprecated: bool,
   /// `rest/<group>/<method>.ts`; `Some` only when the `operations` layout is on.
   pub(crate) artifact_path: Option<String>,
+  pub(crate) access: Access,
+}
+
+/// Whether an operation is typed with `.resource()` or built through the mutation factory.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Access {
+  Resource,
+  Mutation,
 }
 
 /// Which slot of the HTTP request a [`PlannedRequestField`] fills.
@@ -143,6 +151,10 @@ mod tests {
       schema::{SchemaProperty, SchemaScalar, SchemaType},
     },
     options::MappedType,
+    plan::{
+      naming::{Naming, NamingConfig, NamingResolver, Rule, RuleEntry, operation_file_stem},
+      resources::ResourceRules,
+    },
   };
 
   use crate::test_support::{empty_request, op_with, test_reporter};
@@ -253,6 +265,7 @@ mod tests {
         errors: Vec::new(),
         description: None,
         deprecated: false,
+        resource: None,
       },
       OperationDef {
         operation_id: "updatePet".to_string(),
@@ -284,6 +297,7 @@ mod tests {
         errors: Vec::new(),
         description: None,
         deprecated: false,
+        resource: None,
       },
       OperationDef {
         operation_id: "createAdoptionRequest".to_string(),
@@ -310,6 +324,7 @@ mod tests {
         errors: Vec::new(),
         description: None,
         deprecated: false,
+        resource: None,
       },
     ];
     api_model(model_symbols, operations)
@@ -376,14 +391,12 @@ mod tests {
     // operations layout, `rest//index.ts`.
     let model = service_test_ir();
     let ctx = test_reporter();
-    let resolver = crate::plan::naming::NamingResolver::new(crate::plan::naming::NamingConfig {
-      group: Some(crate::plan::naming::Naming::Single(
-        crate::plan::naming::RuleEntry::Shorthand("---".to_string()),
-      )),
+    let resolver = NamingResolver::new(NamingConfig {
+      group: Some(Naming::Single(RuleEntry::Shorthand("---".to_string()))),
       ..Default::default()
     });
 
-    let error = resolve_service_plans(&model, &resolver, &ctx, false)
+    let error = resolve_service_plans(&model, &resolver, &ResourceRules::default(), &ctx, false)
       .expect_err("an all-punctuation group names no file");
     assert_eq!(error.subcode, Some("naming-resolution"));
     assert!(error.message.contains("no letters or digits"));
@@ -395,7 +408,8 @@ mod tests {
     let ctx = test_reporter();
     let services = resolve_service_plans(
       &model,
-      &crate::plan::naming::NamingResolver::default(),
+      &NamingResolver::default(),
+      &ResourceRules::default(),
       &ctx,
       false,
     )
@@ -502,13 +516,15 @@ mod tests {
         errors: Vec::new(),
         description: None,
         deprecated: false,
+        resource: None,
       }],
     );
 
     let ctx = test_reporter();
     let services = resolve_service_plans(
       &model,
-      &crate::plan::naming::NamingResolver::default(),
+      &NamingResolver::default(),
+      &ResourceRules::default(),
       &ctx,
       false,
     )
@@ -533,6 +549,7 @@ mod tests {
         errors: Vec::new(),
         description: None,
         deprecated: false,
+        resource: None,
       },
       OperationDef {
         operation_id: "adoptPet".to_string(),
@@ -544,6 +561,7 @@ mod tests {
         errors: Vec::new(),
         description: None,
         deprecated: false,
+        resource: None,
       },
       OperationDef {
         operation_id: "antInZoo".to_string(),
@@ -555,6 +573,7 @@ mod tests {
         errors: Vec::new(),
         description: None,
         deprecated: false,
+        resource: None,
       },
       OperationDef {
         operation_id: "abandonPet".to_string(),
@@ -566,6 +585,7 @@ mod tests {
         errors: Vec::new(),
         description: None,
         deprecated: false,
+        resource: None,
       },
     ];
     let model = api_model(Vec::new(), operations);
@@ -573,7 +593,8 @@ mod tests {
     let ctx = test_reporter();
     let services = resolve_service_plans(
       &model,
-      &crate::plan::naming::NamingResolver::default(),
+      &NamingResolver::default(),
+      &ResourceRules::default(),
       &ctx,
       false,
     )
@@ -659,6 +680,7 @@ mod tests {
       errors: Vec::new(),
       description: None,
       deprecated: false,
+      resource: None,
     }
   }
 
@@ -671,7 +693,8 @@ mod tests {
     let ctx = test_reporter();
     let err = resolve_service_plans(
       &model,
-      &crate::plan::naming::NamingResolver::default(),
+      &NamingResolver::default(),
+      &ResourceRules::default(),
       &ctx,
       true,
     )
@@ -697,7 +720,8 @@ mod tests {
     let ctx = test_reporter();
     let services = resolve_service_plans(
       &model,
-      &crate::plan::naming::NamingResolver::default(),
+      &NamingResolver::default(),
+      &ResourceRules::default(),
       &ctx,
       false,
     )
@@ -715,17 +739,16 @@ mod tests {
     let ctx = test_reporter();
     let err = resolve_service_plans(
       &model,
-      &crate::plan::naming::NamingResolver::new(crate::plan::naming::NamingConfig {
-        method_name: Some(crate::plan::naming::Naming::Single(
-          crate::plan::naming::RuleEntry::Rule(crate::plan::naming::Rule {
-            from: Some("{operationId}".to_string()),
-            parse: None,
-            format: None,
-            case: None,
-          }),
-        )),
+      &NamingResolver::new(NamingConfig {
+        method_name: Some(Naming::Single(RuleEntry::Rule(Rule {
+          from: Some("{operationId}".to_string()),
+          parse: None,
+          format: None,
+          case: None,
+        }))),
         group: None,
       }),
+      &ResourceRules::default(),
       &ctx,
       true,
     )
@@ -742,21 +765,25 @@ mod tests {
     get.tags = vec!["pet".to_string()];
     let model = api_model(Vec::new(), vec![list, get]);
     // A group rule without a case transform keeps `Pet` and `pet` distinct.
-    let resolver = crate::plan::naming::NamingResolver::new(crate::plan::naming::NamingConfig {
+    let resolver = NamingResolver::new(NamingConfig {
       method_name: None,
-      group: Some(crate::plan::naming::Naming::Single(
-        crate::plan::naming::RuleEntry::Rule(crate::plan::naming::Rule {
-          from: Some("{tags[0]}".to_string()),
-          parse: None,
-          format: None,
-          case: None,
-        }),
-      )),
+      group: Some(Naming::Single(RuleEntry::Rule(Rule {
+        from: Some("{tags[0]}".to_string()),
+        parse: None,
+        format: None,
+        case: None,
+      }))),
     });
     for standalone in [false, true] {
       let ctx = test_reporter();
-      let err = resolve_service_plans(&model, &resolver, &ctx, standalone)
-        .expect_err("both groups plan rest/pet.rest.ts");
+      let err = resolve_service_plans(
+        &model,
+        &resolver,
+        &ResourceRules::default(),
+        &ctx,
+        standalone,
+      )
+      .expect_err("both groups plan rest/pet.rest.ts");
       assert_eq!(err.subcode, Some("naming-resolution"));
       assert!(
         err
@@ -790,7 +817,7 @@ mod tests {
     for operation in &mut operations {
       operation.artifact_path = Some(format!(
         "rest/pet/{}.ts",
-        crate::plan::naming::operation_file_stem(operation.method_name.as_str())
+        operation_file_stem(operation.method_name.as_str())
       ));
     }
     let ctx = test_reporter();

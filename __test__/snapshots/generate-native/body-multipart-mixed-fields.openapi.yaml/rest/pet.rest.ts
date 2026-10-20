@@ -1,12 +1,12 @@
 import { Injectable } from '@angular/core';
-import { requestFactory } from '../rest.util';
+import { mutationFactory } from '../rest.util';
 
 @Injectable({
   providedIn: 'root',
 })
 export class PetRest {
 
-  readonly updatePetAvatar = requestFactory<UpdatePetAvatarParams, {
+  readonly updatePetAvatar = mutationFactory<UpdatePetAvatarParams, {
     id?: string;
   }>(
     (request: UpdatePetAvatarParams) => {

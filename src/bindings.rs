@@ -61,6 +61,17 @@ pub struct NamingParseSpec {
   pub flags: String,
 }
 
+/// One `resources` rule as it crosses the NAPI boundary: a bare method string arrives as
+/// `{ method }`, and each `RegExp` as `{ source, flags }`. An entry that sets none of the
+/// fields (`{}`) is rejected when the rules are lowered.
+#[napi(object)]
+#[derive(Clone, Debug)]
+pub struct ResourceRuleEntry {
+  pub method: Option<String>,
+  pub operation_id: Option<NamingParseSpec>,
+  pub path: Option<NamingParseSpec>,
+}
+
 #[napi(object)]
 pub struct GenerateOptions {
   /// Path to the spec on disk.
@@ -80,6 +91,8 @@ pub struct GenerateOptions {
   pub naming: Option<NamingOptions>,
   /// Angular output layouts.
   pub layout: Option<Vec<Layout>>,
+  /// Which operations get `.resource()`; absent means the default rules.
+  pub resources: Option<Vec<ResourceRuleEntry>>,
 }
 
 /// One Angular output layout: the per-tag class (`services`) or one file per operation plus a
@@ -175,6 +188,8 @@ impl From<GenerateOptions> for GenerateConfig {
         .map_or_else(crate::options::default_layout, |layouts| {
           layouts.into_iter().collect()
         }),
+      resource_rule_entries: value.resources,
+      resources: crate::plan::resources::ResourceRules::default(),
     }
   }
 }
@@ -215,6 +230,7 @@ mod tests {
       response_type_mapping: None,
       naming: None,
       layout: None,
+      resources: None,
     });
 
     assert!(config.emit.contains(&EmitTarget::Models));
@@ -234,6 +250,7 @@ mod tests {
       response_type_mapping: None,
       naming: None,
       layout: None,
+      resources: None,
     });
 
     assert_eq!(config.emit.len(), 2);

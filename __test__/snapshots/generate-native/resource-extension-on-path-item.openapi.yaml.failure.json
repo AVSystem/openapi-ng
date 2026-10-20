@@ -1,0 +1,6 @@
+{
+  "code": "E_INPUT_INVALID",
+  "message": "Failed to decode OpenAPI input as YAML: paths./pets: x-openapi-ng-resource goes on an operation (`get:`, `post:`, ...), not on the path item at line 7 column 5",
+  "path": "test/fixtures/resource-extension-on-path-item.openapi.yaml",
+  "warnings": []
+}

@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: How openapi-ng discovers config files, the JS/TS config format, mapped types, and naming customization.
+description: How openapi-ng discovers config files, the JS/TS config format, mapped types, layouts, which operations get .resource(), and naming customization.
 ---
 
 ## Discovery
@@ -165,10 +165,10 @@ file or the Node API.
 lists targets. Also available as `--layout services,operations` on the
 CLI (comma-separated, repeatable).
 
-| Entry                | Emits                                                                                                  |
-| -------------------- | ------------------------------------------------------------------------------------------------------ |
-| `services` (default) | `rest/<group>.rest.ts`: one `@Injectable` class per tag with inlined `requestFactory(...)` properties. |
-| `operations`         | `rest/<group>/<method>.ts` per operation plus the barrel `rest/<group>/index.ts`.                      |
+| Entry                | Emits                                                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `services` (default) | `rest/<group>.rest.ts`: one `@Injectable` class per tag with inlined `requestFactory(...)` / `mutationFactory(...)` properties. |
+| `operations`         | `rest/<group>/<method>.ts` per operation plus the barrel `rest/<group>/index.ts`.                                               |
 
 Listing both emits the operation files and the classes, each class
 property being `ops.<method>.withInjector()`. Operation file names are
@@ -177,6 +177,81 @@ them too. `layout` is only meaningful with the `angular` emit target;
 `operations` with `emit: ['models']` is an `E_INVALID_OPTION` error. See
 [Standalone operations](/guides/angular/#standalone-operations) for the
 consumer side.
+
+## Resources
+
+`resources` decides which operations get `.resource()`; every other
+operation keeps `.observable()` and `.request()` and is typed without
+it (see [Which operations get `.resource()`](/guides/angular/#which-operations-get-resource)).
+An operation gets it when any rule matches; a rule matches when every
+field it sets does. A bare method is shorthand for `{ method }`.
+
+```ts
+// The default:
+resources: ['GET', { method: 'POST', operationId: /^([sS]earch|[qQ]uery|[fF]ind|[lL]ookup)([A-NP-Z0-9_-]|O($|[^r])|Or($|[^A-Z])|$)/ }],
+```
+
+| Field         | Matches                                                                   |
+| ------------- | ------------------------------------------------------------------------- |
+| `method`      | `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS` or `HEAD`, upper case. |
+| `operationId` | A pattern tested against the operation's `operationId`.                   |
+| `path`        | A pattern tested against the path template, e.g. `/pets/{id}`.            |
+
+An operation without an `operationId` is tested under the one
+openapi-ng derives for it, the method and path joined by `_`
+(`post__pets_search` for `POST /pets/search`), so anchor a pattern
+(`/^search/`) to keep it off those.
+
+A list replaces the default rather than adding to it, so keep `'GET'`
+in it; `[]` leaves `.resource()` only to operations marked with the
+extension below. The default's pattern is case-sensitive past the
+first letter and ends at a word boundary: `searchPets`, `find_users`
+and `findOrders` match; `findingsCreate`, `findOrCreateUser`,
+`PetsController_search` and `checkEmail` do not. It skips only the
+camelCase `Or` + capital form, so a write such as `find_or_create_user`
+still gets `.resource()`; mark it with `x-openapi-ng-resource: false`.
+Add a rule, or the extension, for other conventions.
+
+A pattern is a `RegExp` in a JS/TS config, or `{ source, flags }` in
+YAML or JSON:
+
+```yaml
+resources:
+  - GET
+  - path: { source: '/search$', flags: '' }
+```
+
+Patterns run on the Rust [`regex`](https://docs.rs/regex) engine, so
+they differ from JS in a few places:
+
+- The `i`, `m` and `s` flags work as in JS. `g`, `y`, `d` and `u` are
+  accepted and ignored (only whether a pattern matches is used, and the
+  engine is always Unicode-aware); `v` is rejected.
+- Look-around and backreferences are rejected.
+- A `{` that does not start a `{n}`, `{n,}` or `{n,m}` quantifier is
+  literal, as in JS, so `/^\/pets\/{id}$/` matches the template
+  `/pets/{id}`.
+- `\d`, `\w` and `\b` match Unicode rather than ASCII, `.` also
+  matches `\r`, and `i` uses Unicode case folding. `\A`, `\z`, `\<`
+  and `\>` are anchors, not the letters and brackets JS reads them as.
+
+This option is **not** exposed on the CLI; configure it via a config
+file or the Node API.
+
+To override the rules for one operation, set `x-openapi-ng-resource`
+to `true` or `false` on the operation; on a path item, or with any
+other value, it is an input error:
+
+```yaml
+/pets/query:
+  put:
+    operationId: queryPets
+    x-openapi-ng-resource: true # a read sent as PUT
+/session/logout:
+  get:
+    operationId: logout
+    x-openapi-ng-resource: false # a GET with side effects
+```
 
 ## Customizing names
 
@@ -201,6 +276,9 @@ runs each rule in order until one succeeds.
   case?: 'camel' | 'pascal' | 'snake' | 'kebab' | 'constant',
 }
 ```
+
+`parse` runs on the same engine as `resources` patterns, with the same
+flags and the same [differences from JS](#resources).
 
 A rule fails when:
 

@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/negative-proof/resource-rejects-mutation.ts", "generated/**/*.ts"]
+}

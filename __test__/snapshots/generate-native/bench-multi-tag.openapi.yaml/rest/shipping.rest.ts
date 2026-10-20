@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { httpParams, requestFactory } from '../rest.util';
+import { httpParams, mutationFactory, requestFactory } from '../rest.util';
 import type {
   ShippingItem1,
   ShippingItem10,
@@ -28,7 +28,7 @@ import type {
 })
 export class ShippingRest {
 
-  readonly createShippingItem1 = requestFactory<CreateShippingItem1Params, ShippingItem1>(
+  readonly createShippingItem1 = mutationFactory<CreateShippingItem1Params, ShippingItem1>(
     (request: CreateShippingItem1Params) => {
       const { body } = request;
       return {
@@ -39,7 +39,7 @@ export class ShippingRest {
     },
   );
 
-  readonly createShippingItem10 = requestFactory<CreateShippingItem10Params, ShippingItem10>(
+  readonly createShippingItem10 = mutationFactory<CreateShippingItem10Params, ShippingItem10>(
     (request: CreateShippingItem10Params) => {
       const { body } = request;
       return {
@@ -50,7 +50,7 @@ export class ShippingRest {
     },
   );
 
-  readonly createShippingItem2 = requestFactory<CreateShippingItem2Params, ShippingItem2>(
+  readonly createShippingItem2 = mutationFactory<CreateShippingItem2Params, ShippingItem2>(
     (request: CreateShippingItem2Params) => {
       const { body } = request;
       return {
@@ -61,7 +61,7 @@ export class ShippingRest {
     },
   );
 
-  readonly createShippingItem3 = requestFactory<CreateShippingItem3Params, ShippingItem3>(
+  readonly createShippingItem3 = mutationFactory<CreateShippingItem3Params, ShippingItem3>(
     (request: CreateShippingItem3Params) => {
       const { body } = request;
       return {
@@ -72,7 +72,7 @@ export class ShippingRest {
     },
   );
 
-  readonly createShippingItem4 = requestFactory<CreateShippingItem4Params, ShippingItem4>(
+  readonly createShippingItem4 = mutationFactory<CreateShippingItem4Params, ShippingItem4>(
     (request: CreateShippingItem4Params) => {
       const { body } = request;
       return {
@@ -83,7 +83,7 @@ export class ShippingRest {
     },
   );
 
-  readonly createShippingItem5 = requestFactory<CreateShippingItem5Params, ShippingItem5>(
+  readonly createShippingItem5 = mutationFactory<CreateShippingItem5Params, ShippingItem5>(
     (request: CreateShippingItem5Params) => {
       const { body } = request;
       return {
@@ -94,7 +94,7 @@ export class ShippingRest {
     },
   );
 
-  readonly createShippingItem6 = requestFactory<CreateShippingItem6Params, ShippingItem6>(
+  readonly createShippingItem6 = mutationFactory<CreateShippingItem6Params, ShippingItem6>(
     (request: CreateShippingItem6Params) => {
       const { body } = request;
       return {
@@ -105,7 +105,7 @@ export class ShippingRest {
     },
   );
 
-  readonly createShippingItem7 = requestFactory<CreateShippingItem7Params, ShippingItem7>(
+  readonly createShippingItem7 = mutationFactory<CreateShippingItem7Params, ShippingItem7>(
     (request: CreateShippingItem7Params) => {
       const { body } = request;
       return {
@@ -116,7 +116,7 @@ export class ShippingRest {
     },
   );
 
-  readonly createShippingItem8 = requestFactory<CreateShippingItem8Params, ShippingItem8>(
+  readonly createShippingItem8 = mutationFactory<CreateShippingItem8Params, ShippingItem8>(
     (request: CreateShippingItem8Params) => {
       const { body } = request;
       return {
@@ -127,7 +127,7 @@ export class ShippingRest {
     },
   );
 
-  readonly createShippingItem9 = requestFactory<CreateShippingItem9Params, ShippingItem9>(
+  readonly createShippingItem9 = mutationFactory<CreateShippingItem9Params, ShippingItem9>(
     (request: CreateShippingItem9Params) => {
       const { body } = request;
       return {

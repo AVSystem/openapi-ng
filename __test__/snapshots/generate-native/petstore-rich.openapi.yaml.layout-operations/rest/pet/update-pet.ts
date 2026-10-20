@@ -1,7 +1,7 @@
-import { defineOperation, httpParams } from '../../rest.util';
+import { defineMutation, httpParams } from '../../rest.util';
 import type { Pet, PetId, UpdatePetRequest } from '../../model';
 
-export const updatePet = /* @__PURE__ */ defineOperation<UpdatePetParams, Pet>(
+export const updatePet = /* @__PURE__ */ defineMutation<UpdatePetParams, Pet>(
   'updatePet',
   (request: UpdatePetParams) => {
     const { petId, includeHistory, body } = request;

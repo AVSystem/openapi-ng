@@ -199,6 +199,26 @@ export type ZeroArgOperation<Response> = [Response] extends [void]
   ? ZeroArgOperationVoid
   : ZeroArgOperationValue<Response>;
 
+// An operation the `resources` config leaves out: no `.resource()`, since a
+// resource sends its request on creation and again whenever its signals change.
+export interface Mutation<Request, Response> extends Observing<Request, Response> {
+  request(request: Request, options?: OperationRequestOptions): CommonRequest;
+  withInjector(injector?: Injector): MutationFn<Request, Response>;
+}
+
+export interface MutationFn<Request, Response> extends Observing<Request, Response> {
+  request(request: Request): CommonRequest;
+}
+
+export interface ZeroArgMutation<Response> extends ZeroArgObserving<Response> {
+  request(options?: OperationRequestOptions): CommonRequest;
+  withInjector(injector?: Injector): ZeroArgMutationFn<Response>;
+}
+
+export interface ZeroArgMutationFn<Response> extends ZeroArgObserving<Response> {
+  request(): CommonRequest;
+}
+
 type Builder<Request> = (request: Request) => CommonRequest;
 
 export interface DefineOperation {
@@ -233,6 +253,38 @@ export interface RequestFactory {
     blob(builder: () => CommonRequest): ZeroArgRequestFn<Blob>;
     text(builder: () => CommonRequest): ZeroArgRequestFn<string>;
     arrayBuffer(builder: () => CommonRequest): ZeroArgRequestFn<ArrayBuffer>;
+  };
+}
+
+export interface DefineMutation {
+  <Request, Response>(
+    name: string,
+    builder: Builder<Request>,
+  ): Mutation<Request, Response>;
+  blob<Request>(name: string, builder: Builder<Request>): Mutation<Request, Blob>;
+  text<Request>(name: string, builder: Builder<Request>): Mutation<Request, string>;
+  arrayBuffer<Request>(
+    name: string,
+    builder: Builder<Request>,
+  ): Mutation<Request, ArrayBuffer>;
+  zeroArg: {
+    <Response>(name: string, builder: () => CommonRequest): ZeroArgMutation<Response>;
+    blob(name: string, builder: () => CommonRequest): ZeroArgMutation<Blob>;
+    text(name: string, builder: () => CommonRequest): ZeroArgMutation<string>;
+    arrayBuffer(name: string, builder: () => CommonRequest): ZeroArgMutation<ArrayBuffer>;
+  };
+}
+
+export interface MutationFactory {
+  <Request, Response>(builder: Builder<Request>): MutationFn<Request, Response>;
+  blob<Request>(builder: Builder<Request>): MutationFn<Request, Blob>;
+  text<Request>(builder: Builder<Request>): MutationFn<Request, string>;
+  arrayBuffer<Request>(builder: Builder<Request>): MutationFn<Request, ArrayBuffer>;
+  zeroArg: {
+    <Response>(builder: () => CommonRequest): ZeroArgMutationFn<Response>;
+    blob(builder: () => CommonRequest): ZeroArgMutationFn<Blob>;
+    text(builder: () => CommonRequest): ZeroArgMutationFn<string>;
+    arrayBuffer(builder: () => CommonRequest): ZeroArgMutationFn<ArrayBuffer>;
   };
 }
 
@@ -437,16 +489,23 @@ function family<Shape>(make: Make): Shape {
   }) as unknown as Shape;
 }
 
-export const defineOperation = family<DefineOperation>(
-  (zeroArg, kind) => (name: string, builder: Builder<unknown>) =>
-    new OperationImpl(name, zeroArg, kind, builder, undefined),
-);
+const defineMaker: Make = (zeroArg, kind) => (name: string, builder: Builder<unknown>) =>
+  new OperationImpl(name, zeroArg, kind, builder, undefined);
+
+export const defineOperation = family<DefineOperation>(defineMaker);
 
 // Sugar over `defineOperation(...).withInjector()`: resolves DI eagerly, so it
 // still throws at construction when used outside an injection context.
-export const requestFactory = family<RequestFactory>(
-  (zeroArg, kind) => (builder: Builder<unknown>) =>
-    new OperationImpl('requestFactory', zeroArg, kind, builder, undefined).bindTo(
-      resolveInjector('requestFactory()', undefined),
-    ),
-);
+const injectedFactory = <Shape>(factoryName: string) =>
+  family<Shape>(
+    (zeroArg, kind) => (builder: Builder<unknown>) =>
+      new OperationImpl(factoryName, zeroArg, kind, builder, undefined).bindTo(
+        resolveInjector(`${factoryName}()`, undefined),
+      ),
+  );
+
+export const requestFactory = injectedFactory<RequestFactory>('requestFactory');
+
+// The same factories, typed without `.resource()`: the method stays at runtime.
+export const defineMutation = family<DefineMutation>(defineMaker);
+export const mutationFactory = injectedFactory<MutationFactory>('mutationFactory');

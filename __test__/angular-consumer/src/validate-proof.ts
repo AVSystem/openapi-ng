@@ -8,7 +8,7 @@
 // just a tsc --noEmit gate.
 
 import { schema } from '@angular/forms/signals';
-import type { PetRest, UpdatePetParams } from '../generated/rest/pet.rest';
+import type { PetRest, GetPetParams } from '../generated/rest/pet.rest';
 import type { Pet } from '../generated/model.ts';
 import type { RequestFnVoid } from '../generated/rest.util';
 import { validateRest } from '../generated/rest.validate';
@@ -17,16 +17,15 @@ declare const service: PetRest;
 declare function expectType<T>(value: T): void;
 
 // Body-inspecting onSuccess: response is typed as `Pet`, request is typed
-// as `UpdatePetParams`, and the validator error shape is the consumer's
+// as `GetPetParams`, and the validator error shape is the consumer's
 // own discriminated union (here keyed by `kind`).
 schema<string>(path => {
-  validateRest<UpdatePetParams, Pet, string>(path, service.updatePet, {
+  validateRest<GetPetParams, Pet, string>(path, service.getPet, {
     request: ctx => {
       const value: string = ctx.value();
       expectType<string>(value);
       return {
         petId: value,
-        body: { status: 'available', tagIds: [] },
       };
     },
     onSuccess: response => {
@@ -43,10 +42,9 @@ schema<string>(path => {
 // Request param is still strongly typed; we only assert reachability of
 // the no-onSuccess overload.
 schema<string>(path => {
-  validateRest<UpdatePetParams, Pet, string>(path, service.updatePet, {
+  validateRest<GetPetParams, Pet, string>(path, service.getPet, {
     request: ctx => ({
       petId: ctx.value(),
-      body: { status: 'available', tagIds: [] },
     }),
     onError: () => undefined,
   });
@@ -69,10 +67,9 @@ schema<string>(path => {
 // Angular's own `AsyncValidatorOptions`, so this call site is what proves they
 // resolve to real types rather than to `{}` or `any`.
 schema<string>(path => {
-  validateRest<UpdatePetParams, Pet, string>(path, service.updatePet, {
+  validateRest<GetPetParams, Pet, string>(path, service.getPet, {
     request: ctx => ({
       petId: ctx.value(),
-      body: { status: 'available', tagIds: [] },
     }),
     debounce: 300,
     when: ctx => ctx.value().length > 2,
@@ -83,13 +80,12 @@ schema<string>(path => {
 // Function-form debounce: receives the params signal's value plus the previous
 // resource snapshot, and returns a promise gating the request.
 schema<string>(path => {
-  validateRest<UpdatePetParams, Pet, string>(path, service.updatePet, {
+  validateRest<GetPetParams, Pet, string>(path, service.getPet, {
     request: ctx => ({
       petId: ctx.value(),
-      body: { status: 'available', tagIds: [] },
     }),
     debounce: value => {
-      expectType<UpdatePetParams | undefined>(value);
+      expectType<GetPetParams | undefined>(value);
       return new Promise<void>(resolve => setTimeout(resolve, 50));
     },
     onError: () => undefined,

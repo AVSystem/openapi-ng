@@ -66,6 +66,30 @@ wasiTest(
   },
 );
 
+wasiTest('browser generate applies resources rules like the native build', async t => {
+  const generate = browserEntry.createGenerate(() => import(wasiCjs));
+  const options = {
+    inputContents: fs.readFileSync(
+      path.join(repoRoot, 'test', 'fixtures', 'resource-rules.openapi.yaml'),
+      'utf8',
+    ),
+    displayPath: 'resource-rules.openapi.yaml',
+    emit: ['models', 'angular'],
+    resources: ['DELETE', { path: /\/search$/ }],
+  } satisfies GenerateOptions;
+  const [fromWasi, fromNative] = await Promise.all([
+    generate(options),
+    nativeGenerate(options),
+  ]);
+  t.deepEqual(
+    fromWasi.artifacts.map(a => [a.path, a.contents]),
+    fromNative.artifacts.map(a => [a.path, a.contents]),
+  );
+  const pets =
+    fromWasi.artifacts.find(a => a.path === 'rest/pet.rest.ts')?.contents ?? '';
+  t.true(pets.includes('readonly searchPets = requestFactory<'));
+});
+
 wasiTest('browser generate surfaces typed fatal diagnostics', async t => {
   const generate = browserEntry.createGenerate(() => import(wasiCjs));
   const err = (await t.throwsAsync(() =>

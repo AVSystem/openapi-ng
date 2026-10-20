@@ -1,12 +1,12 @@
 import { Injectable } from '@angular/core';
-import { requestFactory } from '../rest.util';
+import { mutationFactory } from '../rest.util';
 
 @Injectable({
   providedIn: 'root',
 })
 export class UploadRest {
 
-  readonly createUpload = requestFactory<CreateUploadParams, {
+  readonly createUpload = mutationFactory<CreateUploadParams, {
     id?: string;
   }>(
     (request: CreateUploadParams) => {

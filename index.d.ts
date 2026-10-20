@@ -43,6 +43,8 @@ export interface GenerateOptions {
   naming?: NamingConfig
   /** Angular output layouts. */
   layout?: Array<Layout>
+  /** Which operations get `.resource()`; absent means the default rules. */
+  resources?: Resources
 }
 
 export interface GenerateResult {
@@ -133,6 +135,17 @@ export interface NamingValue {
   rule?: NamingRuleEntry
   /** `{ chain: [...] }` — a sequence of `{ string }` or `{ rule }`. */
   chain?: Array<NamingChainItem>
+}
+
+/**
+ * One `resources` rule as it crosses the NAPI boundary: a bare method string arrives as
+ * `{ method }`, and each `RegExp` as `{ source, flags }`. An entry that sets none of the
+ * fields (`{}`) is rejected when the rules are lowered.
+ */
+export interface ResourceRuleEntry {
+  method?: string
+  operationId?: NamingParseSpec
+  path?: NamingParseSpec
 }
 
 /** How a response body is decoded, named as the JS runtime names it. */
@@ -278,6 +291,35 @@ export interface NamingConfig {
   group?: Naming;
 }
 
+/** An HTTP method a `resources` rule names, upper case. */
+export type ResourceMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD';
+
+/**
+ * A `resources` pattern. YAML and JSON configs spell it `{ source, flags }`.
+ * The pattern is read as a JS `u`-mode RegExp: `i`, `m` and `s` apply, `g`, `y`,
+ * `d` and `u` are ignored, `v` is rejected. Look-around and backreferences are
+ * rejected.
+ */
+export type ResourcePattern = RegExp | { source: string; flags: string };
+
+/**
+ * One `resources` rule: every field it sets must match. `operationId` and
+ * `path` are tested against the spec's operationId and path template.
+ */
+export interface ResourceRule {
+  method?: ResourceMethod;
+  operationId?: ResourcePattern;
+  path?: ResourcePattern;
+}
+
+/**
+ * Which operations get `.resource()`: those any rule matches. A bare
+ * method is shorthand for `{ method }`. Defaults to
+ * `['GET', { method: 'POST', operationId: /^([sS]earch|[qQ]uery|[fF]ind|[lL]ookup)([A-NP-Z0-9_-]|O($|[^r])|Or($|[^A-Z])|$)/ }]`;
+ * `x-openapi-ng-resource: true | false` on an operation overrides it.
+ */
+export type Resources = Array<ResourceMethod | ResourceRule>;
+
 /**
  * File-config shape — accepted by `.openapi-ng.{yaml,json}`,
  * `openapi-ng.config.{ts,mts,cts,mjs,js,cjs}`, and the `defineConfig`
@@ -292,6 +334,7 @@ export interface Config {
   responseTypeMapping?: Array<ResponseTypeMapping>;
   naming?: NamingConfig;
   layout?: Array<Layout>;
+  resources?: Resources;
 }
 
 /**

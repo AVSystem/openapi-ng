@@ -42,6 +42,7 @@ const { field, inputError } = require('../../lib/diagnostic.js');
  *   responseTypeMapping: import('../../index.js').ResponseTypeMapping[] | null,
  *   naming: import('../../index.js').NamingConfig | null,
  *   layout: Layout[] | null,
+ *   resources: import('../../index.js').Resources | null,
  * }} MergedConfig
  */
 
@@ -371,6 +372,33 @@ function normalizeNamingFromFile(naming) {
 }
 
 /**
+ * Accepts a `resources` list from a config file, refusing a string
+ * `operationId` or `path`: YAML/JSON cannot encode a RegExp, so a string
+ * there is a regex written the wrong way. The wrapper validates the rest.
+ *
+ * @param {unknown} resources
+ * @returns {import('../../index.js').Resources | null}
+ */
+function normalizeResourcesFromFile(resources) {
+  if (resources === undefined || resources === null) return null;
+  if (!Array.isArray(resources)) {
+    throw inputError(`Invalid resources config: expected a list of HTTP methods or rule objects.`);
+  }
+  resources.forEach((rule, index) => {
+    for (const key of ['operationId', 'path']) {
+      const pattern = field(rule, key);
+      if (typeof pattern === 'string') {
+        throw inputError(
+          `resources[${index}].${key} must be a RegExp or a {source, flags} object; ` +
+            `a YAML/JSON config spells /search$/i as {source: 'search$', flags: 'i'}.`,
+        );
+      }
+    }
+  });
+  return resources;
+}
+
+/**
  * Merges the file config under the CLI flags, which win field by field.
  *
  * @param {Config} fileConfig
@@ -388,6 +416,7 @@ function mergeConfig(fileConfig, cliFlags) {
     responseTypeMapping: null,
     naming: null,
     layout: null,
+    resources: null,
   };
 
   merged.inputPath = cliFlags.inputPath ?? fileConfig.input ?? null;
@@ -408,6 +437,8 @@ function mergeConfig(fileConfig, cliFlags) {
   merged.naming = cliFlags.naming ?? normalizeNamingFromFile(fileConfig.naming);
 
   merged.layout = cliFlags.layout ?? normalizeLayout(fileConfig.layout);
+
+  merged.resources = normalizeResourcesFromFile(fileConfig.resources);
 
   return merged;
 }
@@ -557,6 +588,7 @@ module.exports = {
   normalizeMappedTypes,
   normalizeResponseTypeMapping,
   normalizeNamingFromFile,
+  normalizeResourcesFromFile,
   normalizeEmit,
   normalizeLayout,
   mergeConfig,

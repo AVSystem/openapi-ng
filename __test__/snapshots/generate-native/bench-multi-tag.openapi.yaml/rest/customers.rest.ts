@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { httpParams, requestFactory } from '../rest.util';
+import { httpParams, mutationFactory, requestFactory } from '../rest.util';
 import type {
   CustomersItem1,
   CustomersItem10,
@@ -28,7 +28,7 @@ import type {
 })
 export class CustomersRest {
 
-  readonly createCustomersItem1 = requestFactory<CreateCustomersItem1Params, CustomersItem1>(
+  readonly createCustomersItem1 = mutationFactory<CreateCustomersItem1Params, CustomersItem1>(
     (request: CreateCustomersItem1Params) => {
       const { body } = request;
       return {
@@ -39,7 +39,7 @@ export class CustomersRest {
     },
   );
 
-  readonly createCustomersItem10 = requestFactory<CreateCustomersItem10Params, CustomersItem10>(
+  readonly createCustomersItem10 = mutationFactory<CreateCustomersItem10Params, CustomersItem10>(
     (request: CreateCustomersItem10Params) => {
       const { body } = request;
       return {
@@ -50,7 +50,7 @@ export class CustomersRest {
     },
   );
 
-  readonly createCustomersItem2 = requestFactory<CreateCustomersItem2Params, CustomersItem2>(
+  readonly createCustomersItem2 = mutationFactory<CreateCustomersItem2Params, CustomersItem2>(
     (request: CreateCustomersItem2Params) => {
       const { body } = request;
       return {
@@ -61,7 +61,7 @@ export class CustomersRest {
     },
   );
 
-  readonly createCustomersItem3 = requestFactory<CreateCustomersItem3Params, CustomersItem3>(
+  readonly createCustomersItem3 = mutationFactory<CreateCustomersItem3Params, CustomersItem3>(
     (request: CreateCustomersItem3Params) => {
       const { body } = request;
       return {
@@ -72,7 +72,7 @@ export class CustomersRest {
     },
   );
 
-  readonly createCustomersItem4 = requestFactory<CreateCustomersItem4Params, CustomersItem4>(
+  readonly createCustomersItem4 = mutationFactory<CreateCustomersItem4Params, CustomersItem4>(
     (request: CreateCustomersItem4Params) => {
       const { body } = request;
       return {
@@ -83,7 +83,7 @@ export class CustomersRest {
     },
   );
 
-  readonly createCustomersItem5 = requestFactory<CreateCustomersItem5Params, CustomersItem5>(
+  readonly createCustomersItem5 = mutationFactory<CreateCustomersItem5Params, CustomersItem5>(
     (request: CreateCustomersItem5Params) => {
       const { body } = request;
       return {
@@ -94,7 +94,7 @@ export class CustomersRest {
     },
   );
 
-  readonly createCustomersItem6 = requestFactory<CreateCustomersItem6Params, CustomersItem6>(
+  readonly createCustomersItem6 = mutationFactory<CreateCustomersItem6Params, CustomersItem6>(
     (request: CreateCustomersItem6Params) => {
       const { body } = request;
       return {
@@ -105,7 +105,7 @@ export class CustomersRest {
     },
   );
 
-  readonly createCustomersItem7 = requestFactory<CreateCustomersItem7Params, CustomersItem7>(
+  readonly createCustomersItem7 = mutationFactory<CreateCustomersItem7Params, CustomersItem7>(
     (request: CreateCustomersItem7Params) => {
       const { body } = request;
       return {
@@ -116,7 +116,7 @@ export class CustomersRest {
     },
   );
 
-  readonly createCustomersItem8 = requestFactory<CreateCustomersItem8Params, CustomersItem8>(
+  readonly createCustomersItem8 = mutationFactory<CreateCustomersItem8Params, CustomersItem8>(
     (request: CreateCustomersItem8Params) => {
       const { body } = request;
       return {
@@ -127,7 +127,7 @@ export class CustomersRest {
     },
   );
 
-  readonly createCustomersItem9 = requestFactory<CreateCustomersItem9Params, CustomersItem9>(
+  readonly createCustomersItem9 = mutationFactory<CreateCustomersItem9Params, CustomersItem9>(
     (request: CreateCustomersItem9Params) => {
       const { body } = request;
       return {

@@ -1,4 +1,4 @@
-import type { PetRest, UpdatePetParams } from '../generated/rest/pet.rest';
+import type { GetPetParams, PetRest, UpdatePetParams } from '../generated/rest/pet.rest';
 import type {
   HttpClient,
   HttpEvent,
@@ -74,16 +74,25 @@ const defaultPet: Pet = {
 };
 const updatePetRequest = service.updatePet.request(request);
 const updatePetObservable = service.updatePet.observable(request);
-const updatePetResource = service.updatePet.resource(() => request);
 
-const updatePetResourceDefaultValue = service.updatePet.resource(() => request, {
+// @ts-expect-error — a POST outside the `resources` rules has no `.resource()`
+service.updatePet.resource(() => request);
+
+/**
+ * getPet
+ * */
+
+const getPetRequest: GetPetParams = { petId: 'id' };
+const getPetResource = service.getPet.resource(() => getPetRequest);
+
+const getPetResourceDefaultValue = service.getPet.resource(() => getPetRequest, {
   defaultValue: defaultPet,
 });
-const updatePetResourceParse = service.updatePet.resource<number>(() => request, {
+const getPetResourceParse = service.getPet.resource<number>(() => getPetRequest, {
   parse: raw => raw.tags.length,
 });
-const updatePetResourceParseDefaultValue = service.updatePet.resource<number>(
-  () => request,
+const getPetResourceParseDefaultValue = service.getPet.resource<number>(
+  () => getPetRequest,
   { parse: raw => raw.tags.length, defaultValue: 42 },
 );
 
@@ -95,9 +104,9 @@ expectType<ResourceRequestContext>(paramsContext);
 expectType<ResourceParamsContext>(requestContext);
 
 // `chain` from ResourceParamsContext must flow through the resource() wrapper.
-const updatePetResourceChained = service.updatePet.resource(context => {
+const getPetResourceChained = service.getPet.resource(context => {
   const firstPet = context.chain(listPetsResourceDefaultValue).at(0);
-  return firstPet === undefined ? undefined : { ...request, petId: firstPet.id };
+  return firstPet === undefined ? undefined : { petId: firstPet.id };
 });
 
 const updatePetObservableResponse = service.updatePet.observable(request, {
@@ -139,11 +148,11 @@ service.updatePet.observable(request, { responseType: 'text' });
 
 expectType<string>(updatePetRequest.url);
 expectType<Observable<Pet>>(updatePetObservable);
-expectType<HttpResourceRef<Pet | undefined>>(updatePetResource);
-expectType<HttpResourceRef<Pet | undefined>>(updatePetResourceChained);
-expectType<HttpResourceRef<Pet>>(updatePetResourceDefaultValue);
-expectType<HttpResourceRef<number | undefined>>(updatePetResourceParse);
-expectType<HttpResourceRef<number>>(updatePetResourceParseDefaultValue);
+expectType<HttpResourceRef<Pet | undefined>>(getPetResource);
+expectType<HttpResourceRef<Pet | undefined>>(getPetResourceChained);
+expectType<HttpResourceRef<Pet>>(getPetResourceDefaultValue);
+expectType<HttpResourceRef<number | undefined>>(getPetResourceParse);
+expectType<HttpResourceRef<number>>(getPetResourceParseDefaultValue);
 expectType<Observable<HttpResponse<Pet>>>(updatePetObservableResponse);
 expectType<Observable<HttpEvent<Pet>>>(updatePetObservableEvents);
 

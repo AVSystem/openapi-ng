@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { httpParams, requestFactory } from '../rest.util';
+import { httpParams, mutationFactory, requestFactory } from '../rest.util';
 import type {
   InventoryItem1,
   InventoryItem10,
@@ -28,7 +28,7 @@ import type {
 })
 export class InventoryRest {
 
-  readonly createInventoryItem1 = requestFactory<CreateInventoryItem1Params, InventoryItem1>(
+  readonly createInventoryItem1 = mutationFactory<CreateInventoryItem1Params, InventoryItem1>(
     (request: CreateInventoryItem1Params) => {
       const { body } = request;
       return {
@@ -39,7 +39,7 @@ export class InventoryRest {
     },
   );
 
-  readonly createInventoryItem10 = requestFactory<CreateInventoryItem10Params, InventoryItem10>(
+  readonly createInventoryItem10 = mutationFactory<CreateInventoryItem10Params, InventoryItem10>(
     (request: CreateInventoryItem10Params) => {
       const { body } = request;
       return {
@@ -50,7 +50,7 @@ export class InventoryRest {
     },
   );
 
-  readonly createInventoryItem2 = requestFactory<CreateInventoryItem2Params, InventoryItem2>(
+  readonly createInventoryItem2 = mutationFactory<CreateInventoryItem2Params, InventoryItem2>(
     (request: CreateInventoryItem2Params) => {
       const { body } = request;
       return {
@@ -61,7 +61,7 @@ export class InventoryRest {
     },
   );
 
-  readonly createInventoryItem3 = requestFactory<CreateInventoryItem3Params, InventoryItem3>(
+  readonly createInventoryItem3 = mutationFactory<CreateInventoryItem3Params, InventoryItem3>(
     (request: CreateInventoryItem3Params) => {
       const { body } = request;
       return {
@@ -72,7 +72,7 @@ export class InventoryRest {
     },
   );
 
-  readonly createInventoryItem4 = requestFactory<CreateInventoryItem4Params, InventoryItem4>(
+  readonly createInventoryItem4 = mutationFactory<CreateInventoryItem4Params, InventoryItem4>(
     (request: CreateInventoryItem4Params) => {
       const { body } = request;
       return {
@@ -83,7 +83,7 @@ export class InventoryRest {
     },
   );
 
-  readonly createInventoryItem5 = requestFactory<CreateInventoryItem5Params, InventoryItem5>(
+  readonly createInventoryItem5 = mutationFactory<CreateInventoryItem5Params, InventoryItem5>(
     (request: CreateInventoryItem5Params) => {
       const { body } = request;
       return {
@@ -94,7 +94,7 @@ export class InventoryRest {
     },
   );
 
-  readonly createInventoryItem6 = requestFactory<CreateInventoryItem6Params, InventoryItem6>(
+  readonly createInventoryItem6 = mutationFactory<CreateInventoryItem6Params, InventoryItem6>(
     (request: CreateInventoryItem6Params) => {
       const { body } = request;
       return {
@@ -105,7 +105,7 @@ export class InventoryRest {
     },
   );
 
-  readonly createInventoryItem7 = requestFactory<CreateInventoryItem7Params, InventoryItem7>(
+  readonly createInventoryItem7 = mutationFactory<CreateInventoryItem7Params, InventoryItem7>(
     (request: CreateInventoryItem7Params) => {
       const { body } = request;
       return {
@@ -116,7 +116,7 @@ export class InventoryRest {
     },
   );
 
-  readonly createInventoryItem8 = requestFactory<CreateInventoryItem8Params, InventoryItem8>(
+  readonly createInventoryItem8 = mutationFactory<CreateInventoryItem8Params, InventoryItem8>(
     (request: CreateInventoryItem8Params) => {
       const { body } = request;
       return {
@@ -127,7 +127,7 @@ export class InventoryRest {
     },
   );
 
-  readonly createInventoryItem9 = requestFactory<CreateInventoryItem9Params, InventoryItem9>(
+  readonly createInventoryItem9 = mutationFactory<CreateInventoryItem9Params, InventoryItem9>(
     (request: CreateInventoryItem9Params) => {
       const { body } = request;
       return {

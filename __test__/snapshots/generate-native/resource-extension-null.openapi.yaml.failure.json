@@ -1,0 +1,6 @@
+{
+  "code": "E_INPUT_INVALID",
+  "message": "Failed to decode OpenAPI input as YAML: paths./pets.get.x-openapi-ng-resource: invalid type: unit value, expected a boolean at line 9 column 29",
+  "path": "test/fixtures/resource-extension-null.openapi.yaml",
+  "warnings": []
+}

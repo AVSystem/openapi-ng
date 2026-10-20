@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use napi_derive::napi;
 
-use crate::bindings::{EmitTarget, InputFormat, Layout, NamingOptions};
+use crate::bindings::{EmitTarget, InputFormat, Layout, NamingOptions, ResourceRuleEntry};
 
 /// Replaces the generated declaration for `schema` with `type_name`, imported from `import`.
 #[napi(object)]
@@ -50,6 +50,8 @@ pub struct GenerateConfig {
   pub naming_options: Option<NamingOptions>,
   pub naming: crate::plan::naming::NamingConfig,
   pub layout: BTreeSet<Layout>,
+  pub resource_rule_entries: Option<Vec<ResourceRuleEntry>>,
+  pub(crate) resources: crate::plan::resources::ResourceRules,
 }
 
 #[must_use]
@@ -84,6 +86,8 @@ mod tests {
       naming_options: None,
       naming: crate::plan::naming::NamingConfig::default(),
       layout: crate::options::default_layout(),
+      resource_rule_entries: None,
+      resources: crate::plan::resources::ResourceRules::default(),
     }
   }
 

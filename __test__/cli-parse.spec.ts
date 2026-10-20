@@ -929,3 +929,35 @@ test('mergeConfig: rejects an unknown file-config layout', t => {
   const err = t.throws(() => parse.mergeConfig({ layout: ['flat'] }, {}));
   t.true(err?.message.includes("Unknown layout: 'flat'"));
 });
+
+// ── resources ────────────────────────────────────────────────────────────────
+
+test('mergeConfig: file resources pass through for the wrapper to validate', t => {
+  const resources = ['GET', { method: 'POST', operationId: /^search/i }];
+  t.is(parse.mergeConfig({ resources }, {}).resources, resources);
+});
+
+test('mergeConfig: resources defaults to null so the generator default applies', t => {
+  t.is(parse.mergeConfig({}, {}).resources, null);
+});
+
+test('mergeConfig: rejects a resources pattern YAML/JSON can only carry as a string', t => {
+  const err = t.throws(() =>
+    parse.mergeConfig({ resources: ['GET', { method: 'POST', path: '/search$' }] }, {}),
+  );
+  t.true(
+    err?.message.includes(
+      'resources[1].path must be a RegExp or a {source, flags} object',
+    ),
+  );
+});
+
+test('mergeConfig: a {source, flags} resources pattern passes through', t => {
+  const resources = [{ path: { source: '/search$', flags: '' } }];
+  t.is(parse.mergeConfig({ resources }, {}).resources, resources);
+});
+
+test('mergeConfig: rejects a resources value that is not a list', t => {
+  const err = t.throws(() => parse.mergeConfig({ resources: 'GET' }, {}));
+  t.true(err?.message.includes('expected a list of HTTP methods or rule objects'));
+});

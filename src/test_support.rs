@@ -9,7 +9,7 @@ use crate::{
   identifier::{Identifier, MethodName},
   plan::{
     artifact_plan::{
-      PlannedFormField, PlannedHeader, PlannedOperation, PlannedRequestBody,
+      Access, PlannedFormField, PlannedHeader, PlannedOperation, PlannedRequestBody,
       PlannedRequestContract, PlannedRequestField, RequestFieldKind,
     },
     naming::{error_interface_name, request_interface_name},
@@ -134,6 +134,7 @@ pub(crate) fn op_with<'a>(
     description: None,
     deprecated: false,
     artifact_path: None,
+    access: Access::Resource,
   }
 }
 
@@ -156,6 +157,7 @@ pub(crate) fn op_with_errors<'a>(
     description: None,
     deprecated: false,
     artifact_path: None,
+    access: Access::Resource,
   }
 }
 

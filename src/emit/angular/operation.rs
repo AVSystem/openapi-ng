@@ -5,7 +5,8 @@ use crate::plan::artifact_plan::{PlannedOperation, ServicePlan};
 use crate::plan::naming::operation_file_stem;
 
 use super::imports::{
-  collect_model_type_imports, uses_http_params, write_helper_import, write_model_imports,
+  collect_model_type_imports, factory_name, helper_symbols, write_helper_import,
+  write_model_imports,
 };
 use super::request::{
   render_error_interface, render_request_interface, render_requestful_builder,
@@ -69,25 +70,21 @@ const RESERVED_IDENTIFIERS: &[&str] = &[
   "yield",
 ];
 
-/// One standalone operation file: the `defineOperation(...)` constant followed by its
-/// `{Pascal}Params` / `{Pascal}Error` interfaces.
+/// One standalone operation file: the `defineOperation(...)` or `defineMutation(...)` constant
+/// followed by its `{Pascal}Params` / `{Pascal}Error` interfaces.
 #[must_use]
 pub(crate) fn emit_operation(operation: &PlannedOperation<'_>) -> String {
   let operations = std::slice::from_ref(operation);
-  let helper_symbols: &[&str] = if uses_http_params(operations) {
-    &["defineOperation", "httpParams"]
-  } else {
-    &["defineOperation"]
-  };
+  let helper_symbols = helper_symbols(operations, true);
   let model_imports = collect_model_type_imports(operations);
   let name = operation.method_name.as_str();
   // Export specifiers accept any IdentifierName, so a name that cannot be
   // a `const` binding is declared under `<name>_` and exported as itself.
-  let local_alias = needs_alias(name, helper_symbols, &model_imports).then(|| format!("{name}_"));
+  let local_alias = needs_alias(name, &helper_symbols, &model_imports).then(|| format!("{name}_"));
   let request_name = operation.request_interface.clone();
 
   let mut buffer = Writer::with_capacity(1024);
-  write_helper_import(&mut buffer, HELPER_IMPORT_PATH, helper_symbols);
+  write_helper_import(&mut buffer, HELPER_IMPORT_PATH, &helper_symbols);
   write_model_imports(&mut buffer, &model_imports, MODEL_IMPORT_PATH);
   buffer.blank_line();
 
@@ -102,7 +99,7 @@ pub(crate) fn emit_operation(operation: &PlannedOperation<'_>) -> String {
   }
   write_call_site(
     &mut buffer,
-    "defineOperation",
+    factory_name(operation, true),
     operation.response,
     request_name.as_ref(),
   );
@@ -159,6 +156,7 @@ mod tests {
   use crate::api_model::canonical::{ErrorResponse, HttpMethod, ResponseContent};
   use crate::api_model::schema::{SchemaScalar, SchemaType};
   use crate::identifier::TypeName;
+  use crate::plan::artifact_plan::Access;
   use crate::plan::artifact_plan::{PlannedRequestContract, PlannedRequestField, RequestFieldKind};
   use crate::test_support::{empty_request, op_with, path_field, string_schema};
 
@@ -241,6 +239,39 @@ mod tests {
         "no requestFactory in:\n{out}"
       );
     }
+  }
+
+  #[test]
+  fn mutation_is_defined_with_define_mutation() {
+    let str_schema = string_schema();
+    let blob_cases = [
+      (false, "defineMutation.blob<DownloadParams>("),
+      (true, "defineMutation.zeroArg.blob("),
+    ];
+    for (zero, expected) in blob_cases {
+      let mut operation = if zero {
+        zero_arg("download", &ResponseContent::Blob)
+      } else {
+        requestful("download", &str_schema, &ResponseContent::Blob)
+      };
+      operation.access = Access::Mutation;
+      let out = emit_operation(&operation);
+      assert!(out.contains(expected), "expected {expected:?} in:\n{out}");
+      assert!(out.starts_with("import { defineMutation } from '../../rest.util';"));
+      assert!(!out.contains("defineOperation"), "{out}");
+    }
+  }
+
+  #[test]
+  fn operation_named_after_the_mutation_factory_is_aliased() {
+    let str_schema = string_schema();
+    let void = ResponseContent::Json(None);
+    let mut operation = requestful("defineMutation", &str_schema, &void);
+    operation.access = Access::Mutation;
+    let out = emit_operation(&operation);
+
+    assert!(out.contains("const defineMutation_ = /* @__PURE__ */ defineMutation<"));
+    assert!(out.contains("export { defineMutation_ as defineMutation };"));
   }
 
   #[test]

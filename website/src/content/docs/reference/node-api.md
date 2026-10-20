@@ -40,6 +40,7 @@ interface GenerateOptions {
   responseTypeMapping?: Array<ResponseTypeMapping>;
   naming?: NamingConfig;
   layout?: Array<Layout>; // const enum: 'services' | 'operations'
+  resources?: Resources;
 }
 ```
 
@@ -69,6 +70,7 @@ await generate({
 | `responseTypeMapping` | Per-content-type override for the response decoding kind (`json` / `blob` / `text` / `arrayBuffer`). Matched case-insensitively against the spec's media types. Wires the right `requestFactory.*` variant. |
 | `naming`              | Customise emitted method and group names. See the [Configuration guide](/guides/configuration/).                                                                                                            |
 | `layout`              | Angular output layouts: `services` (default, per-tag classes) and/or `operations` (one file per operation plus a barrel). See [Layout](/guides/configuration/#layout).                                      |
+| `resources`           | Which operations get `.resource()`. Defaults to `GET` plus a `POST` whose operationId starts with `search`, `query`, `find` or `lookup`. See [Resources](/guides/configuration/#resources).                 |
 
 ### Browser usage
 
@@ -126,6 +128,28 @@ order, fallback chains, and worked examples. `parse` requires a real
 use an `openapi-ng.config.ts` / `.js` / `.mjs` / `.cjs` file in that
 case.
 
+### `Resources`
+
+```ts
+type Resources = Array<ResourceMethod | ResourceRule>;
+
+type ResourceMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD';
+
+type ResourcePattern = RegExp | { source: string; flags: string };
+
+interface ResourceRule {
+  method?: ResourceMethod;
+  operationId?: ResourcePattern;
+  path?: ResourcePattern;
+}
+```
+
+An operation gets `.resource()` when any rule matches, and a rule
+matches when every field it sets does. A rule must set at least one
+field; unknown keys are rejected. `x-openapi-ng-resource` on an
+operation overrides the rules. See [Resources](/guides/configuration/#resources)
+for the default and the supported regex subset.
+
 ## `GenerateResult`
 
 ```ts
@@ -171,6 +195,7 @@ interface Config {
   responseTypeMapping?: Array<ResponseTypeMapping>;
   naming?: NamingConfig;
   layout?: Array<Layout>;
+  resources?: Resources;
 }
 ```
 

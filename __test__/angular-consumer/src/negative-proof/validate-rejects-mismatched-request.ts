@@ -12,8 +12,8 @@ interface WrongRequest {
 declare const wrongRequest: WrongRequest;
 
 export const shouldFail = schema<string>(path => {
-  validateRest(path, service.updatePet, {
-    // `request` must return UpdatePetParams | undefined; a value of
+  validateRest(path, service.getPet, {
+    // `request` must return GetPetParams | undefined; a value of
     // type `WrongRequest` does not satisfy it. tsc must reject this
     // option-bag with TS2322.
     request: () => wrongRequest,
